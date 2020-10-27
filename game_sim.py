@@ -43,7 +43,7 @@ stlat_list = ["anticapitalism", "chasiness", "omniscience", "tenaciousness", "wa
 
 async def retry_request(url, tries=10):
     headers = {
-        'User-Agent': 'sibrGameSim'
+        'User-Agent': 'sibrGameSim/0.1test (tehstone#8448@sibr)'
     }
 
     for i in range(tries):
@@ -240,7 +240,7 @@ async def simulate(games, models, team_stlats, player_blood_types, player_names,
                     break
         if shakeup:
             continue
-
+        log_game = False
         for i in range(sim_length):
             game_log = [f'Day {game["day"]}.',
                         f'{game["homePitcherName"]} pitching for the {game["homeTeamName"]} at home.',
@@ -252,21 +252,22 @@ async def simulate(games, models, team_stlats, player_blood_types, player_names,
             while True:
                 game_log.append(f'\nTop of the {inning+1}, {game["awayTeamNickname"]} batting.')
                 game_log.append(f'{game["homeTeamNickname"]}: {home_score} -  {game["awayTeamNickname"]}: {away_score}')
-                a_runs, away_order, a_strikeouts = await simulate_inning(models, away_lineup, away_order,
-                                                                         game_statsheets, player_blood_types,
-                                                                         game, True, game_log, player_names,
-                                                                         f"Top of the {inning+1}")
-
+                a_runs, away_order, a_strikeouts, nlg = await simulate_inning(models, away_lineup, away_order,
+                                                                              game_statsheets, player_blood_types,
+                                                                              game, True, game_log, player_names,
+                                                                              f"Top of the {inning+1}", log_game)
+                log_game = nlg
                 away_score += a_runs
                 away_strikeouts += a_strikeouts
                 if inning == 8 and home_score != away_score:
                     break
                 game_log.append(f'\nBottom of the {inning + 1}, {game["homeTeamNickname"]} batting.')
                 game_log.append(f'{game["homeTeamNickname"]}: {home_score} -  {game["awayTeamNickname"]}: {away_score}')
-                h_runs, home_order, h_strikeouts = await simulate_inning(models, home_lineup, home_order,
-                                                                         game_statsheets, player_blood_types,
-                                                                         game, False, game_log, player_names,
-                                                                         f'bottom of the {inning+1}')
+                h_runs, home_order, h_strikeouts, nlg = await simulate_inning(models, home_lineup, home_order,
+                                                                              game_statsheets, player_blood_types,
+                                                                              game, False, game_log, player_names,
+                                                                              f'bottom of the {inning+1}', log_game)
+                log_game = nlg
                 home_score += h_runs
                 home_strikeouts += h_strikeouts
 
@@ -294,11 +295,17 @@ async def simulate(games, models, team_stlats, player_blood_types, player_names,
                 game_log.append(f'Game Over. {game["awayTeamName"]} win {away_score} - {home_score}')
             home_struckout.append(home_strikeouts)
             away_struckout.append(away_strikeouts)
-            if i == 0:
-                filename = os.path.join('season_sim', 'game_logs', f's{season}-d{day}_{away_name}-at-{home_name}.txt')
+            if log_game or i == 0:
+                if i == 0:
+                    filename = os.path.join('season_sim', 'game_logs',
+                                            f's{season}-d{day}_{away_name}-at-{home_name}.txt')
+                else:
+                    filename = os.path.join('season_sim', 'game_logs',
+                                            f's{season}-d{day}_{away_name}-at-{home_name}_{i}.txt')
                 with open(filename, 'w') as file:
                     for message in game_log:
                         file.write(f"{message}\n")
+                log_game = False
 
         home_scores.sort()
         away_scores.sort()
@@ -349,7 +356,7 @@ async def simulate(games, models, team_stlats, player_blood_types, player_names,
 
 
 async def simulate_inning(models, lineup, order, stat_sheets, player_blood_types,
-                          game, top_of_inning, game_log, player_names, descriptor):
+                          game, top_of_inning, game_log, player_names, descriptor, log_game):
     season = game["season"]
     if top_of_inning:
         pitcher_id, hit_team_id, hit_team_name = game["homePitcher"], game["awayTeam"], game["awayTeamName"]
@@ -380,10 +387,11 @@ async def simulate_inning(models, lineup, order, stat_sheets, player_blood_types
                 print("WHY ARE THERE MORE THAN 3 OUTS!!!!")
                 print(f"day {game['day']} h_team {game['homeTeamNickname']} "
                       f"a_team {game['awayTeamNickname']} {descriptor}")
+                log_game = True
             break
         score += runs
 
-    return score, order, strikeouts
+    return score, order, strikeouts, log_game
 
 
 async def simulate_at_bat(bases, models, stat_sheets, player_blood_types,
@@ -589,8 +597,9 @@ async def simulate_pitch(models, bases, at_bat_count, hitter_id, game_log, playe
     bases, runs, outs = await simulate_stolen_base(models, bases, game_log, player_names)
     p_runs += runs
     p_outs += outs
-    if at_bat_count["outs"] + outs == 3:
-        at_bat_count["outs"] += 1
+    at_bat_count["outs"] += outs
+
+    if outs > 0:
         return None, bases, at_bat_count, False, p_runs, p_outs
 
     # ['ball %', 'strike %', 'foul %', 'in_play %']
@@ -979,8 +988,9 @@ async def summarize_diffs():
 
 loop = asyncio.get_event_loop()
 
-loop.run_until_complete(setup(1000))
-loop.run_until_complete(sum_strikeouts(1000))
-loop.run_until_complete(compare_stats(1000))
+iterations = 1000
+loop.run_until_complete(setup(iterations))
+loop.run_until_complete(sum_strikeouts(iterations))
+loop.run_until_complete(compare_stats(iterations))
 loop.run_until_complete(summarize_diffs())
 loop.close()
