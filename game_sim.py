@@ -33,7 +33,8 @@ team_names = {
 "c73b705c-40ad-4633-a6ed-d357ee2e2bcf": "Lift"
 }
 team_effects = {"3f8bbb15-61c0-4e3f-8e4a-907a5fb1565e": {"growth": 8}}
-blood_effect = {"f02aeae2-5e6a-4098-9842-02d2273f25c7": {"base_instincts": {"season": 8, "blood": 2}}}
+blood_effect = {"f02aeae2-5e6a-4098-9842-02d2273f25c7": {"base_instincts": {"season": 8, "blood": 4}}}
+base_instincts_procs = {8: {2: 0, 3: 0}, 9: {2: 0, 3: 0}, 10: {2: 0, 3: 0}}
 stlat_list = ["anticapitalism", "chasiness", "omniscience", "tenaciousness", "watchfulness", "pressurization",
               "cinnamon", "buoyancy", "divinity", "martyrdom", "moxie", "musclitude", "patheticism", "thwackability",
               "tragicness", "base_thirst", "continuation", "ground_friction", "indulgence", "laserlikeness",
@@ -41,7 +42,7 @@ stlat_list = ["anticapitalism", "chasiness", "omniscience", "tenaciousness", "wa
 
 async def retry_request(url, tries=10):
     headers = {
-        'User-Agent': 'sibrGameSim'
+        'User-Agent': 'sibrGameSim/0.1test (tehstone#8448@sibr)'
     }
 
     for i in range(tries):
@@ -54,42 +55,6 @@ async def retry_request(url, tries=10):
         finally:
             await asyncio.sleep(.5)
     return None
-
-
-async def get_player_stlats():
-    print("Getting current player stlats")
-    batters = {}
-    pitcher_ids = []
-    pitcher_stlats = {}
-    team_stlats = {}
-    teams_response = await retry_request("https://www.blaseball.com/database/allteams")
-    teams_json = teams_response.json()
-    for team in teams_json:
-        team_stlats[team["id"]] = {"lineup": {}}
-        pitcher_ids += team["rotation"]
-        counter = 0
-        for batter in team["lineup"]:
-            batters[batter] = {"team": team["id"],
-                               "order": counter}
-            counter += 1
-    chunked_pitcher_ids = [pitcher_ids[i:i + 50] for i in range(0, len(pitcher_ids), 50)]
-    for chunk in chunked_pitcher_ids:
-        b_url = f"https://www.blaseball.com/database/players?ids={','.join(chunk)}"
-        pitcher_response = await retry_request(b_url)
-        pitcher_json = pitcher_response.json()
-        for pitcher in pitcher_json:
-            pitcher_stlats[pitcher["id"]] = pitcher
-    batter_ids = list(batters.keys())
-    chunked_batter_ids = [batter_ids[i:i + 50] for i in range(0, len(batter_ids), 50)]
-    for chunk in chunked_batter_ids:
-        b_url = f"https://www.blaseball.com/database/players?ids={','.join(chunk)}"
-        batter_response = await retry_request(b_url)
-        batter_json = batter_response.json()
-        for batter in batter_json:
-            team_id = batters[batter["id"]]["team"]
-            batter["order"] = batters[batter["id"]]["order"]
-            team_stlats[team_id]["lineup"][batter["id"]] = batter
-    return pitcher_stlats, team_stlats
 
 
 def apply_effect(def_stlats, effect, day):
@@ -105,7 +70,7 @@ def apply_effect_deep(def_stlats, effect, day):
     return def_stlats
 
 
-async def setup_model(games, clf, player_stlats, team_stlats):
+async def setup_models(games, clf, player_stlats, team_stlats):
     hitter_models = {}
     for game in games:
         if game["homePitcher"] not in player_stlats:
@@ -170,8 +135,8 @@ async def setup_model(games, clf, player_stlats, team_stlats):
                 m_arr.append(float(home_pitcher[stlat]))
             m_arr += [h_anticapitalism, h_chasiness, h_omniscience, h_tenaciousness,
                       h_watchfulness, h_defense_pressurization, h_defense_cinnamon]
-            model_arrs.append(m_arr)
-        probs = clf.predict_proba(model_arrs)
+            hit_model_arrs.append(m_arr)
+        probs = clf.predict_proba(hit_model_arrs)
         counter = 0
         for hitter, __ in sorted_h_hitters.items():
             hitter_models[hitter] = probs[counter]
@@ -183,7 +148,7 @@ async def setup_model(games, clf, player_stlats, team_stlats):
     return hitter_models
 
 
-async def simulate(games, model, team_stlats, player_blood_types, sim_length):
+async def simulate(games, model, team_stlats, player_blood_types, player_names, sim_length):
     a_favored_wins, p_favored_wins, predicted_wins = 0, 0, 0
     day = games[0]['day']
     season = games[0]['season']
@@ -236,23 +201,31 @@ async def simulate(games, model, team_stlats, player_blood_types, sim_length):
                     break
         if shakeup:
             continue
-        
+
         for i in range(sim_length):
+            game_log = [f'Day {game["day"]}.',
+                        f'{game["homePitcherName"]} pitching for the {game["homeTeamName"]} at home.',
+                        f'{game["awayPitcherName"]} pitching for the {game["awayTeamName"]} on the road.']
             home_score, away_score = 0, 0
             home_order, away_order = 0, 0
             home_strikeouts, away_strikeouts = 0, 0
             inning = 0
             while True:
+                game_log.append(f'\nTop of the {inning+1}, {game["awayTeamNickname"]} batting.')
+                game_log.append(f'{game["homeTeamNickname"]}: {home_score} -  {game["awayTeamNickname"]}: {away_score}')
                 a_runs, away_order, a_strikeouts = await simulate_inning(model, away_lineup, away_order,
                                                                          game_statsheets, player_blood_types,
-                                                                         game["homePitcher"], game["awayTeam"], season)
+                                                                         game, True, game_log, player_names)
+
                 away_score += a_runs
                 away_strikeouts += a_strikeouts
                 if inning == 8 and home_score != away_score:
                     break
+                game_log.append(f'\nBottom of the {inning + 1}, {game["homeTeamNickname"]} batting.')
+                game_log.append(f'{game["homeTeamNickname"]}: {home_score} -  {game["awayTeamNickname"]}: {away_score}')
                 h_runs, home_order, h_strikeouts = await simulate_inning(model, home_lineup, home_order,
                                                                          game_statsheets, player_blood_types,
-                                                                         game["awayPitcher"], game["homeTeam"], season)
+                                                                         game, False, game_log, player_names)
                 home_score += h_runs
                 home_strikeouts += h_strikeouts
 
@@ -272,12 +245,20 @@ async def simulate(games, model, team_stlats, player_blood_types, sim_length):
                 home_wins += 1
                 game_statsheets[game["homePitcher"]]["wins"] += 1
                 game_statsheets[game["awayPitcher"]]["losses"] += 1
+                game_log.append(f'Game Over. {game["homeTeamName"]} win {home_score} - {away_score}')
             else:
                 away_wins += 1
                 game_statsheets[game["awayPitcher"]]["wins"] += 1
                 game_statsheets[game["homePitcher"]]["losses"] += 1
+                game_log.append(f'Game Over. {game["awayTeamName"]} win {away_score} - {home_score}')
             home_struckout.append(home_strikeouts)
             away_struckout.append(away_strikeouts)
+            if i == 0:
+                filename = os.path.join('pendant_data', 'test', 'season_sim', 'game_logs',
+                                        f's{season}-d{day}_{away_name}-at-{home_name}.txt')
+                with open(filename, 'w') as file:
+                    for message in game_log:
+                        file.write(f"{message}\n")
 
         home_scores.sort()
         away_scores.sort()
@@ -299,13 +280,18 @@ async def simulate(games, model, team_stlats, player_blood_types, sim_length):
             if away_odds > home_odds:
                 p_favored_wins += 1
 
+        avg_home_score = statistics.mean(home_scores)
+        avg_away_score = statistics.mean(away_scores)
+        if season == 10:
+            avg_home_score = avg_home_score % 10
+            avg_away_score = avg_away_score % 10
         if game['homeScore'] > game['awayScore']:
-            if statistics.mean(home_scores) > statistics.mean(away_scores):
+            if avg_home_score > avg_away_score:
                 predicted_wins += 1
         else:
-            if statistics.mean(away_scores) > statistics.mean(home_scores):
+            if avg_away_score > avg_home_score:
                 predicted_wins += 1
-       
+
         strikeouts[game["homePitcher"]] = {
             "name": game["homePitcherName"],
             "predicted_strikeouts": statistics.mean(away_struckout),
@@ -319,11 +305,16 @@ async def simulate(games, model, team_stlats, player_blood_types, sim_length):
 
     with open(os.path.join('pendant_data', 'results', f"s{season}_d{day}_results.txt"), 'a') as fd:
         fd.write(output_text)
-    return f"Day: {games[0]['day']} Predicted wins: {predicted_wins} - favored wins: {a_favored_wins}", \
-           predicted_wins - a_favored_wins, strikeouts, game_statsheets
+    return predicted_wins, a_favored_wins, strikeouts, game_statsheets
 
 
-async def simulate_inning(model, lineup, order, stat_sheets, player_blood_types, pitcher_id, hit_team_id, season):
+async def simulate_inning(model, lineup, order, stat_sheets, player_blood_types,
+                          game, top_of_inning, game_log, player_names):
+    season = game["season"]
+    if top_of_inning:
+        pitcher_id, hit_team_id, hit_team_name = game["homePitcher"], game["awayTeam"], game["awayTeamName"]
+    else:
+        pitcher_id, hit_team_id, hit_team_name = game["awayPitcher"], game["homeTeam"], game["homeTeamName"]
     bases = {1: 0, 2: 0, 3: 0}
     inning_outs = 0
     score = 0
@@ -336,8 +327,10 @@ async def simulate_inning(model, lineup, order, stat_sheets, player_blood_types,
                 order = 0
             continue
         hitter = model[hitter_id]
+        game_log.append(f'{player_names[hitter_id]} batting for the {hit_team_name}')
         outs, runs, bases, in_strikeouts = await simulate_at_bat(bases, hitter, stat_sheets, player_blood_types,
-                                                              pitcher_id, hitter_id, hit_team_id, season)
+                                                                 pitcher_id, hitter_id, hit_team_id, season,
+                                                                 game_log, player_names)
         inning_outs += outs
         strikeouts += in_strikeouts
         if inning_outs == 3:
@@ -350,7 +343,7 @@ async def simulate_inning(model, lineup, order, stat_sheets, player_blood_types,
 
 
 async def simulate_at_bat(bases, hitter_model, stat_sheets, player_blood_types,
-                          pitcher_id, hitter_id, hit_team_id, season):
+                          pitcher_id, hitter_id, hit_team_id, season, game_log, player_names):
     # [field_out %, strike_out %, walk %, single %, double %, triple %, hr %]
     play = await simulate_play(hitter_model)
     good_odds = random.random() < .66666
@@ -363,7 +356,7 @@ async def simulate_at_bat(bases, hitter_model, stat_sheets, player_blood_types,
     if play == 0:
         outs += 1
         if bases[3]:
-            if good_odds:
+            if not good_odds:
                 runs += 1
                 bases[3] = 0
         if bases[2] and not bases[3]:
@@ -374,29 +367,39 @@ async def simulate_at_bat(bases, hitter_model, stat_sheets, player_blood_types,
             if good_odds:
                 bases[2] = 1
                 bases[1] = 0
+        run_msg = ""
+        if runs > 0:
+            run_msg = f" {runs} scores."
+        game_log.append(f'{player_names[hitter_id]} hit a ground/fly out.{run_msg}')
     # strikeout
     elif play == 1:
         outs += 1
         strikeouts += 1
         stat_sheets[hitter_id]["struckouts"] += 1
         stat_sheets[pitcher_id]["strikeouts"] += 1
+        game_log.append(f'{player_names[hitter_id]} struck out.')
     # walk
     elif play == 2:
         base_instincts = False
         if hit_team_id in blood_effect:
             if "base_instincts" in blood_effect[hit_team_id]:
-                if blood_effect[hit_team_id]["base_instincts"]["season"] >= season:
+                if season >= blood_effect[hit_team_id]["base_instincts"]["season"]:
                     if hitter_id in player_blood_types:
                         if player_blood_types[hitter_id] == blood_effect[hit_team_id]["base_instincts"]["blood"]:
                             base_instincts = True
         complete = False
+        base_msg = ""
         if base_instincts:
             complete = True
             walk_chance = random.random()
             if walk_chance < .035:
                 advance = 3
+                base_msg = " Base Instincts takes them to 3rd base."
+                base_instincts_procs[season][3] += 1
             elif walk_chance < .19:
                 advance = 2
+                base_msg = " Base Instincts takes them to 2nd base."
+                base_instincts_procs[season][2] += 1
             else:
                 advance = 1
             if advance == 3:
@@ -443,6 +446,7 @@ async def simulate_at_bat(bases, hitter_model, stat_sheets, player_blood_types,
             bases[1] = 1
         stat_sheets[hitter_id]["walks"] += 1
         stat_sheets[pitcher_id]["walks_issued"] += 1
+        game_log.append(f'{player_names[hitter_id]} drew a walk.{base_msg}')
     # single
     elif play == 3:
         if bases[3]:
@@ -463,6 +467,11 @@ async def simulate_at_bat(bases, hitter_model, stat_sheets, player_blood_types,
         bases[1] = 1
         stat_sheets[hitter_id]["hits"] += 1
         stat_sheets[pitcher_id]["hits_allowed"] += 1
+
+        run_msg = ""
+        if runs > 0:
+            run_msg = f" {runs} scores."
+        game_log.append(f'{player_names[hitter_id]} hit a single.{run_msg}')
     # double
     elif play == 4:
         if bases[3]:
@@ -481,6 +490,10 @@ async def simulate_at_bat(bases, hitter_model, stat_sheets, player_blood_types,
         stat_sheets[hitter_id]["hits"] += 1
         stat_sheets[hitter_id]["doubles"] += 1
         stat_sheets[pitcher_id]["hits_allowed"] += 1
+        run_msg = ""
+        if runs > 0:
+            run_msg = f" {runs} scores."
+        game_log.append(f'{player_names[hitter_id]} hit a double.{run_msg}')
     # triple or hr
     elif play >= 5:
         if bases[3]:
@@ -496,10 +509,18 @@ async def simulate_at_bat(bases, hitter_model, stat_sheets, player_blood_types,
         if play == 5:
             bases[3] = 1
             stat_sheets[hitter_id]["triples"] += 1
+            run_msg = ""
+            if runs > 0:
+                run_msg = f" {runs} scores."
+            game_log.append(f'{player_names[hitter_id]} hit a triple.{run_msg}')
         else:
             runs += 1
             stat_sheets[hitter_id]["homeruns"] += 1
             stat_sheets[pitcher_id]["home_runs_allowed"] += 1
+            run_msg = ""
+            if runs > 0:
+                run_msg = f" {runs} scores."
+            game_log.append(f'{player_names[hitter_id]} hit a home run.{run_msg}')
 
         stat_sheets[hitter_id]["hits"] += 1
         stat_sheets[pitcher_id]["hits_allowed"] += 1
@@ -631,6 +652,7 @@ async def setup(sim_length):
         with open(os.path.join('pendant_data', 'test', 'season_sim', 'season_data', f"season{season+1}.json"), 'r',
                   encoding='utf8') as json_file:
             raw_season_data = json.load(json_file)
+        s_predicted_wins, s_a_favored_wins = 0, 0
         season_data = {}
         season_statsheets = {}
         for game in raw_season_data:
@@ -646,9 +668,11 @@ async def setup(sim_length):
             player_stlats = {}
             team_stlats = {}
             player_blood_types = {}
+            player_names = {}
             for player in player_stlats_list:
                 player_stlats[player["player_id"]] = player
                 player_blood_types[player["player_id"]] = player["blood"]
+                player_names[player["player_id"]] = player["player_name"]
                 if player["team_id"] not in team_stlats:
                     team_stlats[player["team_id"]] = {"lineup": {}}
                 if player["position_type_id"] == '0':
@@ -660,13 +684,17 @@ async def setup(sim_length):
                                  sorted(us_lineup.items(), key=lambda item: item[1]["position_id"])}
                 team_stlats[team]["lineup"] = sorted_lineup
 
-            model = await setup_model(games, clf, player_stlats, team_stlats)
+            model = await setup_models(games, clf, player_stlats, team_stlats)
 
-            outcome_msg, comp, strikeouts, stat_sheets = await simulate(games, model, team_stlats,
-                                                                        player_blood_types, sim_length)
+            predicted_wins, a_favored_wins, strikeouts, stat_sheets = await simulate(games, model,
+                                                                                     team_stlats,
+                                                                                     player_blood_types,
+                                                                                     player_names, sim_length)
+
             daily_strikeouts[day] = strikeouts
-            outcomes.append(outcome_msg)
-            comp_sum += comp
+            s_predicted_wins += predicted_wins
+            s_a_favored_wins += a_favored_wins
+
             for player in stat_sheets:
                 if player not in season_statsheets:
                     season_statsheets[player] = {"plate_appearances": 0, "at_bats": 0, "struckouts": 0, "walks": 0,
@@ -681,11 +709,12 @@ async def setup(sim_length):
                     season_statsheets[player][key] += adjust_gs[key]
         for player in season_statsheets:
             season_statsheets[player] = {k: round(v) for k, v in season_statsheets[player].items()}
-        for o in outcomes:
-            outcome_text += f"{o} - {comp_sum}\n"
         with open(os.path.join('pendant_data', 'results', f"{season}_outcomes_{sim_length}.txt"), 'w', encoding='utf8') as fd:
             fd.write(outcome_text)
-        print(outcome_text)
+        s_predicted_wins_per = round((s_predicted_wins / 990) * 1000) / 10
+        s_a_favored_wins_per = round((s_a_favored_wins / 990) * 1000) / 10
+        print(f"{s_predicted_wins} ({s_predicted_wins_per}%) favored wins predicted - "
+              f"{s_a_favored_wins} ({s_a_favored_wins_per}%) actual favored wins. ")
 
         with open(os.path.join('pendant_data', 'results', f"{season}_k_sho_results_{sim_length}.json"), 'w',
                   encoding='utf8') as json_file:
@@ -693,6 +722,51 @@ async def setup(sim_length):
         with open(os.path.join('pendant_data', 'results', f"{season}_statsheets_{sim_length}.json"), 'w',
                   encoding='utf8') as json_file:
             json.dump(season_statsheets, json_file)
+    print(base_instincts_procs)
+
+
+async def add_order(day, season):
+    with open(os.path.join('pendant_data', 'test', f"{season}_{day}player_statsheets.json"), 'r', encoding='utf8') as json_file:
+        player_statsheets = json.load(json_file)
+    with open(os.path.join('pendant_data', 'test', f"s{season}_d{day}_team_stlats.json"), 'r', encoding='utf8') as json_file:
+        team_stlats = json.load(json_file)
+    with open(os.path.join('pendant_data', 'test', f"s{season}_d{day}_pitcher_stlats.json"), 'r', encoding='utf8') as json_file:
+        pitcher_stlats = json.load(json_file)
+    team_orders = {
+        "b72f3061-f573-40d7-832a-5ad475bd7909": 0,
+        "878c1bf6-0d21-4659-bfee-916c8314d69c": 0,
+        "b024e975-1c4a-4575-8936-a3754a08806a": 0,
+        "adc5b394-8f76-416d-9ce9-813706877b84": 0,
+        "ca3f1c8c-c025-4d8e-8eef-5be6accbeb16": 0,
+        "bfd38797-8404-4b38-8b82-341da28b1f83": 0,
+        "3f8bbb15-61c0-4e3f-8e4a-907a5fb1565e": 0,
+        "979aee4a-6d80-4863-bf1c-ee1a78e06024": 0,
+        "7966eb04-efcc-499b-8f03-d13916330531": 0,
+        "36569151-a2fb-43c1-9df7-2df512424c82": 0,
+        "8d87c468-699a-47a8-b40d-cfb73a5660ad": 0,
+        "9debc64f-74b7-4ae1-a4d6-fce0144b6ea5": 0,
+        "23e4cbc1-e9cd-47fa-a35b-bfa06f726cb7": 0,
+        "f02aeae2-5e6a-4098-9842-02d2273f25c7": 0,
+        "57ec08cc-0411-4643-b304-0e80dbc15ac7": 0,
+        "747b8e4a-7e50-4638-a973-ea7950a3e739": 0,
+        "eb67ae5e-c4bf-46ca-bbbc-425cd34182ff": 0,
+        "b63be8c2-576a-4d6e-8daf-814f8bcea96f": 0,
+        "105bc3ff-1320-4e37-8ef0-8d595cb95dd0": 0,
+        "a37f9158-7f82-46bc-908c-c9e2dda7c33b": 0,
+        'c73b705c-40ad-4633-a6ed-d357ee2e2bcf': 0
+    }
+    for statsheet in player_statsheets[0].values():
+        if statsheet["position"] == "lineup":
+            if statsheet["playerId"] in team_stlats[statsheet["teamId"]]["lineup"]:
+                order = team_orders[statsheet["teamId"]]
+                team_stlats[statsheet["teamId"]]["lineup"][statsheet["playerId"]]["order"] = order
+                team_stlats[statsheet["teamId"]]["lineup"][statsheet["playerId"]]["team"] = statsheet["teamId"]
+                team_orders[statsheet["teamId"]] += 1
+
+        else:
+            pitcher_stlats[statsheet["playerId"]]["team"] = statsheet["teamId"]
+    with open(os.path.join('pendant_data', 'test', f"s{season}_d{day}_team_stlats_order.json"), 'w', encoding='utf8') as json_file:
+        json.dump(team_stlats, json_file)
 
 
 async def sum_strikeouts(length):
@@ -710,8 +784,42 @@ async def sum_strikeouts(length):
                 strikeouts[pid]["strikeouts"] += daily_strikeouts[day][pid]["predicted_strikeouts"]
         sorted_strikeouts = {k: v for k, v in
                             sorted(strikeouts.items(), key=lambda item: item[1]["strikeouts"], reverse=True)}
-        print(sorted_strikeouts.values()).
+        print(sorted_strikeouts.values())
 
+async def get_real_stats():
+    for season in range(7, 11):
+        with open(os.path.join('pendant_data', 'results', f"{season}_statsheets_1000.json"), 'r',
+                  encoding='utf8') as json_file:
+            season_statsheets = json.load(json_file)
+        pitcher_ids = []
+        hitter_ids = []
+        for pid, values in season_statsheets.items():
+            if values["plate_appearances"] > 0:
+                hitter_ids.append(pid)
+            if values["outs_recorded"] > 0:
+                pitcher_ids.append(pid)
+        pitcher_stats = {}
+        hitter_stats = {}
+        chunked_player_ids = [pitcher_ids[i:i + 50] for i in range(0, len(pitcher_ids), 50)]
+        for chunk in chunked_player_ids:
+            pids = ','.join(chunk)
+            url = f"https://api.blaseball-reference.com/v1/playerStats?category=pitching&season={season}&playerIds={pids}"
+            response = await retry_request(url)
+            player_stats = response.json()
+            for player in player_stats:
+                pitcher_stats[player["player_id"]] = player
+        chunked_player_ids = [hitter_ids[i:i + 50] for i in range(0, len(hitter_ids), 50)]
+        for chunk in chunked_player_ids:
+            pids = ','.join(chunk)
+            url = f"https://api.blaseball-reference.com/v1/playerStats?category=batting&season={season}&playerIds={pids}"
+            response = await retry_request(url)
+            player_stats = response.json()
+            for player in player_stats:
+                hitter_stats[player["player_id"]] = player
+        season_stats = {"hitting": hitter_stats, "pitching": pitcher_stats}
+        with open(os.path.join('pendant_data', 'results', 'actual_stats', f"{season}_actual_stats.json"), 'w',
+                  encoding='utf8') as json_file:
+            json.dump(season_stats, json_file)
 
 async def compare_stats(length):
     for season in range(7, 11):
@@ -721,11 +829,12 @@ async def compare_stats(length):
         with open(os.path.join('pendant_data', 'results', 'actual_stats', f"{season}_actual_stats.json"), 'r',
                   encoding='utf8') as json_file:
             actual_statsheets = json.load(json_file)
-        hitting_diffs = {}
-        pitching_diffs = {}
+        hitting_diffs = {"below": {}, "above": {}}
+        pitching_diffs = {"below": {}, "above": {}}
         for pid, values in predicted_statsheets.items():
             if values["plate_appearances"] > 0 and pid in actual_statsheets["hitting"]:
-                hitting_diffs[pid] = {}
+                hitting_diffs["below"][pid] = {}
+                hitting_diffs["above"][pid] = {}
                 for key in ["plate_appearances", "at_bats", "struckouts", "walks",
                             "hits", "doubles", "triples", "homeruns", "rbis"]:
                     okey = key
@@ -737,10 +846,15 @@ async def compare_stats(length):
                         okey = "home_runs"
                     actual = float(actual_statsheets["hitting"][pid][okey])
                     predicted = values[key]
-                    percent_diff = abs(1 - (actual / predicted))
-                    hitting_diffs[pid][key] = percent_diff
+                    if actual > predicted:
+                        percent_diff = 1 - (predicted / actual)
+                        hitting_diffs["below"][pid][key] = percent_diff
+                    else:
+                        percent_diff = 1 - (actual / predicted)
+                        hitting_diffs["above"][pid][key] = percent_diff
             if values["outs_recorded"] > 0 and pid in actual_statsheets["pitching"]:
-                pitching_diffs[pid] = {}
+                pitching_diffs["below"][pid] = {}
+                pitching_diffs["above"][pid] = {}
                 for key in ["outs_recorded", "hits_allowed",
                             "home_runs_allowed", "strikeouts", "walks_issued"]:
                     okey = key
@@ -750,8 +864,13 @@ async def compare_stats(length):
                         okey = "walks"
                     actual = float(actual_statsheets["pitching"][pid][okey])
                     predicted = values[key]
-                    percent_diff = abs(1 - (actual / predicted))
-                    pitching_diffs[pid][key] = percent_diff
+                    if actual > predicted:
+                        percent_diff = 1 - (predicted / actual)
+                        pitching_diffs["below"][pid][key] = percent_diff
+                    else:
+                        percent_diff = 1 - (actual / predicted)
+                        pitching_diffs["above"][pid][key] = percent_diff
+
         with open(os.path.join('pendant_data', 'results', 'stats', f"{season}_hitting_stat_diffs.json"), 'w',
                   encoding='utf8') as json_file:
             json.dump(hitting_diffs, json_file)
@@ -759,20 +878,27 @@ async def compare_stats(length):
                   encoding='utf8') as json_file:
             json.dump(pitching_diffs, json_file)
 
+
 async def summarize_diffs():
-    all_diffs = {"hitting": {"plate_appearances": [], "at_bats": [], "struckouts": [],
-                             "walks": [], "hits": [], "doubles": [], "triples": [],
-                             "homeruns": [], "rbis": []},
-                 "pitching": {"outs_recorded": [], "hits_allowed": [], "home_runs_allowed": [],
-                              "strikeouts": [], "walks_issued": []}}
+    all_diffs = {"hitting": {"above": {"plate_appearances": [], "at_bats": [], "struckouts": [],
+                                       "walks": [], "hits": [], "doubles": [], "triples": [],
+                                       "homeruns": [], "rbis": []},
+                             "below": {"plate_appearances": [], "at_bats": [], "struckouts": [],
+                                       "walks": [], "hits": [], "doubles": [], "triples": [],
+                                       "homeruns": [], "rbis": []}},
+                 "pitching": {"above": {"outs_recorded": [], "hits_allowed": [], "home_runs_allowed": [],
+                                        "strikeouts": [], "walks_issued": []},
+                              "below": {"outs_recorded": [], "hits_allowed": [], "home_runs_allowed": [],
+                                        "strikeouts": [], "walks_issued": []}}}
 
     def summary_message(stat_dict):
         summary_msg = ""
         for stat, stat_list in stat_dict.items():
             stat_list.sort()
             p_stat_list = score_percentiles(stat_list)
-            min_d, max_d = stat_list[0], stat_list[-1]
-            summary_msg += f"{stat} min diff: {min_d}, max diff: {max_d}, avg: {statistics.mean(stat_list)}, " \
+            p_stat_list = [str(round(float(p) * 100000) / 100000) for p in p_stat_list]
+            min_d, max_d = round(stat_list[0] * 100000) / 100000, round(stat_list[-1] * 100000) / 100000
+            summary_msg += f"{stat} min diff: {min_d}, max diff: {max_d}, avg: {round(statistics.mean(stat_list) * 100000) / 100000}, " \
                            f"(50, 75, 90, 99)th percentiles: {', '.join(p_stat_list)}\n"
         return summary_msg
 
@@ -783,19 +909,32 @@ async def summarize_diffs():
         with open(os.path.join('pendant_data', 'results', 'stats', f"{season}_pitching_stat_diffs.json"), 'r',
                   encoding='utf8') as json_file:
             pitching_diffs = json.load(json_file)
-        season_diffs = {"hitting": {"plate_appearances": [], "at_bats": [], "struckouts": [],
-                                    "walks": [], "hits": [], "doubles": [], "triples": [],
-                                    "homeruns": [], "rbis": []},
-                        "pitching": {"outs_recorded": [], "hits_allowed": [], "home_runs_allowed": [],
-                                     "strikeouts": [], "walks_issued": []}}
-        for diff in hitting_diffs.values():
+        season_diffs = {"hitting": {"above": {"plate_appearances": [], "at_bats": [], "struckouts": [],
+                                              "walks": [], "hits": [], "doubles": [], "triples": [],
+                                              "homeruns": [], "rbis": []},
+                                    "below": {"plate_appearances": [], "at_bats": [], "struckouts": [],
+                                              "walks": [], "hits": [], "doubles": [], "triples": [],
+                                              "homeruns": [], "rbis": []}},
+                        "pitching": {"above": {"outs_recorded": [], "hits_allowed": [], "home_runs_allowed": [],
+                                               "strikeouts": [], "walks_issued": []},
+                                     "below": {"outs_recorded": [], "hits_allowed": [], "home_runs_allowed": [],
+                                               "strikeouts": [], "walks_issued": []}}}
+        for diff in hitting_diffs["above"].values():
             for key in diff:
-                season_diffs["hitting"][key].append(diff[key])
-                all_diffs["hitting"][key].append(diff[key])
-        for diff in pitching_diffs.values():
+                season_diffs["hitting"]["above"][key].append(diff[key])
+                all_diffs["hitting"]["above"][key].append(diff[key])
+        for diff in hitting_diffs["below"].values():
             for key in diff:
-                season_diffs["pitching"][key].append(diff[key])
-                all_diffs["pitching"][key].append(diff[key])
+                season_diffs["hitting"]["below"][key].append(diff[key])
+                all_diffs["hitting"]["below"][key].append(diff[key])
+        for diff in pitching_diffs["above"].values():
+            for key in diff:
+                season_diffs["pitching"]["above"][key].append(diff[key])
+                all_diffs["pitching"]["above"][key].append(diff[key])
+        for diff in pitching_diffs["below"].values():
+            for key in diff:
+                season_diffs["pitching"]["below"][key].append(diff[key])
+                all_diffs["pitching"]["below"][key].append(diff[key])
         p_idxs = [.50, .75, .90, .99]
 
         def score_percentiles(scores):
@@ -806,19 +945,25 @@ async def summarize_diffs():
                 prob_vals.append(scores[idx])
             return [str(v) for v in prob_vals]
 
-        hitting_msg = summary_message(season_diffs["hitting"])
-        pitching_msg = summary_message(season_diffs["pitching"])
-        print(f"Season {season} stat diffs predicted vs actual\n{hitting_msg}\n{pitching_msg}")
+        hitting_msg_a = summary_message(season_diffs["hitting"]["above"])
+        hitting_msg_b = summary_message(season_diffs["hitting"]["below"])
+        pitching_msg_a = summary_message(season_diffs["pitching"]["above"])
+        pitching_msg_b = summary_message(season_diffs["pitching"]["below"])
+        print(f"Season {season} stat diffs above actual\n{hitting_msg_a}\n{pitching_msg_a}")
+        print(f"Season {season} stat diffs below actual\n{hitting_msg_b}\n{pitching_msg_b}")
 
-    hitting_msg = summary_message(all_diffs["hitting"])
-    pitching_msg = summary_message(all_diffs["pitching"])
-    print(f"Seasons 8-11 cumulative stat diffs predicted vs actual\n{hitting_msg}\n{pitching_msg}")
+    hitting_msg_a = summary_message(all_diffs["hitting"]["above"])
+    hitting_msg_b = summary_message(all_diffs["hitting"]["below"])
+    pitching_msg_a = summary_message(all_diffs["pitching"]["above"])
+    pitching_msg_b = summary_message(all_diffs["pitching"]["below"])
+    print(f"Seasons 8-11 cumulative stat diffs above actual\n{hitting_msg_a}\n{pitching_msg_a}")
+    print(f"Seasons 8-11 cumulative stat diffs below actual\n{hitting_msg_b}\n{pitching_msg_b}")
 
 
 loop = asyncio.get_event_loop()
+
 loop.run_until_complete(setup(1000))
 loop.run_until_complete(sum_strikeouts(1000))
 loop.run_until_complete(compare_stats(1000))
 loop.run_until_complete(summarize_diffs())
-
 loop.close()
