@@ -866,6 +866,8 @@ async def compare_stats(length):
                         percent_diff = 1 - (predicted / actual)
                         hitting_diffs["below"][pid][key] = percent_diff
                     else:
+                        if predicted == 0:
+                            predicted = 1
                         percent_diff = 1 - (actual / predicted)
                         hitting_diffs["above"][pid][key] = percent_diff
             if values["outs_recorded"] > 0 and pid in actual_statsheets["pitching"]:
@@ -988,7 +990,7 @@ async def summarize_diffs():
 
 loop = asyncio.get_event_loop()
 
-iterations = 1000
+iterations = 10
 loop.run_until_complete(setup(iterations))
 loop.run_until_complete(sum_strikeouts(iterations))
 loop.run_until_complete(compare_stats(iterations))
