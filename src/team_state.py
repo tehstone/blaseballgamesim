@@ -6,7 +6,7 @@ import logging
 class TeamState(object):
     def __init__(
         self,
-        id: str,
+        team_id: str,
         season: int,
         day: int,
         num_bases: int,
@@ -19,7 +19,7 @@ class TeamState(object):
         blood: Dict[str, str],
     ) -> None:
         """ A container class that holds the team state for a given game """
-        self.id = id
+        self.team_id = team_id
         self.season = season
         self.day = day
         self.num_bases = num_bases
@@ -34,7 +34,7 @@ class TeamState(object):
     def to_dict(self) -> Dict[str, Any]:
         """ Gets a dict representation of the state for serialization """
         serialization_dict = {
-            "id": self.id,
+            "team_id": self.team_id,
             "season": self.season,
             "day": self.day,
             "num_bases": self.num_bases,
@@ -68,7 +68,7 @@ class TeamState(object):
     @classmethod
     def from_config(cls, team_state: Dict[str, Any]):
         """Reconstructs a team state from a json file."""
-        id: str = team_state["id"]
+        team_id: str = team_state["team_id"]
         season: int = team_state["season"]
         day: int = team_state["day"]
         num_bases: int = team_state["num_bases"]
@@ -81,7 +81,7 @@ class TeamState(object):
         blood: Dict[str, str] = team_state["blood"]
 
         return cls(
-            id,
+            team_id,
             season,
             day,
             num_bases,

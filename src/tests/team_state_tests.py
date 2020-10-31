@@ -7,7 +7,7 @@ from src.team_state import TeamState
 class TestTeamState(unittest.TestCase):
     def setUp(self):
         self.team_state = TeamState(
-            id="id1",
+            team_id="id1",
             season=1,
             day=1,
             num_bases=4,
@@ -33,7 +33,7 @@ class TestTeamState(unittest.TestCase):
 
 class TestInit(TestTeamState):
     def test_initial_state(self):
-        self.assertEqual(self.team_state.id, "id1")
+        self.assertEqual(self.team_state.team_id, "id1")
         self.assertEqual(self.team_state.season, 1)
         self.assertEqual(self.team_state.day, 1)
         self.assertEqual(self.team_state.num_bases, 4)
@@ -56,6 +56,6 @@ class TestSerialization(TestTeamState):
     def test_load_state(self):
         self.team_state.save("./foo.test")
         new_state = TeamState.load("./foo.test")
-        self.assertEqual(new_state.id, self.team_state.id)
+        self.assertEqual(new_state.team_id, self.team_state.team_id)
         self.assertEqual(new_state.stats["p4"]["stat1"], self.team_state.stats["p4"]["stat1"])
         os.remove("./foo.test")
