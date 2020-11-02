@@ -77,7 +77,9 @@ class GameState(object):
         self.cur_base_runners: Dict[int, str] = {}
         self.is_game_over = False
         self.clf: Dict[Ml, Any] = {}
+        self.game_log: List[str] = ["Play ball."]
         self._load_ml_models()
+        self.refresh_game_status()
 
     def _load_ml_models(self):
         self.clf = {
@@ -90,12 +92,34 @@ class GameState(object):
             Ml.SB_SUCCESS: load(os.path.join("..", "season_sim", "models", "sb_success_v1.joblib")),
         }
 
+    def log_event(self, event: str) -> None:
+        self.game_log.append(event)
+
+    def reset_game_state(self) -> None:
+        """Reset the game state to the start of the game"""
+        self.inning = 1
+        self.half = InningHalf.TOP
+        self.reset_inning_counts()
+        self.refresh_game_status()
+        self.home_team.reset_team_state()
+        self.away_team.reset_team_state()
+        self.home_score = 0
+        self.away_score = 0
+        self.game_log = ["Play ball."]
+        self.refresh_game_status()
+
     def refresh_game_status(self):
         """Refresh game state variables dependant on which team is batting"""
         if self.half == InningHalf.TOP:
+            self.log_event(f'Top of the {self.inning}, {self.away_team.team_enum.name} batting.')
+            self.log_event(f'{self.away_team.get_cur_batter_name()} at bat. {self.home_team.get_cur_pitcher_name()} '
+                           f'pitching.')
             self.cur_batting_team = self.away_team
             self.cur_pitching_team = self.home_team
         else:
+            self.log_event(f'\nBottom of the {self.inning}, {self.home_team.team_enum.name} batting.')
+            self.log_event(f'{self.home_team.get_cur_batter_name()} at bat. {self.away_team.get_cur_pitcher_name()} '
+                           f'pitching.')
             self.cur_batting_team = self.home_team
             self.cur_pitching_team = self.away_team
         self.num_bases = self.cur_batting_team.num_bases
@@ -516,7 +540,7 @@ class GameState(object):
                 del self.cur_base_runners[base]
             return
         if action == Stats.GENERIC_ADVANCEMENT:
-            if base > self.num_bases - num_bases_to_advance:
+            if base >= self.num_bases - num_bases_to_advance:
                 # run scores
                 self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_RBIS, 1.0)
                 self.cur_batting_team.update_stat(self.cur_base_runners[base], Stats.BATTER_RUNS_SCORED, 1.0)

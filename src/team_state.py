@@ -25,6 +25,7 @@ class TeamState(object):
         stlats: Dict[str, Dict[FK, float]],
         game_stats: Dict[str, Dict[Stats, float]],
         blood: Dict[str, BloodType],
+        player_names: Dict[str, str],
         cur_batter_pos: int,
     ) -> None:
         """ A container class that holds the team state for a given game """
@@ -41,6 +42,7 @@ class TeamState(object):
         self.stlats: Dict[str, Dict[FK, float]] = stlats
         self.game_stats: Dict[str, Dict[Stats, float]] = game_stats
         self.blood: Dict[str, BloodType] = blood
+        self.player_names: Dict[str, str] = player_names
         self.cur_batter_pos: int = cur_batter_pos
         self.cur_batter: str = lineup[cur_batter_pos]
         self._calculate_defense()
@@ -81,6 +83,19 @@ class TeamState(object):
         self.stlats[DEF_ID][FK.PRESSURIZATION] = def_defense_pressurization
         self.stlats[DEF_ID][FK.CINNAMON] = def_defense_cinnamon
 
+    def reset_team_state(self) -> None:
+        self.reset_game_stats()
+        self.cur_batter_pos = 1
+        self.cur_batter = self.lineup[self.cur_batter_pos]
+
+    def reset_game_stats(self) -> None:
+        new_dict: Dict[Stats, float] = {}
+        for k in Stats:
+            new_dict[k] = 0.0
+        for p_key in self.lineup.keys():
+            self.game_stats[self.lineup[p_key]] = new_dict
+        self.game_stats[self.starting_pitcher] = new_dict
+
     def to_dict(self) -> Dict[str, Any]:
         """ Gets a dict representation of the state for serialization """
         serialization_dict = {
@@ -96,6 +111,7 @@ class TeamState(object):
             "stlats": TeamState.convert_dict(self.stlats),
             "game_stats": TeamState.convert_dict(self.game_stats),
             "blood": TeamState.convert_blood(self.blood),
+            "player_names": self.player_names,
             "cur_batter_pos": self.cur_batter_pos,
         }
         return serialization_dict
@@ -133,6 +149,7 @@ class TeamState(object):
         stlats: Dict[str, Dict[FK, float]] = TeamState.encode_stlats(team_state["stlats"])
         game_stats: Dict[str, Dict[Stats, float]] = TeamState.encode_game_stats(team_state["game_stats"])
         blood: Dict[str, BloodType] = TeamState.encode_blood(team_state["blood"])
+        player_names: Dict[str, str] = team_state["player_names"]
         cur_batter_pos: int = team_state["cur_batter_pos"]
         return cls(
             team_id,
@@ -147,6 +164,7 @@ class TeamState(object):
             stlats,
             game_stats,
             blood,
+            player_names,
             cur_batter_pos,
         )
 
@@ -274,3 +292,12 @@ class TeamState(object):
 
     def get_cur_batter_feature_vector(self) -> List[float]:
         return self.get_batter_feature_vector(self.cur_batter)
+
+    def get_player_name(self, player_id: str) -> str:
+        return self.player_names[player_id]
+
+    def get_cur_batter_name(self) -> str:
+        return self.get_player_name(self.cur_batter)
+
+    def get_cur_pitcher_name(self) -> str:
+        return self.get_player_name(self.starting_pitcher)

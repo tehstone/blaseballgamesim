@@ -85,6 +85,12 @@ class TestTeamState(unittest.TestCase):
                 "p3": BloodType.LOVE,
                 "p4": BloodType.ELECTRIC,
             },
+            player_names={
+                "p1": "Player 1",
+                "p2": "Player 2",
+                "p3": "Player 3",
+                "p4": "Player 4",
+            },
             cur_batter_pos=1,
         )
 

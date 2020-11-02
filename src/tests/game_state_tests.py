@@ -66,6 +66,12 @@ class TestGameState(unittest.TestCase):
                 "p3": BloodType.LOVE,
                 "p4": BloodType.ELECTRIC,
             },
+            player_names={
+                "p1": "HomePlayer 1",
+                "p2": "HomePlayer 2",
+                "p3": "HomePlayer 3",
+                "p4": "HomePlayer 4",
+            },
             cur_batter_pos=1,
         )
 
@@ -97,6 +103,12 @@ class TestGameState(unittest.TestCase):
                 "p13": BloodType.LOVE,
                 "p14": BloodType.ELECTRIC,
             },
+            player_names={
+                "p11": "AwayPlayer 11",
+                "p12": "AwayPlayer 12",
+                "p13": "AwayPlayer 13",
+                "p14": "AwayPlayer 14",
+            },
             cur_batter_pos=1,
         )
 
@@ -114,6 +126,7 @@ class TestGameState(unittest.TestCase):
             strikes=0,
             balls=0,
         )
+        self.game_state.reset_game_state()
 
 class TestInit(TestGameState):
     def test_initial_state(self):
@@ -124,3 +137,66 @@ class TestInit(TestGameState):
         self.assertEqual(self.game_state.half, InningHalf.TOP)
         self.assertEqual(self.game_state.home_team.team_enum, Team.TIGERS)
         self.assertEqual(self.game_state.away_team.team_enum, Team.SUNBEAMS)
+
+class TestBaseAdvancement(TestGameState):
+    def test_no_runners(self):
+        self.assertEqual(self.game_state.cur_base_runners, {})
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.advance_all_runners(1)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.assertEqual(self.game_state.cur_base_runners, {})
+
+    def test_one_runner(self):
+        self.game_state.cur_base_runners[1] = "p11"
+        self.assertEqual(len(self.game_state.cur_base_runners), 1)
+        self.assertEqual(self.game_state.cur_base_runners[1], "p11")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.advance_all_runners(1)
+        self.assertEqual(self.game_state.cur_base_runners[2], "p11")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.advance_all_runners(3)
+        self.assertEqual(self.game_state.cur_base_runners, {})
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 1)
+
+    def test_two_runners_consec(self):
+        self.game_state.cur_base_runners[1] = "p11"
+        self.game_state.cur_base_runners[2] = "p12"
+        self.assertEqual(len(self.game_state.cur_base_runners), 2)
+        self.assertEqual(self.game_state.cur_base_runners[1], "p11")
+        self.assertEqual(self.game_state.cur_base_runners[2], "p12")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.advance_all_runners(1)
+        self.assertEqual(self.game_state.cur_base_runners[2], "p11")
+        self.assertEqual(self.game_state.cur_base_runners[3], "p12")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.advance_all_runners(3)
+        self.assertEqual(self.game_state.cur_base_runners, {})
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 2)
+
+    def test_two_runners_split(self):
+        self.game_state.cur_base_runners[1] = "p11"
+        self.game_state.cur_base_runners[3] = "p12"
+        self.assertEqual(len(self.game_state.cur_base_runners), 2)
+        self.assertEqual(self.game_state.cur_base_runners[1], "p11")
+        self.assertEqual(self.game_state.cur_base_runners[3], "p12")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.advance_all_runners(1)
+        self.assertEqual(self.game_state.cur_base_runners[2], "p11")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 1)
+        self.game_state.advance_all_runners(3)
+        self.assertEqual(self.game_state.cur_base_runners, {})
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 2)
+
+
+
