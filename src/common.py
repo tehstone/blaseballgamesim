@@ -23,6 +23,7 @@ class BlaseballStatistics(Enum):
     BATTER_FOUL_BALLS = 21
     BATTER_FLYOUTS = 22
     BATTER_GROUNDOUTS = 23
+    BATTER_AT_BATS = 24
 
     # pitcher stats
     PITCHER_WALKS = 30
@@ -48,100 +49,102 @@ class BlaseballStatistics(Enum):
     DEFENSE_CAUGHT_STEALINGS = 52
 
     # Convenience stats  DO NOT USE
-    WALK_ADVANCEMENT = 100
+    GENERIC_ADVANCEMENT = 100
+
 
 class ForbiddenKnowledge(Enum):
     # Base running
-    BASE_THIRST: 1
-    CONTINUATION: 2
-    GROUND_FRICTION: 3
-    INDULGENCE: 4
-    LASERLIKENESS: 5
+    BASE_THIRST = 1
+    CONTINUATION = 2
+    GROUND_FRICTION = 3
+    INDULGENCE = 4
+    LASERLIKENESS = 5
 
     # Defense
-    ANTICAPITALISM: 10
-    CHASINESS: 11
-    OMNISCIENCE: 12
-    TENACIOUSNESS: 13
-    WATCHFULNESS: 14
+    ANTICAPITALISM = 10
+    CHASINESS = 11
+    OMNISCIENCE = 12
+    TENACIOUSNESS = 13
+    WATCHFULNESS = 14
 
     # Batting
-    BUOYANCY: 20
-    DIVINITY: 21
-    MARTYRDOM: 22
-    MOXIE: 23
-    MUSCLITUDE: 24
-    PATHETICISM: 25
-    THWACKABILITY: 26
-    TRAGICNESS: 27
+    BUOYANCY = 20
+    DIVINITY = 21
+    MARTYRDOM = 22
+    MOXIE = 23
+    MUSCLITUDE = 24
+    PATHETICISM = 25
+    THWACKABILITY = 26
+    TRAGICNESS = 27
 
     # Pitching
-    COLDNESS: 30
-    OVERPOWERMENT: 31
-    RUTHLESSNESS: 32
-    SHAKESPEARIANISM: 33
-    SUPPRESSION: 34
-    UNTHWACKABILITY: 35
-    CINNAMON: 36
-    PRESSURIZATION: 37
+    COLDNESS = 30
+    OVERPOWERMENT = 31
+    RUTHLESSNESS = 32
+    SHAKESPEARIANISM = 33
+    SUPPRESSION = 34
+    UNTHWACKABILITY = 35
+    CINNAMON = 36
+    PRESSURIZATION = 37
 
 
 class MachineLearnedModel(Enum):
-    PITCH: 1
-    IS_HIT: 2
-    HIT_TYPE: 3
-    RUNNER_ADV_OUT: 4
-    RUNNER_ADV_HIT: 5
-    SB_ATTEMPT: 6
-    SB_SUCCESS: 7
+    PITCH = 1
+    IS_HIT = 2
+    HIT_TYPE = 3
+    RUNNER_ADV_OUT = 4
+    RUNNER_ADV_HIT = 5
+    SB_ATTEMPT = 6
+    SB_SUCCESS = 7
 
 
 class BloodType(Enum):
-    A: 1
-    AA: 2
-    AAA: 3
-    ACID: 4
-    BASIC: 5
-    ELECTRIC: 6
-    WATER: 7
-    FIRE: 8
-    GRASS: 9
-    H2O: 10
-    LOVE: 11
-    O: 12
-    O_NO: 13
-    PSYCHIC: 14
+    A = 1
+    AA = 2
+    AAA = 3
+    ACID = 4
+    BASE = 5
+    ELECTRIC = 6
+    WATER = 7
+    FIRE = 8
+    GRASS = 9
+    H2O = 10
+    LOVE = 11
+    O = 12
+    O_NO = 13
+    PSYCHIC = 14
 
 
 class PitchEventTeamBuff(Enum):
-    BASE_INSTINCTS: 1
-    CHARM: 2
-    ELECTRIC: 3
-    O_NO: 4
+    BASE_INSTINCTS = 1
+    CHARM = 2
+    ELECTRIC = 3
+    O_NO = 4
+    ZAP = 5
 
 
 class Team(Enum):
-    LOVERS: 1
-    TACOS: 2
-    STEAKS: 3
-    BREATH_MINTS: 4
-    FIREFIGHTERS: 5
-    SHOE_THIEVES: 6
-    FLOWERS: 7
-    FRIDAYS: 8
-    MAGIC: 9
-    MILLENNIALS: 10
-    CRABS: 11
-    SPIES: 12
-    PIES: 13
-    SUNBEAMS: 14
-    WILD_WINGS: 15
-    TIGERS: 16
-    MOIST_TALKERS: 17
-    DALE: 18
-    GARAGES: 19
-    JAZZ_HANDS: 20
-    LIFT: 21
+    LOVERS = 1
+    TACOS = 2
+    STEAKS = 3
+    BREATH_MINTS = 4
+    FIREFIGHTERS = 5
+    SHOE_THIEVES = 6
+    FLOWERS = 7
+    FRIDAYS = 8
+    MAGIC = 9
+    MILLENNIALS = 10
+    CRABS = 11
+    SPIES = 12
+    PIES = 13
+    SUNBEAMS = 14
+    WILD_WINGS = 15
+    TIGERS = 16
+    MOIST_TALKERS = 17
+    DALE = 18
+    GARAGES = 19
+    JAZZ_HANDS = 20
+    LIFT = 21
 
 
 team_id_map: Dict[str, Team] = {
@@ -190,7 +193,7 @@ team_pitch_event_map: Dict[Team, Tuple[PitchEventTeamBuff, int, Optional[int], O
     Team.FLOWERS: (PitchEventTeamBuff.O_NO, 11, None, BloodType.O_NO),
     Team.LOVERS: (PitchEventTeamBuff.CHARM, 10, None, BloodType.LOVE),
     Team.DALE: (PitchEventTeamBuff.ZAP, 8, None, BloodType.ELECTRIC),
-    Team.SUNBEAMS: (PitchEventTeamBuff.BASE_INSTINCTS, 9, None, BloodType.BASIC),
+    Team.SUNBEAMS: (PitchEventTeamBuff.BASE_INSTINCTS, 9, None, BloodType.BASE),
 }
 
 fk_key: Dict[ForbiddenKnowledge, str] = {

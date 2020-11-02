@@ -5,7 +5,7 @@ import statistics
 
 from src.common import BlaseballStatistics as Stats
 from src.common import ForbiddenKnowledge as FK
-from src.common import Team, team_id_map
+from src.common import BloodType, Team, team_id_map
 
 DEF_ID = "DEFENSE"
 
@@ -24,7 +24,7 @@ class TeamState(object):
         starting_pitcher: str,
         stlats: Dict[str, Dict[FK, float]],
         game_stats: Dict[str, Dict[Stats, float]],
-        blood: Dict[str, int],
+        blood: Dict[str, BloodType],
         cur_batter_pos: int,
     ) -> None:
         """ A container class that holds the team state for a given game """
@@ -40,7 +40,7 @@ class TeamState(object):
         self.starting_pitcher: str = starting_pitcher
         self.stlats: Dict[str, Dict[FK, float]] = stlats
         self.game_stats: Dict[str, Dict[Stats, float]] = game_stats
-        self.blood: Dict[str, int] = blood
+        self.blood: Dict[str, BloodType] = blood
         self.cur_batter_pos: int = cur_batter_pos
         self.cur_batter: str = lineup[cur_batter_pos]
         self._calculate_defense()
@@ -72,6 +72,7 @@ class TeamState(object):
         def_defense_pressurization = statistics.mean(defense_pressurization)
         def_defense_cinnamon = statistics.mean(defense_cinnamon)
 
+        self.stlats[DEF_ID]: Dict[FK, float] = {}
         self.stlats[DEF_ID][FK.ANTICAPITALISM] = def_anticapitalism
         self.stlats[DEF_ID][FK.CHASINESS] = def_chasiness
         self.stlats[DEF_ID][FK.OMNISCIENCE] = def_omniscience
@@ -92,9 +93,9 @@ class TeamState(object):
             "outs_for_inning": self.outs_for_inning,
             "lineup": self.lineup,
             "starting_pitcher": self.starting_pitcher,
-            "stlats": self.stats,
-            "game_stats": self.game_stats,
-            "blood": self.blood,
+            "stlats": TeamState.convert_dict(self.stlats),
+            "game_stats": TeamState.convert_dict(self.game_stats),
+            "blood": TeamState.convert_blood(self.blood),
             "cur_batter_pos": self.cur_batter_pos,
         }
         return serialization_dict
@@ -109,7 +110,8 @@ class TeamState(object):
         with open(storage_path, "r") as team_state_file:
             team_state_json = json.load(team_state_file)
             try:
-                return TeamState.from_config(team_state_json)
+                ret_val = TeamState.from_config(team_state_json)
+                return ret_val
             except KeyError:
                 logging.warning(
                     "Unable to load team state file: " + storage_path
@@ -126,12 +128,12 @@ class TeamState(object):
         balls_for_walk: int = team_state["balls_for_walk"]
         strikes_for_out: int = team_state["strikes_for_out"]
         outs_for_inning: int = team_state["outs_for_inning"]
-        lineup: Dict[int, str] = team_state["lineup"]
+        lineup: Dict[int, str] = TeamState.encode_lineup(team_state["lineup"])
         starting_pitcher: str = team_state["starting_pitcher"]
-        stlats: Dict[str, Dict[FK, float]] = team_state["stlats"]
-        game_stats: Dict[str, Dict[Stats, float]] = team_state["game_stats"]
-        blood: Dict[str, int] = team_state["blood"]
-        cur_battter_pos: int = team_state["cur_batter_pos"]
+        stlats: Dict[str, Dict[FK, float]] = TeamState.encode_stlats(team_state["stlats"])
+        game_stats: Dict[str, Dict[Stats, float]] = TeamState.encode_game_stats(team_state["game_stats"])
+        blood: Dict[str, BloodType] = TeamState.encode_blood(team_state["blood"])
+        cur_batter_pos: int = team_state["cur_batter_pos"]
         return cls(
             team_id,
             season,
@@ -145,19 +147,65 @@ class TeamState(object):
             stlats,
             game_stats,
             blood,
-            cur_battter_pos,
+            cur_batter_pos,
         )
 
-    def get_batter_stats_by_position(self, position: int) -> Tuple[str, Dict[str, float]]:
-        batter = self.lineup[position]
-        stats = self.stats[batter]
-        return batter, stats
+    @classmethod
+    def encode_stlats(cls, raw: Dict[str, Dict[int, float]]) -> Dict[str, Dict[FK, float]]:
+        ret_val: Dict[str, Dict[FK, float]] = {}
+        for key in raw:
+            new_dict: Dict[FK, float] = {}
+            for stat in raw[key]:
+                new_dict[FK(int(stat))] = raw[key][stat]
+            ret_val[key] = new_dict
+        return ret_val
+
+    @classmethod
+    def encode_game_stats(cls, raw: Dict[str, Dict[int, float]]) -> Dict[str, Dict[Stats, float]]:
+        ret_val: Dict[str, Dict[Stats, float]] = {}
+        for key in raw:
+            new_dict: Dict[Stats, float] = {}
+            for stat in raw[key]:
+                new_dict[Stats(int(stat))] = raw[key][stat]
+            ret_val[key] = new_dict
+        return ret_val
+
+    @classmethod
+    def encode_blood(cls, raw: Dict[str, int]) -> Dict[str, BloodType]:
+        ret_val: Dict[str, BloodType] = {}
+        for key in raw:
+            ret_val[key] = BloodType(int(raw[key]))
+        return ret_val
+
+    @classmethod
+    def encode_lineup(cls, raw: Dict[str, str]) -> Dict[int, str]:
+        ret_val: Dict[int, str] = {}
+        for key in raw:
+            ret_val[int(key)] = raw[key]
+        return ret_val
+
+    @classmethod
+    def convert_dict(cls, encoded: Dict[str, Dict[Any, float]]) -> Dict[str, Dict[int, float]]:
+        ret_val: Dict[str, Dict[int, float]] = {}
+        for key in encoded:
+            new_dict: Dict[int, float] = {}
+            for stat in encoded[key]:
+                new_dict[stat.value] = encoded[key][stat]
+            ret_val[key] = new_dict
+        return ret_val
+
+    @classmethod
+    def convert_blood(cls, encoded: Dict[str, BloodType]) -> Dict[str, int]:
+        ret_val: Dict[str, int] = {}
+        for key in encoded:
+            ret_val[key] = encoded[key].value
+        return ret_val
 
     def get_player_stats_by_id(self, player_id: str) -> Dict[str, float]:
         return self.stats[player_id]
 
     def next_batter(self) -> None:
-        if len(self.lineup) == self.cur_batter:
+        if len(self.lineup) == self.cur_batter_pos:
             self.cur_batter_pos = 1
         else:
             self.cur_batter_pos += 1
@@ -167,16 +215,62 @@ class TeamState(object):
         self.game_stats[player_id][stat_id] += value
 
     def get_defense_feature_vector(self) -> List[float]:
-        return []
+        ret_val: List[float] = [
+            self.stlats[DEF_ID][FK.ANTICAPITALISM],
+            self.stlats[DEF_ID][FK.CHASINESS],
+            self.stlats[DEF_ID][FK.OMNISCIENCE],
+            self.stlats[DEF_ID][FK.TENACIOUSNESS],
+            self.stlats[DEF_ID][FK.WATCHFULNESS],
+            self.stlats[DEF_ID][FK.PRESSURIZATION],
+            self.stlats[DEF_ID][FK.CINNAMON],
+        ]
+        return ret_val
 
     def get_pitcher_feature_vector(self) -> List[float]:
-        return []
+        player_id = self.starting_pitcher
+        ret_val: List[float] = [
+            self.stlats[player_id][FK.COLDNESS],
+            self.stlats[player_id][FK.OVERPOWERMENT],
+            self.stlats[player_id][FK.RUTHLESSNESS],
+            self.stlats[player_id][FK.SHAKESPEARIANISM],
+            self.stlats[player_id][FK.SUPPRESSION],
+            self.stlats[player_id][FK.UNTHWACKABILITY],
+            self.stlats[player_id][FK.CINNAMON],
+            self.stlats[player_id][FK.PRESSURIZATION],
+        ]
+        return ret_val
 
     def get_batter_feature_vector(self, player_id: str) -> List[float]:
-        return []
+        ret_val: List[float] = [
+            self.stlats[player_id][FK.BUOYANCY],
+            self.stlats[player_id][FK.DIVINITY],
+            self.stlats[player_id][FK.MARTYRDOM],
+            self.stlats[player_id][FK.MOXIE],
+            self.stlats[player_id][FK.MUSCLITUDE],
+            self.stlats[player_id][FK.PATHETICISM],
+            self.stlats[player_id][FK.THWACKABILITY],
+            self.stlats[player_id][FK.TRAGICNESS],
+            self.stlats[player_id][FK.BASE_THIRST],
+            self.stlats[player_id][FK.CONTINUATION],
+            self.stlats[player_id][FK.GROUND_FRICTION],
+            self.stlats[player_id][FK.INDULGENCE],
+            self.stlats[player_id][FK.LASERLIKENESS],
+            self.stlats[player_id][FK.CINNAMON],
+            self.stlats[player_id][FK.PRESSURIZATION],
+        ]
+        return ret_val
 
     def get_runner_feature_vector(self, player_id: str) -> List[float]:
-        return []
+        ret_val: List[float] = [
+            self.stlats[player_id][FK.BASE_THIRST],
+            self.stlats[player_id][FK.CONTINUATION],
+            self.stlats[player_id][FK.GROUND_FRICTION],
+            self.stlats[player_id][FK.INDULGENCE],
+            self.stlats[player_id][FK.LASERLIKENESS],
+            self.stlats[player_id][FK.CINNAMON],
+            self.stlats[player_id][FK.PRESSURIZATION],
+        ]
+        return ret_val
 
     def get_cur_batter_feature_vector(self) -> List[float]:
         return self.get_batter_feature_vector(self.cur_batter)

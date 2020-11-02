@@ -158,7 +158,7 @@ class GameState(object):
         season: int = game_state["season"]
         day: int = game_state["day"]
         inning: int = game_state["inning"]
-        half: InningHalf = InningHalf(game_state["half"])
+        half: InningHalf = InningHalf(int(game_state["half"]))
         outs: int = game_state["outs"]
         strikes: int = game_state["strikes"]
         balls: int = game_state["balls"]
@@ -268,6 +268,7 @@ class GameState(object):
             self.outs += 1
             self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher, Stats.PITCHER_FLYOUTS, 1.0)
             self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_FLYOUTS, 1.0)
+            self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_AT_BATS, 1.0)
             if self.outs < self.outs_for_inning:
                 self.attempt_to_advance_runners_on_flyout()
         if contact_type == 1:
@@ -276,7 +277,10 @@ class GameState(object):
             self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_GROUNDOUTS, 1.0)
             if self.outs < self.outs_for_inning:
                 self.resolve_fc_dp()
+            else:
+                self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_AT_BATS, 1.0)
         if contact_type == 2:
+            self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_AT_BATS, 1.0)
             self.hit_sim(pitch_feature_vector)
         self.reset_pitch_count()
 
@@ -312,11 +316,33 @@ class GameState(object):
         self.cur_batting_team.next_batter()
 
     def attempt_to_advance_runners_on_hit(self) -> None:
-        # TODO(kjc9): implement this logic, for now, never advance
+        for base in reversed(sorted(self.cur_base_runners.keys())):
+            new_base = base + 1
+            if new_base not in self.cur_base_runners.keys():
+                # Base ahead is open.  Let's see if we can advance 1 extra base.
+                base_runner_id = self.cur_base_runners[base]
+                base_runner_fv = self.gen_runner_fv(
+                    self.cur_batting_team.get_runner_feature_vector(base_runner_id),
+                    self.cur_pitching_team.get_defense_feature_vector(),
+                    self.cur_pitching_team.get_pitcher_feature_vector(),
+                )
+                if self.generic_model_roll(Ml.RUNNER_ADV_HIT, base_runner_fv) == 1:
+                    self.update_base_runner(base, Stats.GENERIC_ADVANCEMENT, 1)
         return
 
     def attempt_to_advance_runners_on_flyout(self) -> None:
-        # TODO(kjc9): implement this logic, for now, never advance
+        for base in reversed(sorted(self.cur_base_runners.keys())):
+            new_base = base + 1
+            if new_base not in self.cur_base_runners.keys():
+                # Base ahead is open.  Let's see if we can advance 1 extra base.
+                base_runner_id = self.cur_base_runners[base]
+                base_runner_fv = self.gen_runner_fv(
+                    self.cur_batting_team.get_runner_feature_vector(base_runner_id),
+                    self.cur_pitching_team.get_defense_feature_vector(),
+                    self.cur_pitching_team.get_pitcher_feature_vector(),
+                )
+                if self.generic_model_roll(Ml.RUNNER_ADV_OUT, base_runner_fv) == 1:
+                    self.update_base_runner(base, Stats.GENERIC_ADVANCEMENT, 1)
         return
 
     def resolve_fc_dp(self) -> None:
@@ -379,6 +405,7 @@ class GameState(object):
             event, start_season, end_season, req_blood = team_pitch_event_map[self.cur_batting_team.team_enum]
             if event == PitchEventTeamBuff.O_NO:
                 if self.strikes == 2 and \
+                        self.balls == 0 and \
                         self.check_valid_season(start_season, end_season) and\
                         self.check_blood_requirement(self.cur_batting_team.cur_batter, req_blood):
                     return True
@@ -462,7 +489,7 @@ class GameState(object):
     # BASE RUNNING MECHANICS
     def advance_all_runners(self, num_bases_to_advance: int) -> None:
         for base in reversed(sorted(self.cur_base_runners.keys())):
-            self.update_base_runner(base, Stats.WALK_ADVANCEMENT, num_bases_to_advance)
+            self.update_base_runner(base, Stats.GENERIC_ADVANCEMENT, num_bases_to_advance)
 
     def update_base_runner(self, base: int, action: Stats, num_bases_to_advance: int = 1) -> None:
         if action == Stats.CAUGHT_STEALINGS:
@@ -488,7 +515,7 @@ class GameState(object):
                 self.cur_base_runners[new_base] = runner_id
                 del self.cur_base_runners[base]
             return
-        if action == Stats.WALK_ADVANCEMENT:
+        if action == Stats.GENERIC_ADVANCEMENT:
             if base > self.num_bases - num_bases_to_advance:
                 # run scores
                 self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_RBIS, 1.0)
