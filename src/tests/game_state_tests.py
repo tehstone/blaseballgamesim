@@ -198,5 +198,25 @@ class TestBaseAdvancement(TestGameState):
         self.assertEqual(self.game_state.home_score, 0)
         self.assertEqual(self.game_state.away_score, 2)
 
+    def test_three_runners(self):
+        self.game_state.cur_base_runners[1] = "p11"
+        self.game_state.cur_base_runners[2] = "p12"
+        self.game_state.cur_base_runners[3] = "p13"
+        self.assertEqual(len(self.game_state.cur_base_runners), 3)
+        self.assertEqual(self.game_state.cur_base_runners[1], "p11")
+        self.assertEqual(self.game_state.cur_base_runners[2], "p12")
+        self.assertEqual(self.game_state.cur_base_runners[3], "p13")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.advance_all_runners(1)
+        self.assertEqual(self.game_state.cur_base_runners[2], "p11")
+        self.assertEqual(self.game_state.cur_base_runners[3], "p12")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 1)
+        self.game_state.advance_all_runners(4)
+        self.assertEqual(self.game_state.cur_base_runners, {})
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 3)
+
 
 
