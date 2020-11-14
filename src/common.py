@@ -118,9 +118,9 @@ class BloodType(Enum):
 class PitchEventTeamBuff(Enum):
     BASE_INSTINCTS = 1
     CHARM = 2
-    ELECTRIC = 3
-    O_NO = 4
-    ZAP = 5
+    O_NO = 3
+    ZAP = 4
+    GROWTH = 5
 
 
 class Team(Enum):
@@ -190,7 +190,8 @@ blood_id_map: Dict[int, BloodType] = {
 # TODO(kjc9): determine how to use this properly in the sim code
 team_pitch_event_map: Dict[Team, Tuple[PitchEventTeamBuff, int, Optional[int], Optional[BloodType]]] = {
     # team: Tuple[Team buff, season start, season end]
-    Team.FLOWERS: (PitchEventTeamBuff.O_NO, 11, None, BloodType.O_NO),
+    Team.MAGIC: (PitchEventTeamBuff.O_NO, 11, None, BloodType.O_NO),
+    Team.FLOWERS: (PitchEventTeamBuff.GROWTH, 10, None, BloodType.GRASS),
     Team.LOVERS: (PitchEventTeamBuff.CHARM, 10, None, BloodType.LOVE),
     Team.DALE: (PitchEventTeamBuff.ZAP, 8, None, BloodType.ELECTRIC),
     Team.SUNBEAMS: (PitchEventTeamBuff.BASE_INSTINCTS, 9, None, BloodType.BASE),

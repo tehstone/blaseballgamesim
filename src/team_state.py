@@ -95,6 +95,7 @@ class TeamState(object):
         for p_key in self.lineup.keys():
             self.game_stats[self.lineup[p_key]] = new_dict
         self.game_stats[self.starting_pitcher] = new_dict
+        self.game_stats[DEF_ID] = new_dict
 
     def to_dict(self) -> Dict[str, Any]:
         """ Gets a dict representation of the state for serialization """

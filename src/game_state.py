@@ -94,6 +94,16 @@ class GameState(object):
 
     def log_event(self, event: str) -> None:
         self.game_log.append(event)
+        print(event)
+
+    def log_score(self) -> None:
+        self.log_event(
+            f'\n{self.away_team.team_enum}: {self.away_score}  {self.home_team.team_enum}: {self.home_score}.')
+
+    def log_runners(self) -> None:
+        for base in self.cur_base_runners.keys():
+            self.log_event(
+                f'\n{self.cur_batting_team.player_names[self.cur_base_runners[base]]} is on base {base}.')
 
     def reset_game_state(self) -> None:
         """Reset the game state to the start of the game"""
@@ -106,6 +116,7 @@ class GameState(object):
         self.home_score = 0
         self.away_score = 0
         self.game_log = ["Play ball."]
+        self.cur_base_runners = {}
         self.refresh_game_status()
 
     def refresh_game_status(self):
@@ -234,20 +245,24 @@ class GameState(object):
         if pitch_result == 0:
             self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher, Stats.PITCHER_BALLS_THROWN, 1.0)
             self.balls += 1
+            self.log_event(f'\nBall {self.balls}.')
             if self.balls == self.balls_for_walk:
                 num_bases_to_advance: int = self.resolve_base_instincts()
                 self.resolve_walk(num_bases_to_advance)
             return
         if pitch_result == 1:
             if self.resolve_o_no():
+                self.log_event(f'\nOh No triggered!.')
                 pitch_result = 2
             else:
+
                 self.cur_pitching_team.update_stat(
                     self.cur_pitching_team.starting_pitcher,
                     Stats.PITCHER_STRIKES_THROWN,
                     1.0
                 )
                 self.strikes += 1
+                self.log_event(f'\nStrike {self.strikes}.')
                 if self.strikes == self.strikes_for_out:
                     self.resolve_strikeout()
                 return
@@ -255,6 +270,9 @@ class GameState(object):
             self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_FOUL_BALLS, 1.0)
             if self.strikes < self.strikes_for_out - 1:
                 self.strikes += 1
+                self.log_event(f'\nFoul ball.  Strike {self.strikes}.')
+            else:
+                self.log_event(f'\nFoul ball.')
             return
         if pitch_result == 3:
             # Official plate appearance
@@ -270,39 +288,50 @@ class GameState(object):
             return
 
     def resolve_walk(self, num_bases_to_advance: int) -> None:
+        self.log_event(f'\nBatter {self.cur_batting_team.player_names[self.cur_batting_team.cur_batter]} walks to base {num_bases_to_advance}.')
         self.advance_all_runners(num_bases_to_advance)
         self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher, Stats.PITCHER_WALKS, 1.0)
         self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_WALKS, 1.0)
         self.cur_base_runners[num_bases_to_advance] = self.cur_batting_team.cur_batter
         self.reset_pitch_count()
         self.cur_batting_team.next_batter()
+        self.log_event(f'\n{self.cur_batting_team.player_names[self.cur_batting_team.cur_batter]} now at bat.')
 
     def resolve_strikeout(self) -> None:
+        self.log_event(f'\nBatter {self.cur_batting_team.player_names[self.cur_batting_team.cur_batter]} strikes out.')
         self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher, Stats.PITCHER_STRIKEOUTS, 1.0)
         self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_STRIKEOUTS, 1.0)
         self.outs += 1
         self.reset_pitch_count()
         self.cur_batting_team.next_batter()
+        self.log_event(f'\n{self.cur_batting_team.player_names[self.cur_batting_team.cur_batter]} now at bat.')
 
     # HIT MECHANICS
-    def in_play_sim(self, pitch_feature_vector: List[float]):
+    def in_play_sim(self, pitch_feature_vector: List[float]) -> None:
         contact_type = self.generic_model_roll(Ml.IS_HIT, pitch_feature_vector)
         # 0 = Flyout, 1 = Groundout, 2 = Hit
         if contact_type == 0:
+            self.log_event(
+                f'\nBatter {self.cur_batting_team.player_names[self.cur_batting_team.cur_batter]} flies out.')
             self.outs += 1
             self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher, Stats.PITCHER_FLYOUTS, 1.0)
             self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_FLYOUTS, 1.0)
             self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_AT_BATS, 1.0)
             if self.outs < self.outs_for_inning:
                 self.attempt_to_advance_runners_on_flyout()
+            self.cur_batting_team.next_batter()
+            self.log_event(f'\n{self.cur_batting_team.player_names[self.cur_batting_team.cur_batter]} now at bat.')
         if contact_type == 1:
+            self.log_event(
+                f'\nBatter {self.cur_batting_team.player_names[self.cur_batting_team.cur_batter]} grounds out.')
             self.outs += 1
             self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher, Stats.PITCHER_GROUNDOUTS, 1.0)
             self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_GROUNDOUTS, 1.0)
+            self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_AT_BATS, 1.0)
             if self.outs < self.outs_for_inning:
                 self.resolve_fc_dp()
-            else:
-                self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_AT_BATS, 1.0)
+            self.cur_batting_team.next_batter()
+            self.log_event(f'\n{self.cur_batting_team.player_names[self.cur_batting_team.cur_batter]} now at bat.')
         if contact_type == 2:
             self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_AT_BATS, 1.0)
             self.hit_sim(pitch_feature_vector)
@@ -315,32 +344,51 @@ class GameState(object):
         hit_type = self.generic_model_roll(Ml.HIT_TYPE, pitch_feature_vector)
         # 0 = Single, 1 = Double, 2 = Triple, 3 = HR
         if hit_type == 0:
+            self.log_event(
+                f'\nBatter {self.cur_batting_team.player_names[self.cur_batting_team.cur_batter]} hits a single.')
             self.advance_all_runners(1)
             self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_SINGLES, 1.0)
             self.attempt_to_advance_runners_on_hit()
             self.cur_base_runners[1] = self.cur_batting_team.cur_batter
         if hit_type == 1:
+            self.log_event(
+                f'\nBatter {self.cur_batting_team.player_names[self.cur_batting_team.cur_batter]} hits a double.')
             self.advance_all_runners(2)
             self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_DOUBLES, 1.0)
             self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher, Stats.PITCHER_XBH_ALLOWED, 1.0)
             self.attempt_to_advance_runners_on_hit()
             self.cur_base_runners[2] = self.cur_batting_team.cur_batter
         if hit_type == 2:
+            self.log_event(
+                f'\nBatter {self.cur_batting_team.player_names[self.cur_batting_team.cur_batter]} hits a triple.')
             self.advance_all_runners(3)
             self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_TRIPLES, 1.0)
             self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher, Stats.PITCHER_XBH_ALLOWED, 1.0)
             self.attempt_to_advance_runners_on_hit()
             self.cur_base_runners[3] = self.cur_batting_team.cur_batter
         if hit_type == 3:
+            self.log_event(
+                f'\nBatter {self.cur_batting_team.player_names[self.cur_batting_team.cur_batter]} hits a home run.')
             self.advance_all_runners(self.num_bases)
             self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_HRS, 1.0)
+            # batter scores
             self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_RBIS, 1.0)
             self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_RUNS_SCORED, 1.0)
+            self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher, Stats.PITCHER_HRS_ALLOWED, 1.0)
+            self.cur_pitching_team.update_stat(
+                self.cur_pitching_team.starting_pitcher,
+                Stats.PITCHER_EARNED_RUNS,
+                1.0
+            )
+            self.increase_batting_team_runs(1)
         self.reset_pitch_count()
         self.cur_batting_team.next_batter()
+        self.log_event(f'\n{self.cur_batting_team.player_names[self.cur_batting_team.cur_batter]} now at bat.')
+        self.log_runners()
 
     def attempt_to_advance_runners_on_hit(self) -> None:
-        for base in reversed(sorted(self.cur_base_runners.keys())):
+        snapshot = self.cur_base_runners
+        for base in reversed(sorted(snapshot.keys())):
             new_base = base + 1
             if new_base not in self.cur_base_runners.keys():
                 # Base ahead is open.  Let's see if we can advance 1 extra base.
@@ -351,11 +399,15 @@ class GameState(object):
                     self.cur_pitching_team.get_pitcher_feature_vector(),
                 )
                 if self.generic_model_roll(Ml.RUNNER_ADV_HIT, base_runner_fv) == 1:
+                    self.log_event(
+                        f'\nRunner {self.cur_batting_team.player_names[self.cur_base_runners[base]]} takes an extra base on the hit.')
                     self.update_base_runner(base, Stats.GENERIC_ADVANCEMENT, 1)
+
         return
 
     def attempt_to_advance_runners_on_flyout(self) -> None:
-        for base in reversed(sorted(self.cur_base_runners.keys())):
+        snapshot = self.cur_base_runners
+        for base in reversed(sorted(snapshot.keys())):
             new_base = base + 1
             if new_base not in self.cur_base_runners.keys():
                 # Base ahead is open.  Let's see if we can advance 1 extra base.
@@ -366,6 +418,8 @@ class GameState(object):
                     self.cur_pitching_team.get_pitcher_feature_vector(),
                 )
                 if self.generic_model_roll(Ml.RUNNER_ADV_OUT, base_runner_fv) == 1:
+                    self.log_event(
+                        f'\nRunner {self.cur_batting_team.player_names[self.cur_base_runners[base]]} tags up and advances.')
                     self.update_base_runner(base, Stats.GENERIC_ADVANCEMENT, 1)
         return
 
@@ -374,22 +428,25 @@ class GameState(object):
         self.advance_all_runners(1)
         return
 
+    def _random_roll(self) -> float:
+        return random.random()
+
     # TEAM BUFF SPECIFIC MECHANICS
     def resolve_team_pre_pitch_event(self) -> bool:
         valid_pre_pitch_pitching_events = [PitchEventTeamBuff.CHARM]
-        valid_pre_pitch_batting_events = [PitchEventTeamBuff.ELECTRIC, PitchEventTeamBuff.CHARM]
+        valid_pre_pitch_batting_events = [PitchEventTeamBuff.ZAP, PitchEventTeamBuff.CHARM]
         if self.cur_pitching_team.team_enum in team_pitch_event_map:
             # Possible event, let's validate
             event, start_season, end_season, req_blood = team_pitch_event_map[self.cur_pitching_team.team_enum]
             # First let's check if a pre-pitch event for the pitcher should trigger
-            if team_pitch_event_map[self.cur_pitching_team.team_enum] in valid_pre_pitch_pitching_events:
+            if event in valid_pre_pitch_pitching_events:
                 # Let's figure out which pitch event it is and deal with it here
 
                 # Deal with charm strikeout chance
                 if event == PitchEventTeamBuff.CHARM and self.check_valid_season(start_season, end_season):
                     if self.is_start_of_at_bat() and \
                             self.check_blood_requirement(self.cur_pitching_team.starting_pitcher, req_blood):
-                        roll = random.random()
+                        roll = self._random_roll()
                         if roll < CHARM_TRIGGER_PERCENTAGE:
                             self.resolve_strikeout()
                             return True
@@ -397,24 +454,25 @@ class GameState(object):
                 # TODO: Add additional pre pitch pitching events here as needed
 
             # Second, let's check if a pre-pitch event for the batter should trigger
-            if team_pitch_event_map[self.cur_batting_team.team_enum] in valid_pre_pitch_batting_events:
+            event, start_season, end_season, req_blood = team_pitch_event_map[self.cur_batting_team.team_enum]
+            if event in valid_pre_pitch_batting_events:
                 # Let's figure out which batting event it is and deal with it here
 
                 # Deal with charm walk chance
                 if event == PitchEventTeamBuff.CHARM and self.check_valid_season(start_season, end_season):
                     if self.is_start_of_at_bat() and \
                             self.check_blood_requirement(self.cur_batting_team.cur_batter, req_blood):
-                        roll = random.random()
+                        roll = self._random_roll()
                         if roll < CHARM_TRIGGER_PERCENTAGE:
                             self.resolve_walk(1)
                             return True
                     return False
 
                 # Deal with zap chance
-                if event == PitchEventTeamBuff.ELECTRIC and self.check_valid_season(start_season, end_season):
-                    if self.is_start_of_at_bat() and \
+                if event == PitchEventTeamBuff.ZAP and self.check_valid_season(start_season, end_season):
+                    if self.strikes > 0 and \
                             self.check_blood_requirement(self.cur_batting_team.cur_batter, req_blood):
-                        roll = random.random()
+                        roll = self._random_roll()
                         if roll < ZAP_TRIGGER_PERCENTAGE:
                             self.strikes -= 1
                             return True
@@ -441,7 +499,7 @@ class GameState(object):
             if event == PitchEventTeamBuff.BASE_INSTINCTS and \
                     self.check_valid_season(start_season, end_season) and\
                     self.check_blood_requirement(self.cur_batting_team.cur_batter, req_blood):
-                roll = random.random()
+                roll = self._random_roll()
                 cur_base_prior = BASE_INSTINCT_PRIORS[self.cur_batting_team.num_bases]
                 total_priors = 0.0
                 for num_base in reversed(sorted(cur_base_prior.keys())):
@@ -480,7 +538,7 @@ class GameState(object):
                     self.cur_pitching_team.get_pitcher_feature_vector(),
                 )
                 if self.generic_model_roll(Ml.SB_ATTEMPT, base_runner_fv) == 1:
-                    self.cur_batting_team.update_stat(base_runner_id, Stats.STOLEN_BASE_ATTEMPT, 1.0)
+                    self.cur_batting_team.update_stat(base_runner_id, Stats.STOLEN_BASE_ATTEMPTS, 1.0)
                     self.cur_pitching_team.update_stat(DEF_ID, Stats.DEFENSE_STOLEN_BASE_ATTEMPTS, 1.0)
                     self.cur_pitching_team.update_stat(
                         self.cur_pitching_team.starting_pitcher,
@@ -488,14 +546,14 @@ class GameState(object):
                         1.0
                     )
                     if self.generic_model_roll(Ml.SB_SUCCESS, base_runner_fv) == 1:
-                        self.cur_batting_team.update_stat(base_runner_id, Stats.STOLEN_BASE, 1.0)
-                        self.cur_pitching_team.update_stat(DEF_ID, Stats.DEFENSE_STOLEN_BASE, 1.0)
+                        self.cur_batting_team.update_stat(base_runner_id, Stats.STOLEN_BASES, 1.0)
+                        self.cur_pitching_team.update_stat(DEF_ID, Stats.DEFENSE_STOLEN_BASES, 1.0)
                         self.cur_pitching_team.update_stat(
                             self.cur_pitching_team.starting_pitcher,
-                            Stats.DEFENSE_STOLEN_BASE,
+                            Stats.DEFENSE_STOLEN_BASES,
                             1.0
                         )
-                        self.update_base_runner(base, Stats.STOLEN_BASE)
+                        self.update_base_runner(base, Stats.STOLEN_BASES)
                     else:
                         self.cur_batting_team.update_stat(base_runner_id, Stats.CAUGHT_STEALINGS, 1.0)
                         self.cur_pitching_team.update_stat(DEF_ID, Stats.DEFENSE_CAUGHT_STEALINGS, 1.0)
@@ -517,6 +575,8 @@ class GameState(object):
 
     def update_base_runner(self, base: int, action: Stats, num_bases_to_advance: int = 1) -> None:
         if action == Stats.CAUGHT_STEALINGS:
+            self.log_event(
+                f'\nRunner {self.cur_batting_team.player_names[self.cur_base_runners[base]]} caught stealing.')
             self.outs += 1
             del self.cur_base_runners[base]
             return
@@ -533,6 +593,8 @@ class GameState(object):
                 del self.cur_base_runners[base]
             else:
                 new_base = base + 1
+                self.log_event(
+                    f'\nRunner {self.cur_batting_team.player_names[self.cur_base_runners[base]]} steals base {new_base}.')
                 assert new_base not in self.cur_base_runners
                 assert new_base < self.num_bases
                 runner_id = self.cur_base_runners[base]
@@ -542,6 +604,9 @@ class GameState(object):
         if action == Stats.GENERIC_ADVANCEMENT:
             if base >= self.num_bases - num_bases_to_advance:
                 # run scores
+                self.log_event(
+                    f'\nRunner {self.cur_batting_team.player_names[self.cur_base_runners[base]]} scores.')
+                self.log_score()
                 self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_RBIS, 1.0)
                 self.cur_batting_team.update_stat(self.cur_base_runners[base], Stats.BATTER_RUNS_SCORED, 1.0)
                 self.cur_pitching_team.update_stat(
@@ -567,7 +632,7 @@ class GameState(object):
     def generic_model_roll(self, model: Ml, feature_vector: List[float]) -> int:
         probs: List[float] = self.clf[model].predict_proba(feature_vector)
         # generate random float between 0-1
-        roll = random.random()
+        roll = self._random_roll()
         total = 0
         for i in range(len(probs)):
             # add the odds of the next outcome to the running total
@@ -588,29 +653,44 @@ class GameState(object):
             if self.outs == self.outs_for_inning:
                 # Team has reached their max number of outs
                 self.cur_base_runners = {}
+                self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher,
+                                                   Stats.PITCHER_INNINGS_PITCHED, 1.0)
                 if self.half == InningHalf.TOP:
                     self.half = InningHalf.BOTTOM
                 else:
                     self.inning += 1
                     self.half = InningHalf.TOP
+                self.log_event(f'\nSide retired. {self.half} of inning {self.inning}.')
+                self.log_score()
                 self.refresh_game_status()
                 self.reset_inning_counts()
         else:
             # Game can now be over when advancing, must check state
             if self.outs == self.outs_for_inning:
+                self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher,
+                                                   Stats.PITCHER_INNINGS_PITCHED, 1.0)
                 if self.half == InningHalf.TOP:
                     if self.home_score > self.away_score:
+                        self.log_event(f'\nSide retired. Game over.')
+                        self.log_score()
                         self.is_game_over = True
                     else:
                         self.half = InningHalf.BOTTOM
+                        self.log_event(f'\nSide retired. {self.half} of inning {self.inning}.')
+                        self.log_score()
                         self.refresh_game_status()
                         self.reset_inning_counts()
+                    return
                 if self.half == InningHalf.BOTTOM:
                     if self.home_score != self.away_score:
+                        self.log_event(f'\nSide retired. Game over.')
+                        self.log_score()
                         self.is_game_over = True
                     else:
                         self.half = InningHalf.TOP
                         self.inning += 1
+                        self.log_event(f'\nSide retired. {self.half} of inning {self.inning}.')
+                        self.log_score()
                         self.refresh_game_status()
                         self.reset_inning_counts()
 
