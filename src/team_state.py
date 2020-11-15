@@ -83,10 +83,12 @@ class TeamState(object):
         self.stlats[DEF_ID][FK.PRESSURIZATION] = def_defense_pressurization
         self.stlats[DEF_ID][FK.CINNAMON] = def_defense_cinnamon
 
-    def reset_team_state(self) -> None:
-        self.reset_game_stats()
+    def reset_team_state(self, game_stat_reset=False) -> None:
+        if game_stat_reset:
+            self.reset_game_stats()
         self.cur_batter_pos = 1
         self.cur_batter = self.lineup[self.cur_batter_pos]
+        self._calculate_defense()
 
     def reset_game_stats(self) -> None:
         new_dict: Dict[Stats, float] = {}
@@ -96,6 +98,11 @@ class TeamState(object):
             self.game_stats[self.lineup[p_key]] = new_dict
         self.game_stats[self.starting_pitcher] = new_dict
         self.game_stats[DEF_ID] = new_dict
+
+    def update_player_names(self, new_names: Dict[str, str]):
+        for id in new_names:
+            if id not in self.player_names:
+                self.player_names[id] = new_names[id]
 
     def to_dict(self) -> Dict[str, Any]:
         """ Gets a dict representation of the state for serialization """
@@ -231,7 +238,12 @@ class TeamState(object):
         self.cur_batter = self.lineup[self.cur_batter_pos]
 
     def update_stat(self, player_id: str, stat_id: Stats, value: float) -> None:
-        self.game_stats[player_id][stat_id] += value
+        if player_id not in self.game_stats:
+            self.game_stats[player_id] = {}
+        if stat_id in self.game_stats[player_id]:
+            self.game_stats[player_id][stat_id] += value
+        else:
+            self.game_stats[player_id][stat_id] = value
 
     def get_defense_feature_vector(self) -> List[float]:
         ret_val: List[float] = [

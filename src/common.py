@@ -42,6 +42,7 @@ class BlaseballStatistics(Enum):
     PITCHER_FLYOUTS = 43
     PITCHER_GROUNDOUTS = 44
     PITCHER_BATTERS_FACED = 45
+    PITCHER_GAMES_APPEARED = 46
 
     # Defense stats
     DEFENSE_STOLEN_BASE_ATTEMPTS = 50
@@ -198,9 +199,9 @@ team_pitch_event_map: Dict[Team, Tuple[PitchEventTeamBuff, int, Optional[int], O
 }
 
 fk_key: Dict[ForbiddenKnowledge, str] = {
-    ForbiddenKnowledge.BASE_THIRST: "baseThirst",
+    ForbiddenKnowledge.BASE_THIRST: "base_thirst",
     ForbiddenKnowledge.CONTINUATION: "continuation",
-    ForbiddenKnowledge.GROUND_FRICTION: "groundFriction",
+    ForbiddenKnowledge.GROUND_FRICTION: "ground_friction",
     ForbiddenKnowledge.INDULGENCE: "indulgence",
     ForbiddenKnowledge.LASERLIKENESS: "laserlikeness",
     ForbiddenKnowledge.ANTICAPITALISM: "anticapitalism",
