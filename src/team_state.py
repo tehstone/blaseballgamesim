@@ -21,6 +21,7 @@ class TeamState(object):
         strikes_for_out: int,
         outs_for_inning: int,
         lineup: Dict[int, str],
+        rotation: Dict[int, str],
         starting_pitcher: str,
         stlats: Dict[str, Dict[FK, float]],
         game_stats: Dict[str, Dict[Stats, float]],
@@ -38,6 +39,7 @@ class TeamState(object):
         self.strikes_for_out: int = strikes_for_out
         self.outs_for_inning: int = outs_for_inning
         self.lineup: Dict[int, str] = lineup
+        self.rotation: Dict[int, str] = rotation
         self.starting_pitcher: str = starting_pitcher
         self.stlats: Dict[str, Dict[FK, float]] = stlats
         self.game_stats: Dict[str, Dict[Stats, float]] = game_stats
@@ -115,6 +117,7 @@ class TeamState(object):
             "strikes_for_out": self.strikes_for_out,
             "outs_for_inning": self.outs_for_inning,
             "lineup": self.lineup,
+            "rotation": self.rotation,
             "starting_pitcher": self.starting_pitcher,
             "stlats": TeamState.convert_dict(self.stlats),
             "game_stats": TeamState.convert_dict(self.game_stats),
@@ -153,6 +156,7 @@ class TeamState(object):
         strikes_for_out: int = team_state["strikes_for_out"]
         outs_for_inning: int = team_state["outs_for_inning"]
         lineup: Dict[int, str] = TeamState.encode_lineup(team_state["lineup"])
+        rotation: Dict[int, str] = TeamState.encode_lineup(team_state["rotation"])
         starting_pitcher: str = team_state["starting_pitcher"]
         stlats: Dict[str, Dict[FK, float]] = TeamState.encode_stlats(team_state["stlats"])
         game_stats: Dict[str, Dict[Stats, float]] = TeamState.encode_game_stats(team_state["game_stats"])
@@ -168,6 +172,7 @@ class TeamState(object):
             strikes_for_out,
             outs_for_inning,
             lineup,
+            rotation,
             starting_pitcher,
             stlats,
             game_stats,
@@ -307,7 +312,10 @@ class TeamState(object):
         return self.get_batter_feature_vector(self.cur_batter)
 
     def get_player_name(self, player_id: str) -> str:
-        return self.player_names[player_id]
+        if player_id in self.player_names:
+            return self.player_names[player_id]
+        else:
+            return "Unknown Player (" + player_id + ")"
 
     def get_cur_batter_name(self) -> str:
         return self.get_player_name(self.cur_batter)

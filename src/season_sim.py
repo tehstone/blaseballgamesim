@@ -15,13 +15,15 @@ game_stats_by_team: Dict[str, Dict[str, Dict[Stats, float]]] = {}
 names_by_team: Dict[str, Dict[str, str]] = {}
 blood_by_team: Dict[str, Dict[str, BloodType]] = {}
 team_states: Dict[Team, TeamState] = {}
-starting_pitchers: Dict[str, str] = {}
+rotations_by_team: Dict[str, Dict[int, str]] = {}
 
 day_lineup = {}
 day_stlats = {}
 day_names = {}
 day_blood = {}
+day_rotations = {}
 
+iterations = 1
 
 def setup_season(season:int):
     with open(os.path.join('season_sim', 'season_data', f"season{season + 1}.json"), 'r', encoding='utf8') as json_file:
@@ -36,6 +38,8 @@ def setup_season(season:int):
             home_team_name = game["homeTeamName"]
             away_team_name = game["awayTeamName"]
             print(f'Day {day}: {away_team_name} at {home_team_name}')
+            if day == 99:
+                break
             update_team_states(season, day, home_team, home_pitcher)
             home_team_state = team_states[team_id_map[home_team]]
             update_team_states(season, day, away_team, away_pitcher)
@@ -54,7 +58,7 @@ def setup_season(season:int):
                 strikes=0,
                 balls=0,
             )
-            for x in range(0, 10):
+            for x in range(0, iterations):
                 game.simulate_game()
                 game.reset_game_state()
 
@@ -66,6 +70,8 @@ def load_all_state(season: int):
         with open(os.path.join('season_sim', 'stlats', f"s{season}_d{day}_stlats.json"), 'r', encoding='utf8') as json_file:
             player_stlats_list = json.load(json_file)
             for player in player_stlats_list:
+                if day == 6 and player["team_id"] == "105bc3ff-1320-4e37-8ef0-8d595cb95dd0":
+                    x = 1
                 team_id = player["team_id"]
                 player_id = player["player_id"]
                 pos = int(player["position_id"]) + 1
@@ -74,8 +80,9 @@ def load_all_state(season: int):
                         lineups_by_team[team_id] = {}
                     lineups_by_team[team_id][pos] = player_id
                 else:
-                    if team_id not in starting_pitchers:
-                        starting_pitchers[team_id] = player_id
+                    if team_id not in rotations_by_team:
+                        rotations_by_team[team_id] = {}
+                    rotations_by_team[team_id][pos] = player_id
                 if team_id not in stlats_by_team:
                     stlats_by_team[team_id] = {}
                 stlats_by_team[team_id][player_id] = get_stlat_dict(player)
@@ -92,19 +99,29 @@ def load_all_state(season: int):
                 if team_id not in blood_by_team:
                     blood_by_team[team_id] = {}
                 blood_by_team[team_id][player_id] = blood_id_map[int(player["blood"])]
-            day_lineup[day] = lineups_by_team
-            day_stlats[day] = stlats_by_team
-            day_names[day] = names_by_team
-            day_blood[day] = blood_by_team
+            if day > 0 and (len(lineups_by_team) != len(day_lineup[day - 1]) or (len(rotations_by_team) != len(day_rotations[day - 1]))):
+                day_lineup[day] = day_lineup[day-1]
+                day_stlats[day] = day_stlats[day-1]
+                day_names[day] = day_names[day-1]
+                day_blood[day] = day_blood[day-1]
+                day_rotations[day] = day_rotations[day - 1]
+            else:
+                day_lineup[day] = lineups_by_team
+                day_stlats[day] = stlats_by_team
+                day_names[day] = names_by_team
+                day_blood[day] = blood_by_team
+                day_rotations[day] = rotations_by_team
 
 
 def reset_daily_cache():
     global lineups_by_team
+    global rotations_by_team
     global game_stats_by_team
     global stlats_by_team
     global names_by_team
     global blood_by_team
     lineups_by_team = {}
+    rotations_by_team = {}
     stlats_by_team = {}
     names_by_team = {}
     blood_by_team = {}
@@ -129,6 +146,7 @@ def update_team_states(season: int, day: int, team:str, starting_pitcher: str):
             strikes_for_out=3,
             outs_for_inning=3,
             lineup=day_lineup[day][team],
+            rotation=day_rotations[day][team],
             starting_pitcher=starting_pitcher,
             stlats=day_stlats[day][team],
             game_stats=game_stats_by_team[team],
@@ -139,6 +157,7 @@ def update_team_states(season: int, day: int, team:str, starting_pitcher: str):
     else:
         team_states[team_id_map[team]].day = day
         team_states[team_id_map[team]].lineup = day_lineup[day][team]
+        team_states[team_id_map[team]].rotation = day_rotations[day][team]
         team_states[team_id_map[team]].starting_pitcher = starting_pitcher
         team_states[team_id_map[team]].stlats = day_stlats[day][team]
         team_states[team_id_map[team]].blood = day_blood[day][team]
@@ -155,11 +174,11 @@ def print_leaders():
         for player in team_states[cur_team].game_stats.keys():
             if Stats.PITCHER_STRIKEOUTS in team_states[cur_team].game_stats[player]:
                 player_name = team_states[cur_team].player_names[player]
-                value = team_states[cur_team].game_stats[player][Stats.PITCHER_STRIKEOUTS] / (10.0)
+                value = team_states[cur_team].game_stats[player][Stats.PITCHER_STRIKEOUTS] / float(iterations)
                 strikeouts.append((value, player_name))
             if Stats.BATTER_HRS in team_states[cur_team].game_stats[player]:
                 player_name = team_states[cur_team].player_names[player]
-                value = team_states[cur_team].game_stats[player][Stats.BATTER_HRS] / (10.0)
+                value = team_states[cur_team].game_stats[player][Stats.BATTER_HRS] / float(iterations)
                 hrs.append((value, player_name))
             if Stats.BATTER_HITS in team_states[cur_team].game_stats[player]:
                 player_name = team_states[cur_team].player_names[player]
@@ -191,6 +210,6 @@ def print_leaders():
 
 
 #print_info()
-load_all_state(9)
-setup_season(9)
+load_all_state(10)
+setup_season(10)
 print_leaders()

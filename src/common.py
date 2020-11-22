@@ -97,6 +97,7 @@ class MachineLearnedModel(Enum):
     RUNNER_ADV_HIT = 5
     SB_ATTEMPT = 6
     SB_SUCCESS = 7
+    OUT_TYPE = 8
 
 
 class BloodType(Enum):
