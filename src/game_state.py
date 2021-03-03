@@ -279,7 +279,7 @@ class GameState(object):
                 return
         if pitch_result == 2:
             self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_FOUL_BALLS, 1.0)
-            if self.strikes <= self.strikes_for_out - 1:
+            if self.strikes < self.strikes_for_out - 1:
                 self.strikes += 1
                 self.log_event(f'Foul ball.  Strike {self.strikes}.')
             else:
