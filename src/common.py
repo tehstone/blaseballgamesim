@@ -42,6 +42,7 @@ class BlaseballStatistics(Enum):
     PITCHER_FLYOUTS = 43
     PITCHER_GROUNDOUTS = 44
     PITCHER_BATTERS_FACED = 45
+    PITCHER_GAMES_APPEARED = 46
 
     # Defense stats
     DEFENSE_STOLEN_BASE_ATTEMPTS = 50
@@ -96,6 +97,7 @@ class MachineLearnedModel(Enum):
     RUNNER_ADV_HIT = 5
     SB_ATTEMPT = 6
     SB_SUCCESS = 7
+    OUT_TYPE = 8
 
 
 class BloodType(Enum):
@@ -118,9 +120,9 @@ class BloodType(Enum):
 class PitchEventTeamBuff(Enum):
     BASE_INSTINCTS = 1
     CHARM = 2
-    ELECTRIC = 3
-    O_NO = 4
-    ZAP = 5
+    O_NO = 3
+    ZAP = 4
+    GROWTH = 5
 
 
 class Team(Enum):
@@ -190,16 +192,17 @@ blood_id_map: Dict[int, BloodType] = {
 # TODO(kjc9): determine how to use this properly in the sim code
 team_pitch_event_map: Dict[Team, Tuple[PitchEventTeamBuff, int, Optional[int], Optional[BloodType]]] = {
     # team: Tuple[Team buff, season start, season end]
-    Team.FLOWERS: (PitchEventTeamBuff.O_NO, 11, None, BloodType.O_NO),
+    Team.MAGIC: (PitchEventTeamBuff.O_NO, 11, None, BloodType.O_NO),
+    Team.FLOWERS: (PitchEventTeamBuff.GROWTH, 10, None, BloodType.GRASS),
     Team.LOVERS: (PitchEventTeamBuff.CHARM, 10, None, BloodType.LOVE),
     Team.DALE: (PitchEventTeamBuff.ZAP, 8, None, BloodType.ELECTRIC),
     Team.SUNBEAMS: (PitchEventTeamBuff.BASE_INSTINCTS, 9, None, BloodType.BASE),
 }
 
 fk_key: Dict[ForbiddenKnowledge, str] = {
-    ForbiddenKnowledge.BASE_THIRST: "baseThirst",
+    ForbiddenKnowledge.BASE_THIRST: "base_thirst",
     ForbiddenKnowledge.CONTINUATION: "continuation",
-    ForbiddenKnowledge.GROUND_FRICTION: "groundFriction",
+    ForbiddenKnowledge.GROUND_FRICTION: "ground_friction",
     ForbiddenKnowledge.INDULGENCE: "indulgence",
     ForbiddenKnowledge.LASERLIKENESS: "laserlikeness",
     ForbiddenKnowledge.ANTICAPITALISM: "anticapitalism",

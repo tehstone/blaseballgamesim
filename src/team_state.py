@@ -21,6 +21,7 @@ class TeamState(object):
         strikes_for_out: int,
         outs_for_inning: int,
         lineup: Dict[int, str],
+        rotation: Dict[int, str],
         starting_pitcher: str,
         stlats: Dict[str, Dict[FK, float]],
         game_stats: Dict[str, Dict[Stats, float]],
@@ -38,6 +39,7 @@ class TeamState(object):
         self.strikes_for_out: int = strikes_for_out
         self.outs_for_inning: int = outs_for_inning
         self.lineup: Dict[int, str] = lineup
+        self.rotation: Dict[int, str] = rotation
         self.starting_pitcher: str = starting_pitcher
         self.stlats: Dict[str, Dict[FK, float]] = stlats
         self.game_stats: Dict[str, Dict[Stats, float]] = game_stats
@@ -83,10 +85,12 @@ class TeamState(object):
         self.stlats[DEF_ID][FK.PRESSURIZATION] = def_defense_pressurization
         self.stlats[DEF_ID][FK.CINNAMON] = def_defense_cinnamon
 
-    def reset_team_state(self) -> None:
-        self.reset_game_stats()
+    def reset_team_state(self, game_stat_reset=False) -> None:
+        if game_stat_reset:
+            self.reset_game_stats()
         self.cur_batter_pos = 1
         self.cur_batter = self.lineup[self.cur_batter_pos]
+        self._calculate_defense()
 
     def reset_game_stats(self) -> None:
         new_dict: Dict[Stats, float] = {}
@@ -95,6 +99,12 @@ class TeamState(object):
         for p_key in self.lineup.keys():
             self.game_stats[self.lineup[p_key]] = new_dict
         self.game_stats[self.starting_pitcher] = new_dict
+        self.game_stats[DEF_ID] = new_dict
+
+    def update_player_names(self, new_names: Dict[str, str]):
+        for id in new_names:
+            if id not in self.player_names:
+                self.player_names[id] = new_names[id]
 
     def to_dict(self) -> Dict[str, Any]:
         """ Gets a dict representation of the state for serialization """
@@ -107,6 +117,7 @@ class TeamState(object):
             "strikes_for_out": self.strikes_for_out,
             "outs_for_inning": self.outs_for_inning,
             "lineup": self.lineup,
+            "rotation": self.rotation,
             "starting_pitcher": self.starting_pitcher,
             "stlats": TeamState.convert_dict(self.stlats),
             "game_stats": TeamState.convert_dict(self.game_stats),
@@ -145,6 +156,7 @@ class TeamState(object):
         strikes_for_out: int = team_state["strikes_for_out"]
         outs_for_inning: int = team_state["outs_for_inning"]
         lineup: Dict[int, str] = TeamState.encode_lineup(team_state["lineup"])
+        rotation: Dict[int, str] = TeamState.encode_lineup(team_state["rotation"])
         starting_pitcher: str = team_state["starting_pitcher"]
         stlats: Dict[str, Dict[FK, float]] = TeamState.encode_stlats(team_state["stlats"])
         game_stats: Dict[str, Dict[Stats, float]] = TeamState.encode_game_stats(team_state["game_stats"])
@@ -160,6 +172,7 @@ class TeamState(object):
             strikes_for_out,
             outs_for_inning,
             lineup,
+            rotation,
             starting_pitcher,
             stlats,
             game_stats,
@@ -230,7 +243,12 @@ class TeamState(object):
         self.cur_batter = self.lineup[self.cur_batter_pos]
 
     def update_stat(self, player_id: str, stat_id: Stats, value: float) -> None:
-        self.game_stats[player_id][stat_id] += value
+        if player_id not in self.game_stats:
+            self.game_stats[player_id] = {}
+        if stat_id in self.game_stats[player_id]:
+            self.game_stats[player_id][stat_id] += value
+        else:
+            self.game_stats[player_id][stat_id] = value
 
     def get_defense_feature_vector(self) -> List[float]:
         ret_val: List[float] = [
@@ -294,7 +312,10 @@ class TeamState(object):
         return self.get_batter_feature_vector(self.cur_batter)
 
     def get_player_name(self, player_id: str) -> str:
-        return self.player_names[player_id]
+        if player_id in self.player_names:
+            return self.player_names[player_id]
+        else:
+            return "Unknown Player (" + player_id + ")"
 
     def get_cur_batter_name(self) -> str:
         return self.get_player_name(self.cur_batter)

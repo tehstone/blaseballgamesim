@@ -18,6 +18,7 @@ class TestTeamState(unittest.TestCase):
             strikes_for_out=3,
             outs_for_inning=3,
             lineup={1: "p1", 2: "p2", 3: "p3"},
+            rotation={1: "p4"},
             starting_pitcher="p4",
             stlats={
                 "p1": {
