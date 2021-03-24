@@ -304,7 +304,7 @@ class TeamState(object):
             self.cur_batter_pos += 1
         self.cur_batter = self.lineup[self.cur_batter_pos]
 
-    def update_stat(self, player_id: str, stat_id: Stats, value: float) -> None:
+    def update_stat(self, player_id: str, stat_id: Stats, value: float, day: int) -> None:
         if player_id not in self.game_stats:
             self.game_stats[player_id] = {}
         if stat_id in self.game_stats[player_id]:

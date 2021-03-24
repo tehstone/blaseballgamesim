@@ -107,7 +107,6 @@ class GameState(object):
 
     def log_event(self, event: str) -> None:
         self.game_log.append(event)
-        #print(event)
 
     def log_score(self) -> None:
         self.log_event(
@@ -245,21 +244,21 @@ class GameState(object):
                 self.pitch_sim()
             self.attempt_to_advance_inning()
         if self.away_score == 0:
-            self.home_team.update_stat(self.home_team.starting_pitcher, Stats.PITCHER_SHUTOUTS, 1.0)
+            self.home_team.update_stat(self.home_team.starting_pitcher, Stats.PITCHER_SHUTOUTS, 1.0, self.day)
         if self.home_score == 0:
-            self.away_team.update_stat(self.away_team.starting_pitcher, Stats.PITCHER_SHUTOUTS, 1.0)
-        self.home_team.update_stat(self.home_team.starting_pitcher, Stats.PITCHER_SHUTOUTS, 0.0)
-        self.away_team.update_stat(self.away_team.starting_pitcher, Stats.PITCHER_SHUTOUTS, 0.0)
-        self.home_team.update_stat(self.home_team.starting_pitcher, Stats.PITCHER_GAMES_APPEARED, 1.0)
-        self.away_team.update_stat(self.away_team.starting_pitcher, Stats.PITCHER_GAMES_APPEARED, 1.0)
+            self.away_team.update_stat(self.away_team.starting_pitcher, Stats.PITCHER_SHUTOUTS, 1.0, self.day)
+        self.home_team.update_stat(self.home_team.starting_pitcher, Stats.PITCHER_SHUTOUTS, 0.0, self.day)
+        self.away_team.update_stat(self.away_team.starting_pitcher, Stats.PITCHER_SHUTOUTS, 0.0, self.day)
+        self.home_team.update_stat(self.home_team.starting_pitcher, Stats.PITCHER_GAMES_APPEARED, 1.0, self.day)
+        self.away_team.update_stat(self.away_team.starting_pitcher, Stats.PITCHER_GAMES_APPEARED, 1.0, self.day)
         home_win = False
         if self.home_score > self.away_score:
             home_win = True
-            self.home_team.update_stat(TEAM_ID, Stats.TEAM_WINS, 1.0)
-            self.away_team.update_stat(TEAM_ID, Stats.TEAM_LOSSES, 1.0)
+            self.home_team.update_stat(TEAM_ID, Stats.TEAM_WINS, 1.0, self.day)
+            self.away_team.update_stat(TEAM_ID, Stats.TEAM_LOSSES, 1.0, self.day)
         else:
-            self.home_team.update_stat(TEAM_ID, Stats.TEAM_LOSSES, 1.0)
-            self.away_team.update_stat(TEAM_ID, Stats.TEAM_WINS, 1.0)
+            self.home_team.update_stat(TEAM_ID, Stats.TEAM_LOSSES, 1.0, self.day)
+            self.away_team.update_stat(TEAM_ID, Stats.TEAM_WINS, 1.0, self.day)
         return home_win
 
     # PITCH MECHANICS
@@ -268,8 +267,10 @@ class GameState(object):
         if self.resolve_team_pre_pitch_event():
             # A pre-pitch event occurred, skip the pitch and let the game state try to advance
             return
-        self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher, Stats.PITCHER_PITCHES_THROWN, 1.0)
-        self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_PITCHES_FACED, 1.0)
+        self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher,
+                                           Stats.PITCHER_PITCHES_THROWN, 1.0, self.day)
+        self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
+                                          Stats.BATTER_PITCHES_FACED, 1.0, self.day)
         pitch_fv = self.gen_pitch_fv(
             self.cur_batting_team.get_cur_batter_feature_vector(),
             self.cur_pitching_team.get_pitcher_feature_vector(),
@@ -278,7 +279,8 @@ class GameState(object):
         pitch_result = self.generic_model_roll(Ml.PITCH, pitch_fv)
         # 0 = ball, 1 = strike, 2 = foul, 3 = in_play
         if pitch_result == 0:
-            self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher, Stats.PITCHER_BALLS_THROWN, 1.0)
+            self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher,
+                                               Stats.PITCHER_BALLS_THROWN, 1.0, self.day)
             self.balls += 1
             self.log_event(f'Ball {self.balls}.')
             if self.balls == self.balls_for_walk:
@@ -294,7 +296,8 @@ class GameState(object):
                 self.cur_pitching_team.update_stat(
                     self.cur_pitching_team.starting_pitcher,
                     Stats.PITCHER_STRIKES_THROWN,
-                    1.0
+                    1.0,
+                    self.day
                 )
                 self.strikes += 1
                 self.log_event(f'Strike {self.strikes}.')
@@ -302,7 +305,8 @@ class GameState(object):
                     self.resolve_strikeout()
                 return
         if pitch_result == 2:
-            self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_FOUL_BALLS, 1.0)
+            self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
+                                              Stats.BATTER_FOUL_BALLS, 1.0, self.day)
             if self.strikes < self.strikes_for_out - 1:
                 self.strikes += 1
                 self.log_event(f'Foul ball.  Strike {self.strikes}.')
@@ -312,13 +316,16 @@ class GameState(object):
         if pitch_result == 3:
             # Its a hit
             # Official plate appearance
-            self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_PLATE_APPEARANCES, 1.0)
+            self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
+                                              Stats.BATTER_PLATE_APPEARANCES, 1.0, self.day)
             self.cur_pitching_team.update_stat(
                 self.cur_pitching_team.starting_pitcher,
                 Stats.PITCHER_BATTERS_FACED,
-                1.0
+                1.0,
+                self.day
             )
-            self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_AT_BATS, 1.0)
+            self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
+                                              Stats.BATTER_AT_BATS, 1.0, self.day)
             self.hit_sim(pitch_fv)
             self.reset_pitch_count()
             self.cur_batting_team.next_batter()
@@ -328,11 +335,13 @@ class GameState(object):
         if pitch_result == 4:
             # Its an out
             # Official plate appearance
-            self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_PLATE_APPEARANCES, 1.0)
+            self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
+                                              Stats.BATTER_PLATE_APPEARANCES, 1.0, self.day)
             self.cur_pitching_team.update_stat(
                 self.cur_pitching_team.starting_pitcher,
                 Stats.PITCHER_BATTERS_FACED,
-                1.0
+                1.0,
+                self.day
             )
             self.in_play_sim(pitch_fv)
             self.reset_pitch_count()
@@ -344,8 +353,8 @@ class GameState(object):
     def resolve_walk(self, num_bases_to_advance: int) -> None:
         self.log_event(f'Batter {self.cur_batting_team.get_player_name(self.cur_batting_team.cur_batter)} walks to base {num_bases_to_advance}.')
         self.advance_all_runners(num_bases_to_advance)
-        self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher, Stats.PITCHER_WALKS, 1.0)
-        self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_WALKS, 1.0)
+        self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher, Stats.PITCHER_WALKS, 1.0, self.day)
+        self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_WALKS, 1.0, self.day)
         self.cur_base_runners[num_bases_to_advance] = self.cur_batting_team.cur_batter
         self.reset_pitch_count()
         self.cur_batting_team.next_batter()
@@ -353,8 +362,10 @@ class GameState(object):
 
     def resolve_strikeout(self) -> None:
         self.log_event(f'Batter {self.cur_batting_team.get_player_name(self.cur_batting_team.cur_batter)} strikes out.')
-        self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher, Stats.PITCHER_STRIKEOUTS, 1.0)
-        self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_STRIKEOUTS, 1.0)
+        self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher,
+                                           Stats.PITCHER_STRIKEOUTS, 1.0, self.day)
+        self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
+                                          Stats.BATTER_STRIKEOUTS, 1.0, self.day)
         self.outs += 1
         self.reset_pitch_count()
         self.cur_batting_team.next_batter()
@@ -369,64 +380,82 @@ class GameState(object):
             self.log_event(
                 f'Batter {self.cur_batting_team.get_player_name(self.cur_batting_team.cur_batter)} flies out.')
             self.outs += 1
-            self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher, Stats.PITCHER_FLYOUTS, 1.0)
-            self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_FLYOUTS, 1.0)
-            self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_AT_BATS, 1.0)
+            self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher,
+                                               Stats.PITCHER_FLYOUTS, 1.0, self.day)
+            self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
+                                              Stats.BATTER_FLYOUTS, 1.0, self.day)
+            self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
+                                              Stats.BATTER_AT_BATS, 1.0, self.day)
             if self.outs < self.outs_for_inning:
                 self.attempt_to_advance_runners_on_flyout()
         if contact_type == 1:
             self.log_event(
                 f'Batter {self.cur_batting_team.get_player_name(self.cur_batting_team.cur_batter)} grounds out.')
             self.outs += 1
-            self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher, Stats.PITCHER_GROUNDOUTS, 1.0)
-            self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_GROUNDOUTS, 1.0)
-            self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_AT_BATS, 1.0)
+            self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher,
+                                               Stats.PITCHER_GROUNDOUTS, 1.0, self.day)
+            self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
+                                              Stats.BATTER_GROUNDOUTS, 1.0, self.day)
+            self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
+                                              Stats.BATTER_AT_BATS, 1.0, self.day)
             if self.outs < self.outs_for_inning:
                 self.resolve_fc_dp()
         self.reset_pitch_count()
 
     def hit_sim(self, pitch_feature_vector) -> None:
         # lets figure out what kind of hit
-        self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_HITS, 1.0)
-        self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher, Stats.PITCHER_HITS_ALLOWED, 1.0)
+        self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
+                                          Stats.BATTER_HITS, 1.0, self.day)
+        self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher,
+                                           Stats.PITCHER_HITS_ALLOWED, 1.0, self.day)
         hit_type = self.generic_model_roll(Ml.HIT_TYPE, pitch_feature_vector)
         # 0 = Single, 1 = Double, 2 = Triple, 3 = HR
         if hit_type == 0:
             self.log_event(
                 f'Batter {self.cur_batting_team.get_player_name(self.cur_batting_team.cur_batter)} hits a single.')
             self.advance_all_runners(1)
-            self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_SINGLES, 1.0)
+            self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
+                                              Stats.BATTER_SINGLES, 1.0, self.day)
             self.attempt_to_advance_runners_on_hit()
             self.cur_base_runners[1] = self.cur_batting_team.cur_batter
         if hit_type == 1:
             self.log_event(
                 f'Batter {self.cur_batting_team.get_player_name(self.cur_batting_team.cur_batter)} hits a double.')
             self.advance_all_runners(2)
-            self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_DOUBLES, 1.0)
-            self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher, Stats.PITCHER_XBH_ALLOWED, 1.0)
+            self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
+                                              Stats.BATTER_DOUBLES, 1.0, self.day)
+            self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher,
+                                               Stats.PITCHER_XBH_ALLOWED, 1.0, self.day)
             self.attempt_to_advance_runners_on_hit()
             self.cur_base_runners[2] = self.cur_batting_team.cur_batter
         if hit_type == 2:
             self.log_event(
                 f'Batter {self.cur_batting_team.get_player_name(self.cur_batting_team.cur_batter)} hits a triple.')
             self.advance_all_runners(3)
-            self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_TRIPLES, 1.0)
-            self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher, Stats.PITCHER_XBH_ALLOWED, 1.0)
+            self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
+                                              Stats.BATTER_TRIPLES, 1.0, self.day)
+            self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher,
+                                               Stats.PITCHER_XBH_ALLOWED, 1.0, self.day)
             self.attempt_to_advance_runners_on_hit()
             self.cur_base_runners[3] = self.cur_batting_team.cur_batter
         if hit_type == 3:
             self.log_event(
                 f'Batter {self.cur_batting_team.get_player_name(self.cur_batting_team.cur_batter)} hits a home run.')
             self.advance_all_runners(self.num_bases)
-            self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_HRS, 1.0)
+            self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
+                                              Stats.BATTER_HRS, 1.0, self.day)
             # batter scores
-            self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_RBIS, 1.0)
-            self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_RUNS_SCORED, 1.0)
-            self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher, Stats.PITCHER_HRS_ALLOWED, 1.0)
+            self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
+                                              Stats.BATTER_RBIS, 1.0, self.day)
+            self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
+                                              Stats.BATTER_RUNS_SCORED, 1.0, self.day)
+            self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher,
+                                               Stats.PITCHER_HRS_ALLOWED, 1.0, self.day)
             self.cur_pitching_team.update_stat(
                 self.cur_pitching_team.starting_pitcher,
                 Stats.PITCHER_EARNED_RUNS,
-                1.0
+                1.0,
+                self.day
             )
             self.increase_batting_team_runs(Decimal(1.0))
             self.log_event(
@@ -597,29 +626,32 @@ class GameState(object):
                     self.cur_pitching_team.get_pitcher_feature_vector(),
                 )
                 if self.generic_model_roll(Ml.SB_ATTEMPT, base_runner_fv) == 1:
-                    self.cur_batting_team.update_stat(base_runner_id, Stats.STOLEN_BASE_ATTEMPTS, 1.0)
-                    self.cur_pitching_team.update_stat(DEF_ID, Stats.DEFENSE_STOLEN_BASE_ATTEMPTS, 1.0)
+                    self.cur_batting_team.update_stat(base_runner_id, Stats.STOLEN_BASE_ATTEMPTS, 1.0, self.day)
+                    self.cur_pitching_team.update_stat(DEF_ID, Stats.DEFENSE_STOLEN_BASE_ATTEMPTS, 1.0, self.day)
                     self.cur_pitching_team.update_stat(
                         self.cur_pitching_team.starting_pitcher,
                         Stats.DEFENSE_STOLEN_BASE_ATTEMPTS,
-                        1.0
+                        1.0,
+                        self.day
                     )
                     if self.generic_model_roll(Ml.SB_SUCCESS, base_runner_fv) == 1:
-                        self.cur_batting_team.update_stat(base_runner_id, Stats.STOLEN_BASES, 1.0)
-                        self.cur_pitching_team.update_stat(DEF_ID, Stats.DEFENSE_STOLEN_BASES, 1.0)
+                        self.cur_batting_team.update_stat(base_runner_id, Stats.STOLEN_BASES, 1.0, self.day)
+                        self.cur_pitching_team.update_stat(DEF_ID, Stats.DEFENSE_STOLEN_BASES, 1.0, self.day)
                         self.cur_pitching_team.update_stat(
                             self.cur_pitching_team.starting_pitcher,
                             Stats.DEFENSE_STOLEN_BASES,
-                            1.0
+                            1.0,
+                            self.day
                         )
                         self.update_base_runner(base, Stats.STOLEN_BASES)
                     else:
-                        self.cur_batting_team.update_stat(base_runner_id, Stats.CAUGHT_STEALINGS, 1.0)
-                        self.cur_pitching_team.update_stat(DEF_ID, Stats.DEFENSE_CAUGHT_STEALINGS, 1.0)
+                        self.cur_batting_team.update_stat(base_runner_id, Stats.CAUGHT_STEALINGS, 1.0, self.day)
+                        self.cur_pitching_team.update_stat(DEF_ID, Stats.DEFENSE_CAUGHT_STEALINGS, 1.0, self.day)
                         self.cur_pitching_team.update_stat(
                             self.cur_pitching_team.starting_pitcher,
                             Stats.DEFENSE_CAUGHT_STEALINGS,
-                            1.0
+                            1.0,
+                            self.day
                         )
                         self.update_base_runner(base, Stats.CAUGHT_STEALINGS)
                     # runner attempted to steal
@@ -646,7 +678,8 @@ class GameState(object):
                 self.cur_pitching_team.update_stat(
                     self.cur_pitching_team.starting_pitcher,
                     Stats.PITCHER_EARNED_RUNS,
-                    1.0
+                    1.0,
+                    self.day
                 )
                 self.increase_batting_team_runs(Decimal(1.0))
                 del self.cur_base_runners[base]
@@ -665,12 +698,13 @@ class GameState(object):
                 # run scores
                 self.log_event(
                     f'Runner {self.cur_batting_team.get_player_name(self.cur_base_runners[base])} scores.')
-                self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_RBIS, 1.0)
-                self.cur_batting_team.update_stat(self.cur_base_runners[base], Stats.BATTER_RUNS_SCORED, 1.0)
+                self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_RBIS, 1.0, self.day)
+                self.cur_batting_team.update_stat(self.cur_base_runners[base], Stats.BATTER_RUNS_SCORED, 1.0, self.day)
                 self.cur_pitching_team.update_stat(
                     self.cur_pitching_team.starting_pitcher,
                     Stats.PITCHER_EARNED_RUNS,
-                    1.0
+                    1.0,
+                    self.day
                 )
                 self.increase_batting_team_runs(Decimal(1.0))
                 self.log_score()
@@ -705,21 +739,21 @@ class GameState(object):
             self.away_score = self.away_score + amt
             if self.weather == Weather.SUN2 and self.away_score >= 10.0:
                 self.log_event(f'Sun2 sets a win upon the {self.cur_batting_team.team_enum.name}.')
-                self.cur_batting_team.update_stat(TEAM_ID, Stats.TEAM_SUN2_WINS, 1.0)
+                self.cur_batting_team.update_stat(TEAM_ID, Stats.TEAM_SUN2_WINS, 1.0, self.day)
                 self.away_score = self.away_score - Decimal(10.0)
             if self.weather == Weather.BLACKHOLE and self.away_score >= 10.0:
                 self.log_event(f'Black hole steals a win from {self.cur_pitching_team.team_enum.name}.')
-                self.cur_pitching_team.update_stat(TEAM_ID, Stats.TEAM_BLACK_HOLE_CONSUMPTION, 1.0)
+                self.cur_pitching_team.update_stat(TEAM_ID, Stats.TEAM_BLACK_HOLE_CONSUMPTION, 1.0, self.day)
                 self.away_score = self.away_score - Decimal(10.0)
         else:
             self.home_score = self.home_score + amt
             if self.weather == Weather.SUN2 and self.home_score >= 10.0:
                 self.log_event(f'Sun2 sets a win upon the {self.cur_batting_team.team_enum.name}.')
-                self.cur_batting_team.update_stat(TEAM_ID, Stats.TEAM_SUN2_WINS, 1.0)
+                self.cur_batting_team.update_stat(TEAM_ID, Stats.TEAM_SUN2_WINS, 1.0, self.day)
                 self.home_score = self.home_score - Decimal(10.0)
             if self.weather == Weather.BLACKHOLE and self.home_score >= 10.0:
                 self.log_event(f'Black hole steals a win from {self.cur_pitching_team.team_enum.name}.')
-                self.cur_pitching_team.update_stat(TEAM_ID, Stats.TEAM_BLACK_HOLE_CONSUMPTION, 1.0)
+                self.cur_pitching_team.update_stat(TEAM_ID, Stats.TEAM_BLACK_HOLE_CONSUMPTION, 1.0, self.day)
                 self.home_score = self.home_score - Decimal(10.0)
 
     def attempt_to_advance_inning(self) -> None:
@@ -729,7 +763,7 @@ class GameState(object):
                 # Team has reached their max number of outs
                 self.cur_base_runners = {}
                 self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher,
-                                                   Stats.PITCHER_INNINGS_PITCHED, 1.0)
+                                                   Stats.PITCHER_INNINGS_PITCHED, 1.0, self.day)
                 if self.half == InningHalf.TOP:
                     self.half = InningHalf.BOTTOM
                 else:
@@ -743,7 +777,7 @@ class GameState(object):
             # Game can now be over when advancing, must check state
             if self.outs == self.outs_for_inning:
                 self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher,
-                                                   Stats.PITCHER_INNINGS_PITCHED, 1.0)
+                                                   Stats.PITCHER_INNINGS_PITCHED, 1.0, self.day)
                 if self.half == InningHalf.TOP:
                     if self.home_score > self.away_score:
                         self.log_event(f'Side retired. Game over.')
