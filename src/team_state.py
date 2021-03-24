@@ -5,9 +5,10 @@ import statistics
 
 from src.common import BlaseballStatistics as Stats
 from src.common import ForbiddenKnowledge as FK
-from src.common import BloodType, Team, team_id_map
+from src.common import BloodType, GameEventTeamBuff, Team, team_game_event_map, team_id_map, Weather
 
 DEF_ID = "DEFENSE"
+TEAM_ID = "TEAM"
 
 
 class TeamState(object):
@@ -16,6 +17,8 @@ class TeamState(object):
         team_id: str,
         season: int,
         day: int,
+        weather: Weather,
+        is_home: bool,
         num_bases: int,
         balls_for_walk: int,
         strikes_for_out: int,
@@ -34,6 +37,9 @@ class TeamState(object):
         self.team_enum: Team = team_id_map[team_id]
         self.season: int = season
         self.day: int = day
+        self.weather: Weather = weather
+        self.is_home: bool = is_home
+        self.runners_aboard: bool = False
         self.num_bases: int = num_bases
         self.balls_for_walk: int = balls_for_walk
         self.strikes_for_out: int = strikes_for_out
@@ -47,6 +53,11 @@ class TeamState(object):
         self.player_names: Dict[str, str] = player_names
         self.cur_batter_pos: int = cur_batter_pos
         self.cur_batter: str = lineup[cur_batter_pos]
+        self.batting_addition = 0.0
+        self.pitching_addition = 0.0
+        self.defense_addition = 0.0
+        self.base_running_addition = 0.0
+        self.calc_additives()
         self._calculate_defense()
 
     def _calculate_defense(self):
@@ -60,11 +71,11 @@ class TeamState(object):
         defense_cinnamon: List[float] = []
         for pos in self.lineup.keys():
             cur_id: str = self.lineup[pos]
-            anticapitalism.append(self.stlats[cur_id][FK.ANTICAPITALISM])
-            chasiness.append(self.stlats[cur_id][FK.CHASINESS])
-            omniscience.append(self.stlats[cur_id][FK.OMNISCIENCE])
-            tenaciousness.append(self.stlats[cur_id][FK.TENACIOUSNESS])
-            watchfulness.append(self.stlats[cur_id][FK.WATCHFULNESS])
+            anticapitalism.append(self.stlats[cur_id][FK.ANTICAPITALISM] + self.defense_addition)
+            chasiness.append(self.stlats[cur_id][FK.CHASINESS] + self.defense_addition)
+            omniscience.append(self.stlats[cur_id][FK.OMNISCIENCE] + self.defense_addition)
+            tenaciousness.append(self.stlats[cur_id][FK.TENACIOUSNESS] + self.defense_addition)
+            watchfulness.append(self.stlats[cur_id][FK.WATCHFULNESS] + self.defense_addition)
             defense_pressurization.append(self.stlats[cur_id][FK.PRESSURIZATION])
             defense_cinnamon.append(self.stlats[cur_id][FK.CINNAMON])
 
@@ -100,6 +111,7 @@ class TeamState(object):
             self.game_stats[self.lineup[p_key]] = new_dict
         self.game_stats[self.starting_pitcher] = new_dict
         self.game_stats[DEF_ID] = new_dict
+        self.game_stats[TEAM_ID] = new_dict
 
     def update_player_names(self, new_names: Dict[str, str]):
         for id in new_names:
@@ -112,6 +124,8 @@ class TeamState(object):
             "team_id": self.team_id,
             "season": self.season,
             "day": self.day,
+            "weather": self.weather.value,
+            "is_home": self.is_home,
             "num_bases": self.num_bases,
             "balls_for_walk": self.balls_for_walk,
             "strikes_for_out": self.strikes_for_out,
@@ -152,6 +166,8 @@ class TeamState(object):
         season: int = team_state["season"]
         day: int = team_state["day"]
         num_bases: int = team_state["num_bases"]
+        weather: Weather = Weather(team_state["weather"])
+        is_home: bool = team_state["is_home"]
         balls_for_walk: int = team_state["balls_for_walk"]
         strikes_for_out: int = team_state["strikes_for_out"]
         outs_for_inning: int = team_state["outs_for_inning"]
@@ -167,6 +183,8 @@ class TeamState(object):
             team_id,
             season,
             day,
+            weather,
+            is_home,
             num_bases,
             balls_for_walk,
             strikes_for_out,
@@ -265,32 +283,35 @@ class TeamState(object):
     def get_pitcher_feature_vector(self) -> List[float]:
         player_id = self.starting_pitcher
         ret_val: List[float] = [
-            self.stlats[player_id][FK.COLDNESS],
-            self.stlats[player_id][FK.OVERPOWERMENT],
-            self.stlats[player_id][FK.RUTHLESSNESS],
-            self.stlats[player_id][FK.SHAKESPEARIANISM],
-            self.stlats[player_id][FK.SUPPRESSION],
-            self.stlats[player_id][FK.UNTHWACKABILITY],
+            self.stlats[player_id][FK.COLDNESS] + self.pitching_addition,
+            self.stlats[player_id][FK.OVERPOWERMENT] + self.pitching_addition,
+            self.stlats[player_id][FK.RUTHLESSNESS] + self.pitching_addition,
+            self.stlats[player_id][FK.SHAKESPEARIANISM] + self.pitching_addition,
+            self.stlats[player_id][FK.SUPPRESSION] + self.pitching_addition,
+            self.stlats[player_id][FK.UNTHWACKABILITY] + self.pitching_addition,
             self.stlats[player_id][FK.CINNAMON],
             self.stlats[player_id][FK.PRESSURIZATION],
         ]
         return ret_val
 
     def get_batter_feature_vector(self, player_id: str) -> List[float]:
+        new_path = self.stlats[player_id][FK.PATHETICISM] - self.batting_addition
+        if new_path < 0.001:
+            new_path = 0.001
         ret_val: List[float] = [
-            self.stlats[player_id][FK.BUOYANCY],
-            self.stlats[player_id][FK.DIVINITY],
-            self.stlats[player_id][FK.MARTYRDOM],
-            self.stlats[player_id][FK.MOXIE],
-            self.stlats[player_id][FK.MUSCLITUDE],
-            self.stlats[player_id][FK.PATHETICISM],
-            self.stlats[player_id][FK.THWACKABILITY],
+            self.stlats[player_id][FK.BUOYANCY] + self.batting_addition,
+            self.stlats[player_id][FK.DIVINITY] + self.batting_addition,
+            self.stlats[player_id][FK.MARTYRDOM] + self.batting_addition,
+            self.stlats[player_id][FK.MOXIE] + self.batting_addition,
+            self.stlats[player_id][FK.MUSCLITUDE] + self.batting_addition,
+            new_path,
+            self.stlats[player_id][FK.THWACKABILITY] + self.batting_addition,
             self.stlats[player_id][FK.TRAGICNESS],
-            self.stlats[player_id][FK.BASE_THIRST],
-            self.stlats[player_id][FK.CONTINUATION],
-            self.stlats[player_id][FK.GROUND_FRICTION],
-            self.stlats[player_id][FK.INDULGENCE],
-            self.stlats[player_id][FK.LASERLIKENESS],
+            self.stlats[player_id][FK.BASE_THIRST] + self.base_running_addition,
+            self.stlats[player_id][FK.CONTINUATION] + self.base_running_addition,
+            self.stlats[player_id][FK.GROUND_FRICTION] + self.base_running_addition,
+            self.stlats[player_id][FK.INDULGENCE] + self.base_running_addition,
+            self.stlats[player_id][FK.LASERLIKENESS] + self.base_running_addition,
             self.stlats[player_id][FK.CINNAMON],
             self.stlats[player_id][FK.PRESSURIZATION],
         ]
@@ -322,3 +343,30 @@ class TeamState(object):
 
     def get_cur_pitcher_name(self) -> str:
         return self.get_player_name(self.starting_pitcher)
+
+    def calc_additives(self):
+        if self.team_enum in team_game_event_map:
+            buff, start_season, end_season, req_weather = team_game_event_map[self.team_enum]
+            if buff == GameEventTeamBuff.CROWS and self.season >= start_season and req_weather == self.weather:
+                self.batting_addition = 0.5
+                self.pitching_addition = 0.5
+            if buff == GameEventTeamBuff.PRESSURE and \
+                    self.season >= start_season and \
+                    req_weather == self.weather and \
+                    self.runners_aboard:
+                self.batting_addition = 0.25
+                self.pitching_addition = 0.25
+                self.defense_addition = 0.25
+                self.base_running_addition = 0.25
+            if buff == GameEventTeamBuff.TRAVELLING and self.season >= start_season and not self.is_home:
+                self.batting_addition = 0.05
+                self.pitching_addition = 0.05
+                self.defense_addition = 0.05
+                self.base_running_addition = 0.05
+            if buff == GameEventTeamBuff.SINKING_SHIP and self.season >= start_season:
+                total_players = len(self.rotation) + len(self.lineup)
+                mod = (14 - total_players) * 0.01
+                self.batting_addition = mod
+                self.pitching_addition = mod
+                self.defense_addition = mod
+                self.base_running_addition = mod

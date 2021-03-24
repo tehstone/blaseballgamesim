@@ -12,7 +12,7 @@ from src.team_state import TeamState
 from src.common import BlaseballStatistics as Stats
 from src.common import ForbiddenKnowledge as FK
 from src.common import MachineLearnedModel as Ml
-from src.common import BloodType, Team
+from src.common import BloodType, Team, Weather
 
 DEFAULT_FKS = {
     FK.BASE_THIRST: 0.0,
@@ -50,7 +50,7 @@ IS_HIT_PRIORS = [0.33, 0.33, 0.34]
 HIT_PRIORS = [0.25, 0.25, 0.25, 0.25]
 ADVANCE_HIT_PRIORS = [0.5, 0.5]
 ADVANCE_OUT_PRIORS = [0.5, 0.5]
-
+OUT_PRIORS = [0.5, 0.5]
 
 def new_generic_model_roll(self, model: Ml, feature_vector: List[float]) -> int:
     probs: List[float] = []
@@ -68,6 +68,8 @@ def new_generic_model_roll(self, model: Ml, feature_vector: List[float]) -> int:
         probs = ADVANCE_HIT_PRIORS
     if model == Ml.RUNNER_ADV_OUT:
         probs = ADVANCE_OUT_PRIORS
+    if model == Ml.OUT_TYPE:
+        probs = OUT_PRIORS
 
     # generate random float between 0-1
     roll = self._random_roll()
@@ -86,6 +88,8 @@ class TestGameState(unittest.TestCase):
             team_id="747b8e4a-7e50-4638-a973-ea7950a3e739",
             season=11,
             day=1,
+            weather=Weather.SUN2,
+            is_home=True,
             num_bases=4,
             balls_for_walk=4,
             strikes_for_out=3,
@@ -116,6 +120,7 @@ class TestGameState(unittest.TestCase):
                 "p3": "HomePlayer 3",
                 "p4": "HomePlayer 4",
             },
+            rotation={1: "p4"},
             cur_batter_pos=1,
         )
 
@@ -123,6 +128,8 @@ class TestGameState(unittest.TestCase):
             team_id="f02aeae2-5e6a-4098-9842-02d2273f25c7",
             season=11,
             day=1,
+            weather=Weather.SUN2,
+            is_home=False,
             num_bases=4,
             balls_for_walk=4,
             strikes_for_out=3,
@@ -153,6 +160,7 @@ class TestGameState(unittest.TestCase):
                 "p13": "AwayPlayer 13",
                 "p14": "AwayPlayer 14",
             },
+            rotation={1: "p14"},
             cur_batter_pos=1,
         )
         self.home_team_state.reset_team_state()
@@ -171,6 +179,7 @@ class TestGameState(unittest.TestCase):
             outs=0,
             strikes=0,
             balls=0,
+            weather=Weather.SUN2,
         )
         self.game_state.reset_game_state()
 
@@ -737,7 +746,6 @@ class TestHitSim(TestGameState):
         self.game_state.hit_sim([])
         self.assertEqual(len(self.game_state.cur_base_runners), 1)
         self.assertEqual(self.game_state.cur_base_runners[1], "p11")
-        self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p12")
         self.assertEqual(self.game_state.home_score, 0)
         self.assertEqual(self.game_state.away_score, 0)
 
@@ -750,7 +758,6 @@ class TestHitSim(TestGameState):
         self.game_state.hit_sim([])
         self.assertEqual(len(self.game_state.cur_base_runners), 1)
         self.assertEqual(self.game_state.cur_base_runners[2], "p11")
-        self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p12")
         self.assertEqual(self.game_state.home_score, 0)
         self.assertEqual(self.game_state.away_score, 0)
 
@@ -763,7 +770,6 @@ class TestHitSim(TestGameState):
         self.game_state.hit_sim([])
         self.assertEqual(len(self.game_state.cur_base_runners), 1)
         self.assertEqual(self.game_state.cur_base_runners[3], "p11")
-        self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p12")
         self.assertEqual(self.game_state.home_score, 0)
         self.assertEqual(self.game_state.away_score, 0)
 
@@ -775,7 +781,6 @@ class TestHitSim(TestGameState):
         self.assertEqual(self.game_state.away_score, 0)
         self.game_state.hit_sim([])
         self.assertEqual(len(self.game_state.cur_base_runners), 0)
-        self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p12")
         self.assertEqual(self.game_state.home_score, 0)
         self.assertEqual(self.game_state.away_score, 1)
 
@@ -790,7 +795,6 @@ class TestHitSim(TestGameState):
         self.game_state.hit_sim([])
         self.assertEqual(len(self.game_state.cur_base_runners), 1)
         self.assertEqual(self.game_state.cur_base_runners[1], "p11")
-        self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p12")
         self.assertEqual(self.game_state.home_score, 0)
         self.assertEqual(self.game_state.away_score, 1)
 
@@ -804,7 +808,6 @@ class TestHitSim(TestGameState):
         self.game_state.hit_sim([])
         self.assertEqual(len(self.game_state.cur_base_runners), 1)
         self.assertEqual(self.game_state.cur_base_runners[2], "p11")
-        self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p12")
         self.assertEqual(self.game_state.home_score, 0)
         self.assertEqual(self.game_state.away_score, 1)
 
@@ -818,7 +821,6 @@ class TestHitSim(TestGameState):
         self.game_state.hit_sim([])
         self.assertEqual(len(self.game_state.cur_base_runners), 1)
         self.assertEqual(self.game_state.cur_base_runners[3], "p11")
-        self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p12")
         self.assertEqual(self.game_state.home_score, 0)
         self.assertEqual(self.game_state.away_score, 1)
 
@@ -831,7 +833,6 @@ class TestHitSim(TestGameState):
         self.assertEqual(self.game_state.away_score, 0)
         self.game_state.hit_sim([])
         self.assertEqual(len(self.game_state.cur_base_runners), 0)
-        self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p12")
         self.assertEqual(self.game_state.home_score, 0)
         self.assertEqual(self.game_state.away_score, 2)
 
@@ -850,7 +851,6 @@ class TestHitSim(TestGameState):
         self.assertEqual(len(self.game_state.cur_base_runners), 2)
         self.assertEqual(self.game_state.cur_base_runners[1], "p11")
         self.assertEqual(self.game_state.cur_base_runners[2], "p13")
-        self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p12")
         self.assertEqual(self.game_state.home_score, 0)
         self.assertEqual(self.game_state.away_score, 1)
 
@@ -866,7 +866,6 @@ class TestHitSim(TestGameState):
         self.assertEqual(len(self.game_state.cur_base_runners), 2)
         self.assertEqual(self.game_state.cur_base_runners[2], "p11")
         self.assertEqual(self.game_state.cur_base_runners[3], "p13")
-        self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p12")
         self.assertEqual(self.game_state.home_score, 0)
         self.assertEqual(self.game_state.away_score, 1)
 
@@ -881,7 +880,6 @@ class TestHitSim(TestGameState):
         self.game_state.hit_sim([])
         self.assertEqual(len(self.game_state.cur_base_runners), 1)
         self.assertEqual(self.game_state.cur_base_runners[3], "p11")
-        self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p12")
         self.assertEqual(self.game_state.home_score, 0)
         self.assertEqual(self.game_state.away_score, 2)
 
@@ -895,7 +893,6 @@ class TestHitSim(TestGameState):
         self.assertEqual(self.game_state.away_score, 0)
         self.game_state.hit_sim([])
         self.assertEqual(len(self.game_state.cur_base_runners), 0)
-        self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p12")
         self.assertEqual(self.game_state.home_score, 0)
         self.assertEqual(self.game_state.away_score, 3)
 
@@ -914,7 +911,6 @@ class TestHitSim(TestGameState):
         self.assertEqual(len(self.game_state.cur_base_runners), 2)
         self.assertEqual(self.game_state.cur_base_runners[1], "p11")
         self.assertEqual(self.game_state.cur_base_runners[3], "p13")
-        self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p12")
         self.assertEqual(self.game_state.home_score, 0)
         self.assertEqual(self.game_state.away_score, 1)
 
@@ -929,7 +925,6 @@ class TestHitSim(TestGameState):
         self.game_state.hit_sim([])
         self.assertEqual(len(self.game_state.cur_base_runners), 1)
         self.assertEqual(self.game_state.cur_base_runners[2], "p11")
-        self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p12")
         self.assertEqual(self.game_state.home_score, 0)
         self.assertEqual(self.game_state.away_score, 2)
 
@@ -944,7 +939,6 @@ class TestHitSim(TestGameState):
         self.game_state.hit_sim([])
         self.assertEqual(len(self.game_state.cur_base_runners), 1)
         self.assertEqual(self.game_state.cur_base_runners[3], "p11")
-        self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p12")
         self.assertEqual(self.game_state.home_score, 0)
         self.assertEqual(self.game_state.away_score, 2)
 
@@ -958,7 +952,6 @@ class TestHitSim(TestGameState):
         self.assertEqual(self.game_state.away_score, 0)
         self.game_state.hit_sim([])
         self.assertEqual(len(self.game_state.cur_base_runners), 0)
-        self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p12")
         self.assertEqual(self.game_state.home_score, 0)
         self.assertEqual(self.game_state.away_score, 3)
 
@@ -978,7 +971,6 @@ class TestInPlaySim(TestGameState):
         self.assertEqual(self.game_state.outs, 0)
         self.game_state.in_play_sim([])
         self.assertEqual(len(self.game_state.cur_base_runners), 0)
-        self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p12")
         self.assertEqual(self.game_state.home_score, 0)
         self.assertEqual(self.game_state.away_score, 0)
         self.assertEqual(self.game_state.outs, 1)
@@ -992,25 +984,9 @@ class TestInPlaySim(TestGameState):
         self.assertEqual(self.game_state.outs, 0)
         self.game_state.in_play_sim([])
         self.assertEqual(len(self.game_state.cur_base_runners), 0)
-        self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p12")
         self.assertEqual(self.game_state.home_score, 0)
         self.assertEqual(self.game_state.away_score, 0)
         self.assertEqual(self.game_state.outs, 1)
-
-        # test in_play
-        self.game_state.reset_game_state()
-        IS_HIT_PRIORS = [0.0, 0.0, 1.0]
-        self.assertEqual(len(self.game_state.cur_base_runners), 0)
-        self.assertEqual(self.game_state.home_score, 0)
-        self.assertEqual(self.game_state.away_score, 0)
-        self.assertEqual(self.game_state.outs, 0)
-        self.game_state.in_play_sim([])
-        self.assertEqual(len(self.game_state.cur_base_runners), 1)
-        self.assertEqual(self.game_state.cur_base_runners[1], "p11")
-        self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p12")
-        self.assertEqual(self.game_state.home_score, 0)
-        self.assertEqual(self.game_state.away_score, 0)
-        self.assertEqual(self.game_state.outs, 0)
 
 
 class TestPitchSim(TestGameState):
@@ -1043,7 +1019,6 @@ class TestPitchSim(TestGameState):
         self.assertEqual(self.game_state.balls, 0)
         self.assertEqual(len(self.game_state.cur_base_runners), 1)
         self.assertEqual(self.game_state.cur_base_runners[1], "p11")
-        self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p12")
 
         # test runner advances on walk
         self.game_state.reset_game_state()
@@ -1061,7 +1036,6 @@ class TestPitchSim(TestGameState):
         self.assertEqual(self.game_state.balls, 0)
         self.assertEqual(self.game_state.cur_base_runners[1], "p11")
         self.assertEqual(self.game_state.cur_base_runners[2], "p13")
-        self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p12")
 
         # test runner scores on walk
         self.game_state.reset_game_state()
@@ -1083,7 +1057,6 @@ class TestPitchSim(TestGameState):
         self.assertEqual(self.game_state.cur_base_runners[1], "p11")
         self.assertEqual(self.game_state.cur_base_runners[2], "p13")
         self.assertEqual(self.game_state.cur_base_runners[3], "p12")
-        self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p12")
         self.assertEqual(self.game_state.away_score, 1)
 
         #turn on base instincts
@@ -1107,7 +1080,6 @@ class TestPitchSim(TestGameState):
         self.assertEqual(len(self.game_state.cur_base_runners), 1)
         self.assertEqual(self.game_state.balls, 0)
         self.assertEqual(self.game_state.cur_base_runners[3], "p11")
-        self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p12")
         self.assertEqual(self.game_state.away_score, 3)
 
     def testStrike(self):
@@ -1135,7 +1107,6 @@ class TestPitchSim(TestGameState):
         self.game_state.pitch_sim()
         self.assertEqual(self.game_state.strikes, 0)
         self.assertEqual(self.game_state.outs, 1)
-        self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p12")
 
         # test oh no wont trigger an out
         self.game_state.reset_game_state()

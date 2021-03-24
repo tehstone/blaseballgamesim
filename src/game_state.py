@@ -15,11 +15,11 @@ import random
 from src.team_state import DEF_ID, TeamState
 from src.common import BlaseballStatistics as Stats, Team
 from src.common import MachineLearnedModel as Ml
-from src.common import BloodType, PitchEventTeamBuff, team_pitch_event_map
+from src.common import BloodType, PitchEventTeamBuff, team_pitch_event_map, Weather
 
 CHARM_TRIGGER_PERCENTAGE = 0.02
-# TODO(kjc): validate priors for zap and base instincts
 ZAP_TRIGGER_PERCENTAGE = 0.02
+FLOODING_TRIGGER_PERCENTAGE = 0.01
 BASE_INSTINCT_PRIORS = {
     # num bases: map of priors for base to walk to
     4: {
@@ -54,6 +54,7 @@ class GameState(object):
         outs: int,
         strikes: int,
         balls: int,
+        weather: Weather,
     ) -> None:
         """ A container class that holds the team state for a given game """
         self.game_id = game_id
@@ -68,6 +69,7 @@ class GameState(object):
         self.outs = outs
         self.strikes = strikes
         self.balls = balls
+        self.weather = weather
         if self.half == InningHalf.TOP:
             self.cur_batting_team = self.away_team
             self.cur_pitching_team = self.home_team
@@ -168,6 +170,7 @@ class GameState(object):
             "outs": self.outs,
             "strikes": self.strikes,
             "balls": self.balls,
+            "weather": self.weather,
             "home_score": self.home_score,
             "away_score": self.away_score,
             "cur_base_runners": self.cur_base_runners,
@@ -205,6 +208,7 @@ class GameState(object):
         outs: int = game_state["outs"]
         strikes: int = game_state["strikes"]
         balls: int = game_state["balls"]
+        weather: int = game_state["weather"]
         home_score: int = game_state["home_score"]
         away_score: int = game_state["away_score"]
         cur_base_runners: Dict[int, str] = game_state["cur_base_runners"]

@@ -1,4 +1,3 @@
-import time
 from typing import Any, Dict
 import os
 import json
@@ -7,7 +6,7 @@ from joblib import load
 from src.common import get_player_stlats, blood_name_map
 from src.common import BlaseballStatistics as Stats
 from src.common import ForbiddenKnowledge as FK
-from src.common import BloodType, Team, team_id_map, team_name_map, blood_id_map, fk_key
+from src.common import BloodType, Team, team_id_map, blood_id_map, fk_key, Weather, team_name_map
 from src.team_state import TeamState, DEF_ID
 from src.game_state import GameState, InningHalf
 
@@ -39,12 +38,13 @@ def setup_season(season:int):
             away_team = game["awayTeam"]
             home_team_name = game["homeTeamName"]
             away_team_name = game["awayTeamName"]
-            print(f'Day {day}: {away_team_name} at {home_team_name}')
+            weather = Weather(game["weather"])
+            print(f'Day {day}, Weather {weather.name}: {away_team_name} at {home_team_name}')
             if day == 99:
                 break
-            update_team_states(season, day, home_team, home_pitcher)
+            update_team_states(season, day, home_team, home_pitcher, weather)
             home_team_state = team_states[team_id_map[home_team]]
-            update_team_states(season, day, away_team, away_pitcher)
+            update_team_states(season, day, away_team, away_pitcher, weather)
             away_team_state = team_states[team_id_map[away_team]]
             game = GameState(
                 game_id=game_id,
@@ -154,12 +154,13 @@ def get_stlat_dict(player: Dict[str, Any]) -> Dict[FK, float]:
     return ret_val
 
 
-def update_team_states(season: int, day: int, team:str, starting_pitcher: str):
+def update_team_states(season: int, day: int, team:str, starting_pitcher: str, weather: Weather, is_home: bool):
     if team_id_map[team] not in team_states:
         team_states[team_id_map[team]] = TeamState(
             team_id=team,
             season=season,
             day=day,
+            weather=weather,
             num_bases=4,
             balls_for_walk=4,
             strikes_for_out=3,
@@ -175,6 +176,8 @@ def update_team_states(season: int, day: int, team:str, starting_pitcher: str):
         )
     else:
         team_states[team_id_map[team]].day = day
+        team_states[team_id_map[team]].weather = weather
+        team_states[team_id_map[team]].is_home = is_home
         team_states[team_id_map[team]].lineup = day_lineup[day][team]
         team_states[team_id_map[team]].rotation = day_rotations[day][team]
         team_states[team_id_map[team]].starting_pitcher = starting_pitcher
@@ -229,7 +232,6 @@ def print_leaders():
 
 
 #print_info()
-season = 12
-load_all_state(season)
-setup_season(season)
+load_all_state(10)
+setup_season(10)
 print_leaders()
