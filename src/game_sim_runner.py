@@ -6,7 +6,7 @@ from joblib import load
 
 from src.common import BlaseballStatistics as Stats
 from src.common import ForbiddenKnowledge as FK
-from src.common import BloodType, Team, team_id_map, blood_id_map, fk_key
+from src.common import BloodType, Team, team_id_map, blood_id_map, fk_key, Weather
 from src.team_state import TeamState, DEF_ID
 from src.game_state import GameState, InningHalf
 
@@ -100,6 +100,7 @@ game = GameState(
     outs=0,
     strikes=0,
     balls=0,
+    weather=Weather.BIRDS,
 )
 model = load(os.path.join("..", "season_sim", "models", "pitch_v1.joblib"))
 fv = game.gen_pitch_fv(

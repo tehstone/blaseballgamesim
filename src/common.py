@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from enum import Enum
 
 
@@ -48,6 +48,14 @@ class BlaseballStatistics(Enum):
     DEFENSE_STOLEN_BASE_ATTEMPTS = 50
     DEFENSE_STOLEN_BASES = 51
     DEFENSE_CAUGHT_STEALINGS = 52
+
+    # Team stats
+    TEAM_WINS = 60
+    TEAM_LOSSES = 61
+    TEAM_RUNS_SCORED = 62
+    TEAM_RUNS_ALLOWED = 63
+    TEAM_SUN2_WINS = 64
+    TEAM_BLACK_HOLE_LOSSES = 65
 
     # Convenience stats  DO NOT USE
     GENERIC_ADVANCEMENT = 100
@@ -124,6 +132,12 @@ class PitchEventTeamBuff(Enum):
     ZAP = 4
     GROWTH = 5
 
+class GameEventTeamBuff(Enum):
+    CROWS = 1
+    PRESSURE = 2
+    TRAVELLING = 3
+    SINKING_SHIP = 4
+
 
 class Team(Enum):
     LOVERS = 1
@@ -147,6 +161,24 @@ class Team(Enum):
     GARAGES = 19
     JAZZ_HANDS = 20
     LIFT = 21
+    GEORGIAS = 22
+    WORMS = 23
+    MECHANICS = 24
+
+
+class Weather(Enum):
+    SUN2 = 1
+    ECLIPSE = 7
+    BLOODDRAIN = 9
+    PEANUTS = 10
+    BIRD = 11
+    FEEDBACK = 12
+    REVERB = 13
+    BLACKHOLE = 14
+    COFFEE = 15
+    COFFEE2 = 16
+    COFFEE3 = 17
+    FLOODING = 18
 
 
 team_id_map: Dict[str, Team] = {
@@ -171,6 +203,9 @@ team_id_map: Dict[str, Team] = {
     "105bc3ff-1320-4e37-8ef0-8d595cb95dd0": Team.GARAGES,
     "a37f9158-7f82-46bc-908c-c9e2dda7c33b": Team.JAZZ_HANDS,
     "c73b705c-40ad-4633-a6ed-d357ee2e2bcf": Team.LIFT,
+    "d9f89a8a-c563-493e-9d64-78e4f9a55d4a": Team.GEORGIAS,
+    "46358869-dce9-4a01-bfba-ac24fc56f57e": Team.MECHANICS,
+    "bb4a9de5-c924-4923-a0cb-9d1445f1ee5d": Team.WORMS,
 }
 
 blood_id_map: Dict[int, BloodType] = {
@@ -197,6 +232,13 @@ team_pitch_event_map: Dict[Team, Tuple[PitchEventTeamBuff, int, Optional[int], O
     Team.LOVERS: (PitchEventTeamBuff.CHARM, 10, None, BloodType.LOVE),
     Team.DALE: (PitchEventTeamBuff.ZAP, 8, None, BloodType.ELECTRIC),
     Team.SUNBEAMS: (PitchEventTeamBuff.BASE_INSTINCTS, 9, None, BloodType.BASE),
+}
+
+team_game_event_map: Dict[Team, Tuple[GameEventTeamBuff, int, Optional[int], Optional[Weather]]] = {
+    Team.PIES: (GameEventTeamBuff.CROWS, 11, None, Weather.BIRD),
+    Team.MOIST_TALKERS: (GameEventTeamBuff.PRESSURE, 13, None, Weather.FLOODING),
+    Team.SHOE_THIEVES: (GameEventTeamBuff.TRAVELLING, 11, None, None),
+    Team.FRIDAYS: (GameEventTeamBuff.SINKING_SHIP, 13, None, None),
 }
 
 fk_key: Dict[ForbiddenKnowledge, str] = {
@@ -260,4 +302,8 @@ stat_key: Dict[BlaseballStatistics, str] = {
     BlaseballStatistics.DEFENSE_STOLEN_BASE_ATTEMPTS: "Defense stolen base attempts",
     BlaseballStatistics.DEFENSE_STOLEN_BASES: "Defense stolen bases",
     BlaseballStatistics.DEFENSE_CAUGHT_STEALINGS: "Defense caught stealing",
+    BlaseballStatistics.TEAM_WINS: "Team wins",
+    BlaseballStatistics.TEAM_LOSSES: "Team losses",
+    BlaseballStatistics.TEAM_SUN2_WINS: "Team sun2 wins",
+    BlaseballStatistics.TEAM_BLACK_HOLE_LOSSES: "Team black hole losses",
 }

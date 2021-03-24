@@ -12,7 +12,7 @@ from src.team_state import TeamState
 from src.common import BlaseballStatistics as Stats
 from src.common import ForbiddenKnowledge as FK
 from src.common import MachineLearnedModel as Ml
-from src.common import BloodType, Team
+from src.common import BloodType, Team, Weather
 
 DEFAULT_FKS = {
     FK.BASE_THIRST: 0.0,
@@ -88,6 +88,8 @@ class TestGameState(unittest.TestCase):
             team_id="747b8e4a-7e50-4638-a973-ea7950a3e739",
             season=11,
             day=1,
+            weather=Weather.SUN2,
+            is_home=True,
             num_bases=4,
             balls_for_walk=4,
             strikes_for_out=3,
@@ -126,6 +128,8 @@ class TestGameState(unittest.TestCase):
             team_id="f02aeae2-5e6a-4098-9842-02d2273f25c7",
             season=11,
             day=1,
+            weather=Weather.SUN2,
+            is_home=False,
             num_bases=4,
             balls_for_walk=4,
             strikes_for_out=3,
@@ -175,6 +179,7 @@ class TestGameState(unittest.TestCase):
             outs=0,
             strikes=0,
             balls=0,
+            weather=Weather.SUN2,
         )
         self.game_state.reset_game_state()
 
