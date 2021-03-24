@@ -1,3 +1,4 @@
+from decimal import Decimal
 from os import path
 from typing import Any, Dict
 import os
@@ -52,8 +53,8 @@ def setup_season(season:int):
                 day=day,
                 home_team=home_team_state,
                 away_team=away_team_state,
-                home_score=0,
-                away_score=0,
+                home_score=Decimal("0"),
+                away_score=Decimal("0"),
                 inning=1,
                 half=InningHalf.TOP,
                 outs=0,

@@ -3,6 +3,7 @@ def warn(*args, **kwargs):
 import warnings
 warnings.warn = warn
 
+from decimal import Decimal, getcontext
 from typing import Any, Dict, List, Optional
 from enum import Enum
 from joblib import load
@@ -12,7 +13,7 @@ import logging
 import os
 import random
 
-from src.team_state import DEF_ID, TeamState
+from src.team_state import DEF_ID, TEAM_ID, TeamState
 from src.common import BlaseballStatistics as Stats, Team
 from src.common import MachineLearnedModel as Ml
 from src.common import BloodType, PitchEventTeamBuff, team_pitch_event_map, Weather
@@ -33,6 +34,7 @@ BASE_INSTINCT_PRIORS = {
     }
 }
 
+#getcontext().prec = 2
 
 class InningHalf(Enum):
     TOP = 1
@@ -47,8 +49,8 @@ class GameState(object):
         day: int,
         home_team: TeamState,
         away_team: TeamState,
-        home_score: int,
-        away_score: int,
+        home_score: Decimal,
+        away_score: Decimal,
         inning: int,
         half: InningHalf,
         outs: int,
@@ -121,8 +123,8 @@ class GameState(object):
         self.refresh_game_status()
         self.home_team.reset_team_state(game_stats_reset)
         self.away_team.reset_team_state(game_stats_reset)
-        self.home_score = 0
-        self.away_score = 0
+        self.home_score = Decimal(0.0)
+        self.away_score = Decimal(0.0)
         self.game_log = ["Play ball."]
         self.cur_base_runners = {}
         self.is_game_over = False
@@ -208,9 +210,9 @@ class GameState(object):
         outs: int = game_state["outs"]
         strikes: int = game_state["strikes"]
         balls: int = game_state["balls"]
-        weather: int = game_state["weather"]
-        home_score: int = game_state["home_score"]
-        away_score: int = game_state["away_score"]
+        weather: Weather = Weather(game_state["weather"])
+        home_score: Decimal = Decimal(game_state["home_score"])
+        away_score: Decimal = Decimal(game_state["away_score"])
         cur_base_runners: Dict[int, str] = game_state["cur_base_runners"]
         home_team: TeamState = TeamState.from_config(game_state["home_team"])
         away_team: TeamState = TeamState.from_config(game_state["away_team"])
@@ -227,6 +229,7 @@ class GameState(object):
             outs,
             strikes,
             balls,
+            weather,
         )
         ret_val.refresh_game_status()
         ret_val.cur_base_runners = cur_base_runners
@@ -249,11 +252,11 @@ class GameState(object):
         home_win = False
         if self.home_score > self.away_score:
             home_win = True
-            self.home_team.update_stat(DEF_ID, Stats.TEAM_WINS, 1.0)
-            self.away_team.update_stat(DEF_ID, Stats.TEAM_LOSSES, 1.0)
+            self.home_team.update_stat(TEAM_ID, Stats.TEAM_WINS, 1.0)
+            self.away_team.update_stat(TEAM_ID, Stats.TEAM_LOSSES, 1.0)
         else:
-            self.home_team.update_stat(DEF_ID, Stats.TEAM_LOSSES, 1.0)
-            self.away_team.update_stat(DEF_ID, Stats.TEAM_WINS, 1.0)
+            self.home_team.update_stat(TEAM_ID, Stats.TEAM_LOSSES, 1.0)
+            self.away_team.update_stat(TEAM_ID, Stats.TEAM_WINS, 1.0)
         return home_win
 
     # PITCH MECHANICS
@@ -422,7 +425,7 @@ class GameState(object):
                 Stats.PITCHER_EARNED_RUNS,
                 1.0
             )
-            self.increase_batting_team_runs(1)
+            self.increase_batting_team_runs(Decimal(1.0))
             self.log_event(
                 f'Batter {self.cur_batting_team.get_player_name(self.cur_batting_team.cur_batter)} scores.')
             self.log_score()
@@ -642,7 +645,7 @@ class GameState(object):
                     Stats.PITCHER_EARNED_RUNS,
                     1.0
                 )
-                self.increase_batting_team_runs(1)
+                self.increase_batting_team_runs(Decimal(1.0))
                 del self.cur_base_runners[base]
             else:
                 new_base = base + 1
@@ -666,7 +669,7 @@ class GameState(object):
                     Stats.PITCHER_EARNED_RUNS,
                     1.0
                 )
-                self.increase_batting_team_runs(1)
+                self.increase_batting_team_runs(Decimal(1.0))
                 self.log_score()
                 del self.cur_base_runners[base]
             else:
@@ -694,11 +697,27 @@ class GameState(object):
             if roll < total:
                 return i
 
-    def increase_batting_team_runs(self, amt: int) -> None:
+    def increase_batting_team_runs(self, amt: Decimal) -> None:
         if self.half == InningHalf.TOP:
-            self.away_score += amt
+            self.away_score = self.away_score + amt
+            if self.weather == Weather.SUN2 and self.away_score >= 10.0:
+                self.log_event(f'Sun2 sets a win upon the {self.cur_batting_team.team_enum.name}.')
+                self.cur_batting_team.update_stat(TEAM_ID, Stats.TEAM_SUN2_WINS, 1.0)
+                self.away_score = self.away_score - Decimal(10.0)
+            if self.weather == Weather.BLACKHOLE and self.away_score >= 10.0:
+                self.log_event(f'Black hole steals a win from {self.cur_pitching_team.team_enum.name}.')
+                self.cur_pitching_team.update_stat(TEAM_ID, Stats.TEAM_BLACK_HOLE_CONSUMPTION, 1.0)
+                self.away_score = self.away_score - Decimal(10.0)
         else:
-            self.home_score += amt
+            self.home_score = self.home_score + amt
+            if self.weather == Weather.SUN2 and self.home_score >= 10.0:
+                self.log_event(f'Sun2 sets a win upon the {self.cur_batting_team.team_enum.name}.')
+                self.cur_batting_team.update_stat(TEAM_ID, Stats.TEAM_SUN2_WINS, 1.0)
+                self.home_score = self.home_score - Decimal(10.0)
+            if self.weather == Weather.BLACKHOLE and self.home_score >= 10.0:
+                self.log_event(f'Black hole steals a win from {self.cur_pitching_team.team_enum.name}.')
+                self.cur_pitching_team.update_stat(TEAM_ID, Stats.TEAM_BLACK_HOLE_CONSUMPTION, 1.0)
+                self.home_score = self.home_score - Decimal(10.0)
 
     def attempt_to_advance_inning(self) -> None:
         if self.inning < 9:

@@ -61,7 +61,7 @@ class BlaseballStatistics(Enum):
     TEAM_RUNS_SCORED = 62
     TEAM_RUNS_ALLOWED = 63
     TEAM_SUN2_WINS = 64
-    TEAM_BLACK_HOLE_LOSSES = 65
+    TEAM_BLACK_HOLE_CONSUMPTION = 65
 
     # Convenience stats  DO NOT USE
     GENERIC_ADVANCEMENT = 100
@@ -137,6 +137,7 @@ class PitchEventTeamBuff(Enum):
     O_NO = 3
     ZAP = 4
     GROWTH = 5
+
 
 class GameEventTeamBuff(Enum):
     CROWS = 1
@@ -257,7 +258,7 @@ blood_id_map: Dict[int, BloodType] = {
     12: BloodType.GRASS,
 }
 
-blood_name_map: Dict[int, BloodType] = {
+blood_name_map: Dict[str, BloodType] = {
     "A": BloodType.A,
     "AAA": BloodType.AAA,
     "AA": BloodType.AA,
@@ -354,7 +355,7 @@ stat_key: Dict[BlaseballStatistics, str] = {
     BlaseballStatistics.TEAM_WINS: "Team wins",
     BlaseballStatistics.TEAM_LOSSES: "Team losses",
     BlaseballStatistics.TEAM_SUN2_WINS: "Team sun2 wins",
-    BlaseballStatistics.TEAM_BLACK_HOLE_LOSSES: "Team black hole losses",
+    BlaseballStatistics.TEAM_BLACK_HOLE_CONSUMPTION: "Team black hole wins consumed",
 }
 
 

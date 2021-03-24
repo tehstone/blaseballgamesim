@@ -1,5 +1,6 @@
 import os
 import unittest
+from decimal import Decimal, getcontext
 from typing import Any, Dict, List, Optional
 
 from src.game_state import (
@@ -8,7 +9,7 @@ from src.game_state import (
     InningHalf,
 )
 import src.game_state
-from src.team_state import TeamState
+from src.team_state import TeamState, TEAM_ID
 from src.common import BlaseballStatistics as Stats
 from src.common import ForbiddenKnowledge as FK
 from src.common import MachineLearnedModel as Ml
@@ -51,6 +52,8 @@ HIT_PRIORS = [0.25, 0.25, 0.25, 0.25]
 ADVANCE_HIT_PRIORS = [0.5, 0.5]
 ADVANCE_OUT_PRIORS = [0.5, 0.5]
 OUT_PRIORS = [0.5, 0.5]
+
+#getcontext().prec = 2
 
 def new_generic_model_roll(self, model: Ml, feature_vector: List[float]) -> int:
     probs: List[float] = []
@@ -172,8 +175,8 @@ class TestGameState(unittest.TestCase):
             day=1,
             home_team=self.home_team_state,
             away_team=self.away_team_state,
-            home_score=0,
-            away_score=0,
+            home_score=Decimal("0.0"),
+            away_score=Decimal("0.0"),
             inning=1,
             half=InningHalf.TOP,
             outs=0,
@@ -320,8 +323,8 @@ class TestInningAdvancement(TestGameState):
     def testTopNineNotEnding(self):
         self.game_state.half = InningHalf.TOP
         self.game_state.inning = 9
-        self.game_state.away_score = 4
-        self.game_state.home_score = 3
+        self.game_state.away_score = Decimal("4.0")
+        self.game_state.home_score = Decimal("3.0")
         self.game_state.refresh_game_status()
         self.game_state.strikes = 2
         self.game_state.outs = 3
@@ -348,8 +351,8 @@ class TestInningAdvancement(TestGameState):
     def testTopNineWithEnding(self):
         self.game_state.half = InningHalf.TOP
         self.game_state.inning = 9
-        self.game_state.away_score = 4
-        self.game_state.home_score = 5
+        self.game_state.away_score = Decimal("4.0")
+        self.game_state.home_score = Decimal("5.0")
         self.game_state.refresh_game_status()
         self.game_state.strikes = 2
         self.game_state.outs = 3
@@ -368,8 +371,8 @@ class TestInningAdvancement(TestGameState):
     def testBottomNineNotEnding(self):
         self.game_state.half = InningHalf.BOTTOM
         self.game_state.inning = 9
-        self.game_state.away_score = 4
-        self.game_state.home_score = 4
+        self.game_state.away_score = Decimal("4.0")
+        self.game_state.home_score = Decimal("4.0")
         self.game_state.refresh_game_status()
         self.game_state.strikes = 2
         self.game_state.outs = 3
@@ -396,8 +399,8 @@ class TestInningAdvancement(TestGameState):
     def testBottomNineWithEnding(self):
         self.game_state.half = InningHalf.BOTTOM
         self.game_state.inning = 9
-        self.game_state.away_score = 4
-        self.game_state.home_score = 5
+        self.game_state.away_score = Decimal("4.0")
+        self.game_state.home_score = Decimal("5.0")
         self.game_state.refresh_game_status()
         self.game_state.strikes = 2
         self.game_state.outs = 3
@@ -1146,3 +1149,52 @@ class TestPitchSim(TestGameState):
         self.assertEqual(self.game_state.strikes, 2)
 
 
+class TestSun2Blackhole(TestGameState):
+    def testSun2(self):
+        self.game_state.home_score = Decimal("9.0")
+        self.game_state.away_score = Decimal("9.0")
+        self.assertEqual(self.game_state.cur_batting_team.team_enum, self.game_state.away_team.team_enum)
+        self.assertEqual(self.game_state.cur_pitching_team.team_enum, self.game_state.home_team.team_enum)
+        self.game_state.increase_batting_team_runs(Decimal("0.9"))
+        self.assertEqual(Decimal("9.9"), self.game_state.away_score)
+        self.game_state.increase_batting_team_runs(Decimal("1.0"))
+        self.assertEqual(Decimal("0.9"), self.game_state.away_score)
+        self.assertEqual(1.0, self.game_state.cur_batting_team.game_stats[TEAM_ID][Stats.TEAM_SUN2_WINS])
+        self.game_state.home_score = Decimal("9.0")
+        self.game_state.away_score = Decimal("9.0")
+
+        self.game_state.half = InningHalf.BOTTOM
+        self.game_state.cur_batting_team = self.game_state.home_team
+        self.game_state.cur_pitching_team = self.game_state.away_team
+        self.assertEqual(self.game_state.cur_batting_team.team_enum, self.game_state.home_team.team_enum)
+        self.assertEqual(self.game_state.cur_pitching_team.team_enum, self.game_state.away_team.team_enum)
+        self.game_state.increase_batting_team_runs(Decimal("0.9"))
+        self.assertEqual(Decimal("9.9"), self.game_state.home_score)
+        self.game_state.increase_batting_team_runs(Decimal("1.0"))
+        self.assertEqual(Decimal("0.9"), self.game_state.home_score)
+        self.assertEqual(1.0, self.game_state.cur_batting_team.game_stats[TEAM_ID][Stats.TEAM_SUN2_WINS])
+
+    def testBlackhole(self):
+        self.game_state.home_score = Decimal("9.0")
+        self.game_state.away_score = Decimal("9.0")
+        self.game_state.weather = Weather.BLACKHOLE
+        self.assertEqual(self.game_state.cur_batting_team.team_enum, self.game_state.away_team.team_enum)
+        self.assertEqual(self.game_state.cur_pitching_team.team_enum, self.game_state.home_team.team_enum)
+        self.game_state.increase_batting_team_runs(Decimal("0.9"))
+        self.assertEqual(Decimal("9.9"), self.game_state.away_score)
+        self.game_state.increase_batting_team_runs(Decimal("1.0"))
+        self.assertEqual(Decimal("0.9"), self.game_state.away_score)
+        self.assertEqual(Decimal("1.0"), self.game_state.cur_pitching_team.game_stats[TEAM_ID][Stats.TEAM_BLACK_HOLE_CONSUMPTION])
+        self.game_state.home_score = Decimal("9.0")
+        self.game_state.away_score = Decimal("9.0")
+
+        self.game_state.half = InningHalf.BOTTOM
+        self.game_state.cur_batting_team = self.game_state.home_team
+        self.game_state.cur_pitching_team = self.game_state.away_team
+        self.assertEqual(self.game_state.cur_batting_team.team_enum, self.game_state.home_team.team_enum)
+        self.assertEqual(self.game_state.cur_pitching_team.team_enum, self.game_state.away_team.team_enum)
+        self.game_state.increase_batting_team_runs(Decimal("0.9"))
+        self.assertEqual(Decimal("9.9"), self.game_state.home_score)
+        self.game_state.increase_batting_team_runs(Decimal("1.0"))
+        self.assertEqual(Decimal("0.9"), self.game_state.home_score)
+        self.assertEqual(1.0, self.game_state.cur_pitching_team.game_stats[TEAM_ID][Stats.TEAM_BLACK_HOLE_CONSUMPTION])

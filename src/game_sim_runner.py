@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import Any, Dict
 import os
 import json
@@ -113,8 +114,8 @@ game = GameState(
     day=day,
     home_team=team_states[Team.DALE],
     away_team=team_states[Team.TIGERS],
-    home_score=0,
-    away_score=0,
+    home_score=Decimal("0"),
+    away_score=Decimal("0"),
     inning=1,
     half=InningHalf.TOP,
     outs=0,
