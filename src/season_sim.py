@@ -1,11 +1,13 @@
+import time
 from typing import Any, Dict
 import os
 import json
 from joblib import load
 
+from src.common import get_player_stlats, blood_name_map
 from src.common import BlaseballStatistics as Stats
 from src.common import ForbiddenKnowledge as FK
-from src.common import BloodType, Team, team_id_map, blood_id_map, fk_key
+from src.common import BloodType, Team, team_id_map, team_name_map, blood_id_map, fk_key
 from src.team_state import TeamState, DEF_ID
 from src.game_state import GameState, InningHalf
 
@@ -23,7 +25,7 @@ day_names = {}
 day_blood = {}
 day_rotations = {}
 
-iterations = 1
+iterations = 100
 
 def setup_season(season:int):
     with open(os.path.join('season_sim', 'season_data', f"season{season + 1}.json"), 'r', encoding='utf8') as json_file:
@@ -67,14 +69,19 @@ def setup_season(season:int):
 def load_all_state(season: int):
     for day in range(0, 99):
         reset_daily_cache()
-        with open(os.path.join('season_sim', 'stlats', f"s{season}_d{day}_stlats.json"), 'r', encoding='utf8') as json_file:
-            player_stlats_list = json.load(json_file)
-            for player in player_stlats_list:
-                if day == 6 and player["team_id"] == "105bc3ff-1320-4e37-8ef0-8d595cb95dd0":
-                    x = 1
-                team_id = player["team_id"]
-                player_id = player["player_id"]
-                pos = int(player["position_id"]) + 1
+        try:
+            with open(os.path.join('season_sim', 'stlats', f"s{season}_d{day}_stlats.json"), 'r',
+                      encoding='utf8') as json_file:
+                player_stlats_list = json.load(json_file)
+        except FileNotFoundError:
+            player_stlats_list = get_player_stlats(season, day)
+        for player in player_stlats_list:
+            if day == 6 and player["team_id"] == "105bc3ff-1320-4e37-8ef0-8d595cb95dd0":
+                x = 1
+            team_id = player["team_id"]
+            player_id = player["player_id"]
+            pos = int(player["position_id"]) + 1
+            if "position_type_id" in player:
                 if player["position_type_id"] == "0":
                     if team_id not in lineups_by_team:
                         lineups_by_team[team_id] = {}
@@ -83,34 +90,46 @@ def load_all_state(season: int):
                     if team_id not in rotations_by_team:
                         rotations_by_team[team_id] = {}
                     rotations_by_team[team_id][pos] = player_id
-                if team_id not in stlats_by_team:
-                    stlats_by_team[team_id] = {}
-                stlats_by_team[team_id][player_id] = get_stlat_dict(player)
-
-                if team_id not in game_stats_by_team:
-                    game_stats_by_team[team_id] = {}
-                    game_stats_by_team[team_id][DEF_ID] = {}
-                game_stats_by_team[team_id][player_id] = {}
-
-                if team_id not in names_by_team:
-                    names_by_team[team_id] = {}
-                names_by_team[team_id][player_id] = player["player_name"]
-
-                if team_id not in blood_by_team:
-                    blood_by_team[team_id] = {}
-                blood_by_team[team_id][player_id] = blood_id_map[int(player["blood"])]
-            if day > 0 and (len(lineups_by_team) != len(day_lineup[day - 1]) or (len(rotations_by_team) != len(day_rotations[day - 1]))):
-                day_lineup[day] = day_lineup[day-1]
-                day_stlats[day] = day_stlats[day-1]
-                day_names[day] = day_names[day-1]
-                day_blood[day] = day_blood[day-1]
-                day_rotations[day] = day_rotations[day - 1]
             else:
-                day_lineup[day] = lineups_by_team
-                day_stlats[day] = stlats_by_team
-                day_names[day] = names_by_team
-                day_blood[day] = blood_by_team
-                day_rotations[day] = rotations_by_team
+                if player["position_type"] == "BATTER":
+                    if team_id not in lineups_by_team:
+                        lineups_by_team[team_id] = {}
+                    lineups_by_team[team_id][pos] = player_id
+                else:
+                    if team_id not in rotations_by_team:
+                        rotations_by_team[team_id] = {}
+                    rotations_by_team[team_id][pos] = player_id
+            if team_id not in stlats_by_team:
+                stlats_by_team[team_id] = {}
+            stlats_by_team[team_id][player_id] = get_stlat_dict(player)
+
+            if team_id not in game_stats_by_team:
+                game_stats_by_team[team_id] = {}
+                game_stats_by_team[team_id][DEF_ID] = {}
+            game_stats_by_team[team_id][player_id] = {}
+
+            if team_id not in names_by_team:
+                names_by_team[team_id] = {}
+            names_by_team[team_id][player_id] = player["player_name"]
+
+            if team_id not in blood_by_team:
+                blood_by_team[team_id] = {}
+            try:
+                blood_by_team[team_id][player_id] = blood_id_map[int(player["blood"])]
+            except ValueError:
+                blood_by_team[team_id][player_id] = blood_name_map[player["blood"]]
+        if day > 0 and (len(lineups_by_team) != len(day_lineup[day - 1]) or (len(rotations_by_team) != len(day_rotations[day - 1]))):
+            day_lineup[day] = day_lineup[day-1]
+            day_stlats[day] = day_stlats[day-1]
+            day_names[day] = day_names[day-1]
+            day_blood[day] = day_blood[day-1]
+            day_rotations[day] = day_rotations[day - 1]
+        else:
+            day_lineup[day] = lineups_by_team
+            day_stlats[day] = stlats_by_team
+            day_names[day] = names_by_team
+            day_blood[day] = blood_by_team
+            day_rotations[day] = rotations_by_team
 
 
 def reset_daily_cache():
@@ -210,6 +229,7 @@ def print_leaders():
 
 
 #print_info()
-load_all_state(10)
-setup_season(10)
+season = 12
+load_all_state(season)
+setup_season(season)
 print_leaders()

@@ -1,6 +1,10 @@
 from typing import Any, Dict, Optional, Tuple
 from enum import Enum
 
+import json
+import os
+import requests
+
 
 class BlaseballStatistics(Enum):
     # stolen base stats
@@ -51,6 +55,9 @@ class BlaseballStatistics(Enum):
 
     # Convenience stats  DO NOT USE
     GENERIC_ADVANCEMENT = 100
+
+    TEAM_WINS = 53
+    TEAM_LOSSES = 54
 
 
 class ForbiddenKnowledge(Enum):
@@ -147,6 +154,9 @@ class Team(Enum):
     GARAGES = 19
     JAZZ_HANDS = 20
     LIFT = 21
+    GEORGIAS = 22
+    WORMS = 23
+    MECHANICS = 24
 
 
 team_id_map: Dict[str, Team] = {
@@ -171,6 +181,36 @@ team_id_map: Dict[str, Team] = {
     "105bc3ff-1320-4e37-8ef0-8d595cb95dd0": Team.GARAGES,
     "a37f9158-7f82-46bc-908c-c9e2dda7c33b": Team.JAZZ_HANDS,
     "c73b705c-40ad-4633-a6ed-d357ee2e2bcf": Team.LIFT,
+    "d9f89a8a-c563-493e-9d64-78e4f9a55d4a": Team.GEORGIAS,
+    "bb4a9de5-c924-4923-a0cb-9d1445f1ee5d": Team.WORMS,
+    "46358869-dce9-4a01-bfba-ac24fc56f57e": Team.MECHANICS
+}
+
+team_name_map: Dict[Team, str] = {
+    Team.LOVERS: "Lovers",
+    Team.TACOS: "Tacos",
+    Team.STEAKS: "Steaks",
+    Team.BREATH_MINTS: "Breath Mints",
+    Team.FIREFIGHTERS: "Firefighters",
+    Team.SHOE_THIEVES: "Shoe Thieves",
+    Team.FLOWERS: "Flowers",
+    Team.FRIDAYS: "Fridays",
+    Team.MAGIC: "Magic",
+    Team.MILLENNIALS: "Millennials",
+    Team.CRABS: "Crabs",
+    Team.SPIES: "Spies",
+    Team.PIES: "Pies",
+    Team.SUNBEAMS: "Sunbeams",
+    Team.WILD_WINGS: "Wild Wings",
+    Team.TIGERS: "Tigers",
+    Team.MOIST_TALKERS: "Moist Talkers",
+    Team.DALE: "Dale",
+    Team.GARAGES: "Garages",
+    Team.JAZZ_HANDS: "Jazz Hands",
+    Team.LIFT: "Lift",
+    Team.GEORGIAS: "Georgias",
+    Team.WORMS: "Worms",
+    Team.MECHANICS: "Mechanics"
 }
 
 blood_id_map: Dict[int, BloodType] = {
@@ -187,6 +227,22 @@ blood_id_map: Dict[int, BloodType] = {
     10: BloodType.FIRE,
     11: BloodType.PSYCHIC,
     12: BloodType.GRASS,
+}
+
+blood_name_map: Dict[int, BloodType] = {
+    "A": BloodType.A,
+    "AAA": BloodType.AAA,
+    "AA": BloodType.AA,
+    "Acidic": BloodType.ACID,
+    "Basic": BloodType.BASE,
+    "O": BloodType.O,
+    "O No": BloodType.O_NO,
+    "H₂O": BloodType.WATER,
+    "Electric": BloodType.ELECTRIC,
+    "Love": BloodType.LOVE,
+    "Fire": BloodType.FIRE,
+    "Psychic": BloodType.PSYCHIC,
+    "Grass": BloodType.GRASS,
 }
 
 # TODO(kjc9): determine how to use this properly in the sim code
@@ -261,3 +317,14 @@ stat_key: Dict[BlaseballStatistics, str] = {
     BlaseballStatistics.DEFENSE_STOLEN_BASES: "Defense stolen bases",
     BlaseballStatistics.DEFENSE_CAUGHT_STEALINGS: "Defense caught stealing",
 }
+
+def get_player_stlats(season, day):
+    url = f"https://api.blaseball-reference.com/v1/allPlayersForGameday?season={season}&day={day}"
+    stlats = requests.get(url)
+    stlats_json = stlats.json()
+
+    filename = os.path.join('season_sim', "stlats", f"s{season}_d{day}_stlats.json")
+    with open(filename, 'w', encoding='utf8') as json_file:
+        json.dump(stlats_json, json_file)
+
+    return stlats_json

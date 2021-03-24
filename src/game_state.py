@@ -1,3 +1,8 @@
+def warn(*args, **kwargs):
+    pass
+import warnings
+warnings.warn = warn
+
 from typing import Any, Dict, List, Optional
 from enum import Enum
 from joblib import load
@@ -8,7 +13,7 @@ import os
 import random
 
 from src.team_state import DEF_ID, TeamState
-from src.common import BlaseballStatistics as Stats
+from src.common import BlaseballStatistics as Stats, Team
 from src.common import MachineLearnedModel as Ml
 from src.common import BloodType, PitchEventTeamBuff, team_pitch_event_map
 
@@ -223,7 +228,7 @@ class GameState(object):
         ret_val.cur_base_runners = cur_base_runners
         return ret_val
 
-    def simulate_game(self) -> None:
+    def simulate_game(self) -> bool:
         """Loop until the game over state is true"""
         while not self.is_game_over:
             if not self.stolen_base_sim():
@@ -237,6 +242,15 @@ class GameState(object):
         self.away_team.update_stat(self.away_team.starting_pitcher, Stats.PITCHER_SHUTOUTS, 0.0)
         self.home_team.update_stat(self.home_team.starting_pitcher, Stats.PITCHER_GAMES_APPEARED, 1.0)
         self.away_team.update_stat(self.away_team.starting_pitcher, Stats.PITCHER_GAMES_APPEARED, 1.0)
+        home_win = False
+        if self.home_score > self.away_score:
+            home_win = True
+            self.home_team.update_stat(DEF_ID, Stats.TEAM_WINS, 1.0)
+            self.away_team.update_stat(DEF_ID, Stats.TEAM_LOSSES, 1.0)
+        else:
+            self.home_team.update_stat(DEF_ID, Stats.TEAM_LOSSES, 1.0)
+            self.away_team.update_stat(DEF_ID, Stats.TEAM_WINS, 1.0)
+        return home_win
 
     # PITCH MECHANICS
     def pitch_sim(self) -> None:
