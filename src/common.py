@@ -1,9 +1,11 @@
-from typing import Any, Dict, List, Optional, Tuple
+import asyncio
+from typing import Dict, Optional, Tuple
 from enum import Enum
 
 import json
 import os
 import requests
+from aiohttp import ClientSession
 
 
 class BlaseballStatistics(Enum):
@@ -355,13 +357,44 @@ stat_key: Dict[BlaseballStatistics, str] = {
     BlaseballStatistics.TEAM_BLACK_HOLE_LOSSES: "Team black hole losses",
 }
 
-def get_player_stlats(season, day):
-    url = f"https://api.blaseball-reference.com/v1/allPlayersForGameday?season={season}&day={day}"
-    stlats = requests.get(url)
-    stlats_json = stlats.json()
 
-    filename = os.path.join('season_sim', "stlats", f"s{season}_d{day}_stlats.json")
-    with open(filename, 'w', encoding='utf8') as json_file:
+async def save_daily_stlats(season, day, session):
+    url = f"https://api.blaseball-reference.com/v1/allPlayersForGameday?season={season}&day={day}"
+    response = await session.request(method='GET', url=url)
+    response.raise_for_status()
+    return await response.json()
+
+
+async def run_program(season, day, session):
+    response = await save_daily_stlats(season, day, session)
+    write_to_file(response, season, day)
+
+
+def write_to_file(stlats_json, season, day):
+    filename = os.path.join('..', 'season_sim', "stlats", f"s{season}_d{day}_stlats.json")
+    with open(filename, 'w', encoding='utf8',) as json_file:
         json.dump(stlats_json, json_file)
 
+
+async def stlats_runner(season):
+    async with ClientSession() as session:
+        await asyncio.gather(*[run_program(season, day, session) for day in range(0, 99)])
+
+
+def get_stlats_for_season(season):
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(stlats_runner(season))
+
+
+def get_player_stlats(season, day):
+    filename = os.path.join('..', 'season_sim', "stlats", f"s{season}_d{day}_stlats.json")
+    try:
+        with open(filename, 'r', encoding='utf8', ) as json_file:
+            stlats_json = json.load(json_file)
+    except FileNotFoundError:
+        url = f"https://api.blaseball-reference.com/v1/allPlayersForGameday?season={season}&day={day}"
+        stlats = requests.get(url)
+        stlats_json = stlats.json()
+        with open(filename, 'w', encoding='utf8',) as json_file:
+            json.dump(stlats_json, json_file)
     return stlats_json

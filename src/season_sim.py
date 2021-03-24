@@ -1,9 +1,9 @@
+from os import path
 from typing import Any, Dict
 import os
 import json
-from joblib import load
 
-from src.common import get_player_stlats, blood_name_map
+from src.common import get_stlats_for_season, blood_name_map
 from src.common import BlaseballStatistics as Stats
 from src.common import ForbiddenKnowledge as FK
 from src.common import BloodType, Team, team_id_map, blood_id_map, fk_key, Weather, team_name_map
@@ -24,10 +24,10 @@ day_names = {}
 day_blood = {}
 day_rotations = {}
 
-iterations = 100
+iterations = 10
 
 def setup_season(season:int):
-    with open(os.path.join('season_sim', 'season_data', f"season{season + 1}.json"), 'r', encoding='utf8') as json_file:
+    with open(os.path.join('..', 'season_sim', 'season_data', f"season{season + 1}.json"), 'r', encoding='utf8') as json_file:
         raw_season_data = json.load(json_file)
         for game in raw_season_data:
             game_id = game["id"]
@@ -42,9 +42,9 @@ def setup_season(season:int):
             print(f'Day {day}, Weather {weather.name}: {away_team_name} at {home_team_name}')
             if day == 99:
                 break
-            update_team_states(season, day, home_team, home_pitcher, weather)
+            update_team_states(season, day, home_team, home_pitcher, weather, True)
             home_team_state = team_states[team_id_map[home_team]]
-            update_team_states(season, day, away_team, away_pitcher, weather)
+            update_team_states(season, day, away_team, away_pitcher, weather, False)
             away_team_state = team_states[team_id_map[away_team]]
             game = GameState(
                 game_id=game_id,
@@ -59,22 +59,22 @@ def setup_season(season:int):
                 outs=0,
                 strikes=0,
                 balls=0,
+                weather=weather
             )
             for x in range(0, iterations):
                 game.simulate_game()
                 game.reset_game_state()
 
 
-
 def load_all_state(season: int):
+    if not path.exists(os.path.join('..', 'season_sim', 'stlats', f"s{season}_d98_stlats.json")):
+        get_stlats_for_season(season)
+
     for day in range(0, 99):
         reset_daily_cache()
-        try:
-            with open(os.path.join('season_sim', 'stlats', f"s{season}_d{day}_stlats.json"), 'r',
-                      encoding='utf8') as json_file:
-                player_stlats_list = json.load(json_file)
-        except FileNotFoundError:
-            player_stlats_list = get_player_stlats(season, day)
+        filename = os.path.join('..', 'season_sim', 'stlats', f"s{season}_d{day}_stlats.json")
+        with open(filename, 'r', encoding='utf8') as json_file:
+            player_stlats_list = json.load(json_file)
         for player in player_stlats_list:
             if day == 6 and player["team_id"] == "105bc3ff-1320-4e37-8ef0-8d595cb95dd0":
                 x = 1
@@ -161,6 +161,7 @@ def update_team_states(season: int, day: int, team:str, starting_pitcher: str, w
             season=season,
             day=day,
             weather=weather,
+            is_home=is_home,
             num_bases=4,
             balls_for_walk=4,
             strikes_for_out=3,
@@ -230,8 +231,8 @@ def print_leaders():
         print(f'\t{name}: {value:.3f}')
         count += 1
 
-
+season = 11
 #print_info()
-load_all_state(10)
-setup_season(10)
+load_all_state(season)
+setup_season(season)
 print_leaders()
