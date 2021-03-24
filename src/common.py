@@ -212,6 +212,33 @@ team_id_map: Dict[str, Team] = {
     "bb4a9de5-c924-4923-a0cb-9d1445f1ee5d": Team.WORMS,
 }
 
+team_name_map: Dict[Team, str] = {
+    Team.LOVERS: "Lovers",
+    Team.TACOS: "Tacos",
+    Team.STEAKS: "Steaks",
+    Team.BREATH_MINTS: "Breath Mints",
+    Team.FIREFIGHTERS: "Firefighters",
+    Team.SHOE_THIEVES: "Shoe Thieves",
+    Team.FLOWERS: "Flowers",
+    Team.FRIDAYS: "Fridays",
+    Team.MAGIC: "Magic",
+    Team.MILLENNIALS: "Millennials",
+    Team.CRABS: "Crabs",
+    Team.SPIES: "Spies",
+    Team.PIES: "Pies",
+    Team.SUNBEAMS: "Sunbeams",
+    Team.WILD_WINGS: "Wild Wings",
+    Team.TIGERS: "Tigers",
+    Team.MOIST_TALKERS: "Moist Talkers",
+    Team.DALE: "Dale",
+    Team.GARAGES: "Garages",
+    Team.JAZZ_HANDS: "Jazz Hands",
+    Team.LIFT: "Lift",
+    Team.GEORGIAS: "Georgias",
+    Team.WORMS: "Worms",
+    Team.MECHANICS: "Mechanics"
+}
+
 blood_id_map: Dict[int, BloodType] = {
     0: BloodType.A,
     1: BloodType.AAA,
