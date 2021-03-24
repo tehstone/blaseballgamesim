@@ -1,5 +1,5 @@
 import asyncio
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 from enum import Enum
 
 import json
@@ -186,6 +186,41 @@ class Weather(Enum):
     COFFEE2 = 16
     COFFEE3 = 17
     FLOODING = 18
+
+
+class PlayerBuff(Enum):
+    BLASERUNNING = 1
+    COFFEE_RALLY = 2
+    CHUNKY = 3
+    EGO1 = 4
+    EGO2 = 5
+    ELSEWHERE = 6
+    FLINCH = 7
+    FRIEND_OF_CROWS = 8
+    HOMEBODY = 9
+    OVER_UNDER = 10
+    PERK = 11
+    SHELLED = 12
+    SMOOTH = 13
+    SPICY = 14
+    SWIM_BLADDER = 15
+    TIRED = 16
+    TRIPLE_THREAT = 17
+    UNDER_OVER = 18
+    WIRED = 19
+
+
+class AdditiveTypes(Enum):
+    BATTING = 1
+    PITCHING = 2
+    BASE_RUNNING = 3
+    DEFENSE = 4
+
+
+enabled_player_buffs: List[str] = [
+    "BLASERUNNING", "COFFEE_RALLY", "CHUNKY", "EGO1", "EGO2", "ELSEWHERE", "FLINCH", "FRIEND_OF_CROWS",
+    "HOMEBODY", "OVER_UNDER", "PERK", "SHELLED", "SMOOTH", "SPICY", "SWIM_BLADDER", "TIRED", "TRIPLE_THREAT",
+    "UNDER_OVER", "WIRED"]
 
 
 team_id_map: Dict[str, Team] = {
@@ -399,3 +434,21 @@ def get_player_stlats(season, day):
         with open(filename, 'w', encoding='utf8',) as json_file:
             json.dump(stlats_json, json_file)
     return stlats_json
+
+
+def get_player_buff_cache() -> Dict[str, Dict[PlayerBuff, int]]:
+    player_buffs = {}
+    with open('../season_sim/player_status/status.json') as f:
+        players = json.load(f)
+        player_buffs["4b3e8e9b-6de1-4840-8751-b1fb45dc5605"] = {PlayerBuff.BLASERUNNING: 1}
+        for player in players:
+            state = player["current_state"]
+            if state == "active":
+                id = player["player_id"]
+                mods = player["modifications"]
+                cur_mod_dict = {}
+                for mod in mods:
+                    if mod in enabled_player_buffs:
+                        cur_mod_dict[PlayerBuff[mod]] = 1
+                player_buffs[id] = cur_mod_dict
+    return player_buffs

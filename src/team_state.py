@@ -5,7 +5,7 @@ import statistics
 
 from src.common import BlaseballStatistics as Stats
 from src.common import ForbiddenKnowledge as FK
-from src.common import BloodType, GameEventTeamBuff, Team, team_game_event_map, team_id_map, Weather
+from src.common import AdditiveTypes, BloodType, GameEventTeamBuff, get_player_buff_cache, PlayerBuff, Team, team_game_event_map, team_id_map, Weather
 
 DEF_ID = "DEFENSE"
 TEAM_ID = "TEAM"
@@ -53,12 +53,54 @@ class TeamState(object):
         self.player_names: Dict[str, str] = player_names
         self.cur_batter_pos: int = cur_batter_pos
         self.cur_batter: str = lineup[cur_batter_pos]
-        self.batting_addition = 0.0
-        self.pitching_addition = 0.0
-        self.defense_addition = 0.0
-        self.base_running_addition = 0.0
+        self.batting_addition: float = 0.0
+        self.pitching_addition: float = 0.0
+        self.defense_addition: float = 0.0
+        self.base_running_addition: float = 0.0
+        self.player_buffs = self.find_player_buffs()
+        self.player_additives = self.pre_load_additives()
         self.calc_additives()
         self._calculate_defense()
+
+    def find_player_buffs(self) -> Dict[str, Dict[PlayerBuff, int]]:
+        cur_cache = {}
+        buff_cache = get_player_buff_cache()
+        for player_id in self.player_names.keys():
+            if player_id in buff_cache:
+                cur_cache[player_id] = buff_cache[player_id]
+            else:
+                cur_cache[player_id] = {}
+        return cur_cache
+
+    def pre_load_additives(self) -> Dict[str, Dict[AdditiveTypes, float]]:
+        player_additives = {}
+        for player_id in self.player_buffs.keys():
+            cur_additives = {
+                AdditiveTypes.BATTING: 0.0,
+                AdditiveTypes.PITCHING: 0.0,
+                AdditiveTypes.DEFENSE: 0.0,
+                AdditiveTypes.BASE_RUNNING: 0.0,
+            }
+            for cur_mod in self.player_buffs[player_id].keys():
+                if cur_mod == PlayerBuff.CHUNKY and self.weather == Weather.PEANUTS:
+                    cur_additives[AdditiveTypes.BATTING] += 1.0
+                if cur_mod == PlayerBuff.SMOOTH and self.weather == Weather.PEANUTS:
+                    cur_additives[AdditiveTypes.BASE_RUNNING] += 1.0
+                if cur_mod == PlayerBuff.UNDER_OVER or \
+                        (cur_mod == PlayerBuff.HOMEBODY and self.is_home) or \
+                        (cur_mod == PlayerBuff.PERK and
+                         self.weather in [Weather.COFFEE, Weather.COFFEE2, Weather.COFFEE3]):
+                    cur_additives[AdditiveTypes.BATTING] += 0.2
+                    cur_additives[AdditiveTypes.PITCHING] += 0.2
+                    cur_additives[AdditiveTypes.DEFENSE] += 0.2
+                    cur_additives[AdditiveTypes.BASE_RUNNING] += 0.2
+                if cur_mod == PlayerBuff.HOMEBODY and not self.is_home:
+                    cur_additives[AdditiveTypes.BATTING] -= 0.2
+                    cur_additives[AdditiveTypes.PITCHING] -= 0.2
+                    cur_additives[AdditiveTypes.DEFENSE] -= 0.2
+                    cur_additives[AdditiveTypes.BASE_RUNNING] -= 0.2
+            player_additives[player_id] = cur_additives
+        return player_additives
 
     def _calculate_defense(self):
         """Calculate the average team defense and store it in the stlats dict under DEF_ID"""
@@ -71,11 +113,12 @@ class TeamState(object):
         defense_cinnamon: List[float] = []
         for pos in self.lineup.keys():
             cur_id: str = self.lineup[pos]
-            anticapitalism.append(self.stlats[cur_id][FK.ANTICAPITALISM] + self.defense_addition)
-            chasiness.append(self.stlats[cur_id][FK.CHASINESS] + self.defense_addition)
-            omniscience.append(self.stlats[cur_id][FK.OMNISCIENCE] + self.defense_addition)
-            tenaciousness.append(self.stlats[cur_id][FK.TENACIOUSNESS] + self.defense_addition)
-            watchfulness.append(self.stlats[cur_id][FK.WATCHFULNESS] + self.defense_addition)
+            player_def_additive = self.player_additives[cur_id][AdditiveTypes.DEFENSE]
+            anticapitalism.append(self.stlats[cur_id][FK.ANTICAPITALISM] + self.defense_addition + player_def_additive)
+            chasiness.append(self.stlats[cur_id][FK.CHASINESS] + self.defense_addition + player_def_additive)
+            omniscience.append(self.stlats[cur_id][FK.OMNISCIENCE] + self.defense_addition + player_def_additive)
+            tenaciousness.append(self.stlats[cur_id][FK.TENACIOUSNESS] + self.defense_addition + player_def_additive)
+            watchfulness.append(self.stlats[cur_id][FK.WATCHFULNESS] + self.defense_addition + player_def_additive)
             defense_pressurization.append(self.stlats[cur_id][FK.PRESSURIZATION])
             defense_cinnamon.append(self.stlats[cur_id][FK.CINNAMON])
 
@@ -160,6 +203,7 @@ class TeamState(object):
                 return None
 
     @classmethod
+    # TODO(kjc9): Force serialization to account for the new player buffs and additives
     def from_config(cls, team_state: Dict[str, Any]):
         """Reconstructs a team state from a json file."""
         team_id: str = team_state["team_id"]
@@ -282,13 +326,14 @@ class TeamState(object):
 
     def get_pitcher_feature_vector(self) -> List[float]:
         player_id = self.starting_pitcher
+        player_pitching_additive = self.player_additives[player_id][AdditiveTypes.PITCHING]
         ret_val: List[float] = [
-            self.stlats[player_id][FK.COLDNESS] + self.pitching_addition,
-            self.stlats[player_id][FK.OVERPOWERMENT] + self.pitching_addition,
-            self.stlats[player_id][FK.RUTHLESSNESS] + self.pitching_addition,
-            self.stlats[player_id][FK.SHAKESPEARIANISM] + self.pitching_addition,
-            self.stlats[player_id][FK.SUPPRESSION] + self.pitching_addition,
-            self.stlats[player_id][FK.UNTHWACKABILITY] + self.pitching_addition,
+            self.stlats[player_id][FK.COLDNESS] + self.pitching_addition + player_pitching_additive,
+            self.stlats[player_id][FK.OVERPOWERMENT] + self.pitching_addition + player_pitching_additive,
+            self.stlats[player_id][FK.RUTHLESSNESS] + self.pitching_addition + player_pitching_additive,
+            self.stlats[player_id][FK.SHAKESPEARIANISM] + self.pitching_addition + player_pitching_additive,
+            self.stlats[player_id][FK.SUPPRESSION] + self.pitching_addition + player_pitching_additive,
+            self.stlats[player_id][FK.UNTHWACKABILITY] + self.pitching_addition + player_pitching_additive,
             self.stlats[player_id][FK.CINNAMON],
             self.stlats[player_id][FK.PRESSURIZATION],
         ]
@@ -298,20 +343,22 @@ class TeamState(object):
         new_path = self.stlats[player_id][FK.PATHETICISM] - self.batting_addition
         if new_path < 0.001:
             new_path = 0.001
+        player_batting_additive = self.player_additives[player_id][AdditiveTypes.BATTING]
+        player_base_running_additive = self.player_additives[player_id][AdditiveTypes.BASE_RUNNING]
         ret_val: List[float] = [
-            self.stlats[player_id][FK.BUOYANCY] + self.batting_addition,
-            self.stlats[player_id][FK.DIVINITY] + self.batting_addition,
-            self.stlats[player_id][FK.MARTYRDOM] + self.batting_addition,
-            self.stlats[player_id][FK.MOXIE] + self.batting_addition,
-            self.stlats[player_id][FK.MUSCLITUDE] + self.batting_addition,
+            self.stlats[player_id][FK.BUOYANCY] + self.batting_addition + player_batting_additive,
+            self.stlats[player_id][FK.DIVINITY] + self.batting_addition + player_batting_additive,
+            self.stlats[player_id][FK.MARTYRDOM] + self.batting_addition + player_batting_additive,
+            self.stlats[player_id][FK.MOXIE] + self.batting_addition + player_batting_additive,
+            self.stlats[player_id][FK.MUSCLITUDE] + self.batting_addition + player_batting_additive,
             new_path,
-            self.stlats[player_id][FK.THWACKABILITY] + self.batting_addition,
+            self.stlats[player_id][FK.THWACKABILITY] + self.batting_addition + player_base_running_additive,
             self.stlats[player_id][FK.TRAGICNESS],
-            self.stlats[player_id][FK.BASE_THIRST] + self.base_running_addition,
-            self.stlats[player_id][FK.CONTINUATION] + self.base_running_addition,
-            self.stlats[player_id][FK.GROUND_FRICTION] + self.base_running_addition,
-            self.stlats[player_id][FK.INDULGENCE] + self.base_running_addition,
-            self.stlats[player_id][FK.LASERLIKENESS] + self.base_running_addition,
+            self.stlats[player_id][FK.BASE_THIRST] + self.base_running_addition + player_base_running_additive,
+            self.stlats[player_id][FK.CONTINUATION] + self.base_running_addition + player_base_running_additive,
+            self.stlats[player_id][FK.GROUND_FRICTION] + self.base_running_addition + player_base_running_additive,
+            self.stlats[player_id][FK.INDULGENCE] + self.base_running_addition + player_base_running_additive,
+            self.stlats[player_id][FK.LASERLIKENESS] + self.base_running_addition + player_base_running_additive,
             self.stlats[player_id][FK.CINNAMON],
             self.stlats[player_id][FK.PRESSURIZATION],
         ]

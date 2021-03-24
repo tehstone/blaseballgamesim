@@ -21,6 +21,9 @@ from src.common import BloodType, PitchEventTeamBuff, team_pitch_event_map, Weat
 CHARM_TRIGGER_PERCENTAGE = 0.02
 ZAP_TRIGGER_PERCENTAGE = 0.02
 FLOODING_TRIGGER_PERCENTAGE = 0.01
+COFFEE_PRIME_BEAN_PERCENTAGE = 0.05
+COFFEE_2_PERCENTAGE = 0.01
+FRIEND_OF_CROWS_PERCENTAGE = 0.02
 BASE_INSTINCT_PRIORS = {
     # num bases: map of priors for base to walk to
     4: {
