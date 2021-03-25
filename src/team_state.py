@@ -207,7 +207,7 @@ class TeamState(object):
                 return None
 
     @classmethod
-    # TODO(kjc9): Force serialization to account for the new player buffs and additives
+    # TODO(kjc9): Force serialization to account for the new player buffs and additives and segmented stats
     def from_config(cls, team_state: Dict[str, Any]):
         """Reconstructs a team state from a json file."""
         team_id: str = team_state["team_id"]
@@ -242,6 +242,8 @@ class TeamState(object):
             starting_pitcher,
             stlats,
             game_stats,
+            # segmented stats wasnt serialized...need to serde it to populate it here.
+            {},
             blood,
             player_names,
             cur_batter_pos,

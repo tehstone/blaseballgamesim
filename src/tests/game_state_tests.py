@@ -1,6 +1,6 @@
 import os
 import unittest
-from decimal import Decimal, getcontext
+from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
 from src.game_state import (
@@ -9,7 +9,7 @@ from src.game_state import (
     InningHalf,
 )
 import src.game_state
-from src.team_state import TeamState, TEAM_ID
+from src.team_state import TeamState, TEAM_ID, PlayerBuff
 from src.common import BlaseballStatistics as Stats
 from src.common import ForbiddenKnowledge as FK
 from src.common import MachineLearnedModel as Ml
@@ -53,7 +53,6 @@ ADVANCE_HIT_PRIORS = [0.5, 0.5]
 ADVANCE_OUT_PRIORS = [0.5, 0.5]
 OUT_PRIORS = [0.5, 0.5]
 
-#getcontext().prec = 2
 
 def new_generic_model_roll(self, model: Ml, feature_vector: List[float]) -> int:
     probs: List[float] = []
@@ -158,10 +157,10 @@ class TestGameState(unittest.TestCase):
                 "p14": {},
             },
             segmented_stats={
-                "p1": {},
-                "p2": {},
-                "p3": {},
-                "p4": {},
+                "p11": {},
+                "p12": {},
+                "p13": {},
+                "p14": {},
             },
             blood={
                 "p11": BloodType.O,
@@ -180,6 +179,18 @@ class TestGameState(unittest.TestCase):
         )
         self.home_team_state.reset_team_state()
         self.away_team_state.reset_team_state()
+        self.home_team_state.player_buffs = {
+            "p1": {},
+            "p2": {PlayerBuff.SWIM_BLADDER: 1},
+            "p3": {PlayerBuff.SPICY: 1},
+            "p4": {PlayerBuff.TRIPLE_THREAT: 1},
+        }
+        self.away_team_state.player_buffs = {
+            "p11": {},
+            "p12": {PlayerBuff.SWIM_BLADDER: 1},
+            "p13": {PlayerBuff.SPICY: 1},
+            "p14": {PlayerBuff.TRIPLE_THREAT: 1},
+        }
         GameState.generic_model_roll = new_generic_model_roll
         self.game_state = GameState(
             game_id="1",
@@ -1159,6 +1170,36 @@ class TestPitchSim(TestGameState):
         self.assertEqual(self.game_state.strikes, 2)
         self.game_state.pitch_sim()
         self.assertEqual(self.game_state.strikes, 2)
+
+    def testFlinchStrike(self):
+        global PITCH_PRIORS
+        PITCH_PRIORS = [0.0, 0.0, 0.0, 1.0]
+        self.game_state.cur_batting_team.player_buffs["p11"] = {PlayerBuff.FLINCH: 1}
+        self.game_state.cur_batting_team.team_enum = Team.SUNBEAMS
+        self.game_state.cur_pitching_team.team_enum = Team.TIGERS
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.assertEqual(self.game_state.outs, 0)
+        self.assertEqual(self.game_state.balls, 0)
+        self.assertEqual(self.game_state.strikes, 0)
+        self.game_state.pitch_sim()
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.assertEqual(self.game_state.outs, 0)
+        self.assertEqual(self.game_state.balls, 0)
+        self.assertEqual(self.game_state.strikes, 1)
+
+        global HIT_PRIORS
+        # test single
+        HIT_PRIORS = [1.0, 0.0, 0.0, 0.0]
+        self.game_state.pitch_sim()
+        self.assertEqual(len(self.game_state.cur_base_runners), 1)
+        self.assertEqual(self.game_state.cur_base_runners[1], "p11")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+
 
 
 class TestSun2Blackhole(TestGameState):

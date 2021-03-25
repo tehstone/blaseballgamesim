@@ -16,7 +16,7 @@ import random
 from src.team_state import DEF_ID, TEAM_ID, TeamState
 from src.common import BlaseballStatistics as Stats, Team
 from src.common import MachineLearnedModel as Ml
-from src.common import BloodType, PitchEventTeamBuff, team_pitch_event_map, Weather
+from src.common import BloodType, PitchEventTeamBuff, PlayerBuff, team_pitch_event_map, Weather
 
 CHARM_TRIGGER_PERCENTAGE = 0.02
 ZAP_TRIGGER_PERCENTAGE = 0.02
@@ -292,7 +292,6 @@ class GameState(object):
                 self.log_event(f'Oh No triggered!.')
                 pitch_result = 2
             else:
-
                 self.cur_pitching_team.update_stat(
                     self.cur_pitching_team.starting_pitcher,
                     Stats.PITCHER_STRIKES_THROWN,
@@ -314,7 +313,21 @@ class GameState(object):
                 self.log_event(f'Foul ball.')
             return
         if pitch_result == 3:
-            # Its a hit
+            # Resolve flinch here.  If flinch and no strikes, add a strike and short circuit the hit.
+            if PlayerBuff.FLINCH in self.cur_batting_team.player_buffs[self.cur_batting_team.cur_batter].keys() and \
+                    self.strikes == 0:
+                self.cur_pitching_team.update_stat(
+                    self.cur_pitching_team.starting_pitcher,
+                    Stats.PITCHER_STRIKES_THROWN,
+                    1.0,
+                    self.day
+                )
+                self.strikes += 1
+                self.log_event(f'{self.cur_batting_team.player_names[self.cur_batting_team.cur_batter]} flinches. '
+                               f'Strike {self.strikes}.')
+                return
+
+            # No flinch, its a hit
             # Official plate appearance
             self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
                                               Stats.BATTER_PLATE_APPEARANCES, 1.0, self.day)
