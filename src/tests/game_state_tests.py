@@ -1251,3 +1251,23 @@ class TestSun2Blackhole(TestGameState):
         self.game_state.increase_batting_team_runs(Decimal("1.0"))
         self.assertEqual(Decimal("0.9"), self.game_state.home_score)
         self.assertEqual(1.0, self.game_state.cur_pitching_team.game_stats[TEAM_ID][Stats.TEAM_BLACK_HOLE_CONSUMPTION])
+
+class TestUnavailability(TestGameState):
+    def testShelledBatter(self):
+        self.game_state.cur_batting_team.player_buffs["p11"] = {PlayerBuff.SHELLED: 1}
+        self.game_state.cur_batting_team.player_buffs["p12"] = {PlayerBuff.SHELLED: 1}
+        self.game_state.cur_batting_team.team_enum = Team.SUNBEAMS
+        self.game_state.cur_pitching_team.team_enum = Team.TIGERS
+        self.assertEqual("p11", self.game_state.cur_batting_team.cur_batter)
+        self.game_state.validate_current_batter_state()
+        self.assertEqual("p13", self.game_state.cur_batting_team.cur_batter)
+
+    def testElsewhereBatter(self):
+        self.game_state.cur_batting_team.reset_team_state()
+        self.game_state.cur_batting_team.player_buffs["p11"] = {PlayerBuff.ELSEWHERE: 1}
+        self.game_state.cur_batting_team.player_buffs["p12"] = {PlayerBuff.ELSEWHERE: 1}
+        self.game_state.cur_batting_team.team_enum = Team.SUNBEAMS
+        self.game_state.cur_pitching_team.team_enum = Team.TIGERS
+        self.assertEqual("p11", self.game_state.cur_batting_team.cur_batter)
+        self.game_state.validate_current_batter_state()
+        self.assertEqual("p13", self.game_state.cur_batting_team.cur_batter)

@@ -261,9 +261,17 @@ class GameState(object):
             self.away_team.update_stat(TEAM_ID, Stats.TEAM_WINS, 1.0, self.day)
         return home_win
 
+    def validate_current_batter_state(self):
+        cur_buffs = self.cur_batting_team.player_buffs[self.cur_batting_team.cur_batter]
+        if PlayerBuff.ELSEWHERE in cur_buffs.keys() or PlayerBuff.SHELLED in cur_buffs.keys():
+            self.log_event(f"Skipping {self.cur_batting_team.get_cur_batter_name()} due to UNAVAILABILITY.")
+            self.cur_batting_team.next_batter()
+            self.validate_current_batter_state()
+
     # PITCH MECHANICS
     def pitch_sim(self) -> None:
         """Simulate a pitch with the pre-pitch events and the 4 possible pitch outcomes."""
+        self.validate_current_batter_state()
         if self.resolve_team_pre_pitch_event():
             # A pre-pitch event occurred, skip the pitch and let the game state try to advance
             return
