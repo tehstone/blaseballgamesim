@@ -25,6 +25,7 @@ def load_state(team_id, season, day):
         "rotation": {},
         "blood": {},
         "game_stats": {},
+        "segmented_stats": {},
         "stlats": {},
         "names": {}
     }
@@ -50,6 +51,9 @@ def load_state(team_id, season, day):
 
         team_info["game_stats"][player_id] = {}
         team_info["game_stats"][DEF_ID] = {}
+
+        team_info["segmented_stats"][player_id] = {}
+        team_info["segmented_stats"][DEF_ID] = {}
 
         team_info["names"][player_id] = player["player_name"]
 
@@ -88,9 +92,11 @@ home_team_state = TeamState(
             starting_pitcher=h_team_pitcher,
             stlats=team_info["stlats"],
             game_stats=team_info["game_stats"],
+            segmented_stats=team_info["segmented_stats"],
             blood=team_info["blood"],
             player_names=team_info["names"],
             cur_batter_pos=1,
+            segment_size=1,
         )
 
 team_info = load_state(away_team, a_team_season, a_team_day)
@@ -109,9 +115,11 @@ away_team_state = TeamState(
             starting_pitcher=a_team_pitcher,
             stlats=team_info["stlats"],
             game_stats=team_info["game_stats"],
+            segmented_stats=team_info["segmented_stats"],
             blood=team_info["blood"],
             player_names=team_info["names"],
             cur_batter_pos=1,
+            segment_size=1,
         )
 
 game = GameState(

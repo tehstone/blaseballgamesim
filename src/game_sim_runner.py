@@ -15,6 +15,7 @@ from src.game_state import GameState, InningHalf
 lineups_by_team: Dict[str, Dict[int, str]] = {}
 stlats_by_team: Dict[str, Dict[str, Dict[FK, float]]] = {}
 game_stats_by_team: Dict[str, Dict[str, Dict[Stats, float]]] = {}
+segmented_stats_by_team: Dict[str, Dict[str, Dict[int, Dict[Stats, float]]]] = {}
 names_by_team: Dict[str, Dict[str, str]] = {}
 blood_by_team: Dict[str, Dict[str, BloodType]] = {}
 team_states: Dict[Team, TeamState] = {}
@@ -55,6 +56,11 @@ def setup(season: int, day: int):
             game_stats_by_team[team_id] = {}
             game_stats_by_team[team_id][DEF_ID] = {}
         game_stats_by_team[team_id][player_id] = {}
+
+        if team_id not in segmented_stats_by_team:
+            segmented_stats_by_team[team_id] = {}
+            segmented_stats_by_team[team_id][DEF_ID] = {}
+        segmented_stats_by_team[team_id][player_id] = {}
 
         if team_id not in names_by_team:
             names_by_team[team_id] = {}
@@ -98,6 +104,7 @@ def make_team_states(season: int, day: int):
                 starting_pitcher=starting_pitchers[team],
                 stlats=stlats_by_team[team],
                 game_stats=game_stats_by_team[team],
+                segmented_stats=segmented_stats_by_team[team],
                 blood=blood_by_team[team],
                 player_names=names_by_team[team],
                 cur_batter_pos=1,

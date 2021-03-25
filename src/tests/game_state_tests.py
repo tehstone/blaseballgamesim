@@ -111,6 +111,12 @@ class TestGameState(unittest.TestCase):
                 "p3": {},
                 "p4": {},
             },
+            segmented_stats={
+                "p1": {},
+                "p2": {},
+                "p3": {},
+                "p4": {},
+            },
             blood={
                 "p1": BloodType.O,
                 "p2": BloodType.GRASS,
@@ -150,6 +156,12 @@ class TestGameState(unittest.TestCase):
                 "p12": {},
                 "p13": {},
                 "p14": {},
+            },
+            segmented_stats={
+                "p1": {},
+                "p2": {},
+                "p3": {},
+                "p4": {},
             },
             blood={
                 "p11": BloodType.O,

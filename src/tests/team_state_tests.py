@@ -150,6 +150,20 @@ class TestTeamState(unittest.TestCase):
                     Stats.BATTER_AT_BATS: 1.0,
                 },
             },
+            segmented_stats={
+                "p1": {
+                    0: {Stats.BATTER_AT_BATS: 1.0},
+                },
+                "p2": {
+                    0: {Stats.BATTER_AT_BATS: 1.0},
+                },
+                "p3": {
+                    0: {Stats.BATTER_AT_BATS: 1.0},
+                },
+                "p4": {
+                    0: {Stats.BATTER_AT_BATS: 1.0},
+                },
+            },
             blood={
                 "p1": BloodType.O,
                 "p2": BloodType.GRASS,

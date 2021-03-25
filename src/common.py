@@ -438,7 +438,7 @@ def get_player_stlats(season, day):
 
 def get_player_buff_cache() -> Dict[str, Dict[PlayerBuff, int]]:
     player_buffs = {}
-    with open('../season_sim/player_status/status.json') as f:
+    with open(os.path.join('..', 'season_sim', 'player_status', 'status.json')) as f:
         players = json.load(f)
         player_buffs["4b3e8e9b-6de1-4840-8751-b1fb45dc5605"] = {PlayerBuff.BLASERUNNING: 1}
         for player in players:

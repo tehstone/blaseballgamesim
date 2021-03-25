@@ -28,9 +28,11 @@ class TeamState(object):
         starting_pitcher: str,
         stlats: Dict[str, Dict[FK, float]],
         game_stats: Dict[str, Dict[Stats, float]],
+        segmented_stats: Dict[str, Dict[int, Dict[Stats, float]]],
         blood: Dict[str, BloodType],
         player_names: Dict[str, str],
         cur_batter_pos: int,
+        segment_size: int = 3
     ) -> None:
         """ A container class that holds the team state for a given game """
         self.team_id: str = team_id
@@ -49,6 +51,8 @@ class TeamState(object):
         self.starting_pitcher: str = starting_pitcher
         self.stlats: Dict[str, Dict[FK, float]] = stlats
         self.game_stats: Dict[str, Dict[Stats, float]] = game_stats
+        self.segmented_stats: Dict[str, Dict[int, Dict[Stats, float]]] = segmented_stats
+        self.segment_size = segment_size
         self.blood: Dict[str, BloodType] = blood
         self.player_names: Dict[str, str] = player_names
         self.cur_batter_pos: int = cur_batter_pos
@@ -311,6 +315,16 @@ class TeamState(object):
             self.game_stats[player_id][stat_id] += value
         else:
             self.game_stats[player_id][stat_id] = value
+
+        segment = day // self.segment_size
+        if player_id not in self.segmented_stats:
+            self.segmented_stats[player_id] = {}
+        if segment not in self.segmented_stats[player_id]:
+            self.segmented_stats[player_id][segment] = {}
+        if stat_id in self.segmented_stats[player_id][segment]:
+            self.segmented_stats[player_id][segment][stat_id] += value
+        else:
+            self.segmented_stats[player_id][segment][stat_id] = value
 
     def get_defense_feature_vector(self) -> List[float]:
         ret_val: List[float] = [

@@ -14,6 +14,7 @@ from src.game_state import GameState, InningHalf
 lineups_by_team: Dict[str, Dict[int, str]] = {}
 stlats_by_team: Dict[str, Dict[str, Dict[FK, float]]] = {}
 game_stats_by_team: Dict[str, Dict[str, Dict[Stats, float]]] = {}
+segmented_stats_by_team: Dict[str, Dict[str, Dict[int, Dict[Stats, float]]]] = {}
 names_by_team: Dict[str, Dict[str, str]] = {}
 blood_by_team: Dict[str, Dict[str, BloodType]] = {}
 team_states: Dict[Team, TeamState] = {}
@@ -25,9 +26,8 @@ day_names = {}
 day_blood = {}
 day_rotations = {}
 
-iterations = 10
 
-def setup_season(season:int):
+def setup_season(season:int, stats_segment_size:int):
     with open(os.path.join('..', 'season_sim', 'season_data', f"season{season + 1}.json"), 'r', encoding='utf8') as json_file:
         raw_season_data = json.load(json_file)
         for game in raw_season_data:
@@ -43,9 +43,9 @@ def setup_season(season:int):
             print(f'Day {day}, Weather {weather.name}: {away_team_name} at {home_team_name}')
             if day == 99:
                 break
-            update_team_states(season, day, home_team, home_pitcher, weather, True)
+            update_team_states(season, day, home_team, home_pitcher, weather, True, stats_segment_size)
             home_team_state = team_states[team_id_map[home_team]]
-            update_team_states(season, day, away_team, away_pitcher, weather, False)
+            update_team_states(season, day, away_team, away_pitcher, weather, False, stats_segment_size)
             away_team_state = team_states[team_id_map[away_team]]
             game = GameState(
                 game_id=game_id,
@@ -109,6 +109,11 @@ def load_all_state(season: int):
                 game_stats_by_team[team_id][DEF_ID] = {}
             game_stats_by_team[team_id][player_id] = {}
 
+            if team_id not in segmented_stats_by_team:
+                segmented_stats_by_team[team_id] = {}
+                segmented_stats_by_team[team_id][DEF_ID] = {}
+            segmented_stats_by_team[team_id][player_id] = {}
+
             if team_id not in names_by_team:
                 names_by_team[team_id] = {}
             names_by_team[team_id][player_id] = player["player_name"]
@@ -137,6 +142,7 @@ def reset_daily_cache():
     global lineups_by_team
     global rotations_by_team
     global game_stats_by_team
+    global segmented_stats_by_team
     global stlats_by_team
     global names_by_team
     global blood_by_team
@@ -155,7 +161,8 @@ def get_stlat_dict(player: Dict[str, Any]) -> Dict[FK, float]:
     return ret_val
 
 
-def update_team_states(season: int, day: int, team:str, starting_pitcher: str, weather: Weather, is_home: bool):
+def update_team_states(season: int, day: int, team: str, starting_pitcher: str,
+                       weather: Weather, is_home: bool, stats_segment_size: int):
     if team_id_map[team] not in team_states:
         team_states[team_id_map[team]] = TeamState(
             team_id=team,
@@ -172,9 +179,11 @@ def update_team_states(season: int, day: int, team:str, starting_pitcher: str, w
             starting_pitcher=starting_pitcher,
             stlats=day_stlats[day][team],
             game_stats=game_stats_by_team[team],
+            segmented_stats=segmented_stats_by_team[team],
             blood=day_blood[day][team],
             player_names=day_names[day][team],
             cur_batter_pos=1,
+            segment_size=stats_segment_size,
         )
     else:
         team_states[team_id_map[team]].day = day
@@ -232,8 +241,11 @@ def print_leaders():
         print(f'\t{name}: {value:.3f}')
         count += 1
 
-season = 11
+
+iterations = 10
+season = 13
+stats_segment_size = 3
 #print_info()
 load_all_state(season)
-setup_season(season)
+setup_season(season, stats_segment_size)
 print_leaders()
