@@ -143,11 +143,15 @@ class TeamState(object):
         self.stlats[DEF_ID][FK.PRESSURIZATION] = def_defense_pressurization
         self.stlats[DEF_ID][FK.CINNAMON] = def_defense_cinnamon
 
-    def reset_team_state(self, game_stat_reset=False) -> None:
+    def reset_team_state(self, game_stat_reset=False, lineup_changed=False) -> None:
         if game_stat_reset:
             self.reset_game_stats()
         self.cur_batter_pos = 1
         self.cur_batter = self.lineup[self.cur_batter_pos]
+        if lineup_changed:
+            self.player_buffs = self.find_player_buffs()
+            self.player_additives = self.pre_load_additives()
+            self.calc_additives()
         self._calculate_defense()
 
     def reset_game_stats(self) -> None:

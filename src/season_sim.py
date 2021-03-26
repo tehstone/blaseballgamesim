@@ -3,8 +3,9 @@ from os import path
 from typing import Any, Dict
 import os
 import json
+import time
 
-from src.common import get_stlats_for_season, blood_name_map
+from src.common import get_stlats_for_season, blood_name_map, MyEncoder
 from src.common import BlaseballStatistics as Stats
 from src.common import ForbiddenKnowledge as FK
 from src.common import BloodType, Team, team_id_map, blood_id_map, fk_key, Weather, team_name_map
@@ -189,6 +190,9 @@ def update_team_states(season: int, day: int, team: str, starting_pitcher: str,
         team_states[team_id_map[team]].day = day
         team_states[team_id_map[team]].weather = weather
         team_states[team_id_map[team]].is_home = is_home
+        lineup_changed = False
+        if team_states[team_id_map[team]].lineup != day_lineup[day][team]:
+            lineup_changed = True
         team_states[team_id_map[team]].lineup = day_lineup[day][team]
         team_states[team_id_map[team]].rotation = day_rotations[day][team]
         team_states[team_id_map[team]].starting_pitcher = starting_pitcher
@@ -196,13 +200,14 @@ def update_team_states(season: int, day: int, team: str, starting_pitcher: str,
         team_states[team_id_map[team]].blood = day_blood[day][team]
         #team_states[team_id_map[team]].player_names = day_names[day][team]
         team_states[team_id_map[team]].update_player_names(day_names[day][team])
-        team_states[team_id_map[team]].reset_team_state()
+        team_states[team_id_map[team]].reset_team_state(lineup_changed=lineup_changed)
 
 
 def print_leaders():
     strikeouts = []
     hrs = []
     avg = []
+    all_segmented_stats = {}
     for cur_team in team_states.keys():
         for player in team_states[cur_team].game_stats.keys():
             if Stats.PITCHER_STRIKEOUTS in team_states[cur_team].game_stats[player]:
@@ -219,6 +224,15 @@ def print_leaders():
                 abs = team_states[cur_team].game_stats[player][Stats.BATTER_AT_BATS]
                 value = hits / abs
                 avg.append((value, player_name))
+        for player_id, stats in team_states[cur_team].segmented_stats.items():
+            for day in stats:
+                if day not in all_segmented_stats:
+                    all_segmented_stats[day] = {}
+                all_segmented_stats[day][player_id] = stats[day]
+        filename = os.path.join("..", "season_sim", "results", f"{round(time.time())}_all_segmented_stats.json")
+        with open(filename, 'w') as f:
+            json.dump(all_segmented_stats, f, cls=MyEncoder)
+
     print("STRIKEOUTS")
     count = 0
     for value, name in reversed(sorted(strikeouts)):

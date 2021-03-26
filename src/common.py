@@ -1,5 +1,6 @@
 import asyncio
-from typing import Dict, List, Optional, Tuple
+from json import JSONEncoder
+from typing import Dict, List, Optional, Tuple, Any
 from enum import Enum
 
 import json
@@ -8,63 +9,68 @@ import requests
 from aiohttp import ClientSession
 
 
-class BlaseballStatistics(Enum):
+class BlaseballStatistics:
     # stolen base stats
-    STOLEN_BASE_ATTEMPTS = 1
-    STOLEN_BASES = 2
-    CAUGHT_STEALINGS = 3
+    STOLEN_BASE_ATTEMPTS = "Stolen base attempts"
+    STOLEN_BASES = "Stolen bases"
+    CAUGHT_STEALINGS = "Caught stealings"
 
     # batting stats
-    BATTER_STRIKEOUTS = 10
-    BATTER_HITS = 11
-    BATTER_SINGLES = 12
-    BATTER_DOUBLES = 13
-    BATTER_TRIPLES = 14
-    BATTER_HRS = 15
-    BATTER_PLATE_APPEARANCES = 16
-    BATTER_WALKS = 17
-    BATTER_RBIS = 18
-    BATTER_RUNS_SCORED = 19
-    BATTER_PITCHES_FACED = 20
-    BATTER_FOUL_BALLS = 21
-    BATTER_FLYOUTS = 22
-    BATTER_GROUNDOUTS = 23
-    BATTER_AT_BATS = 24
+    BATTER_STRIKEOUTS = "Batter strikeouts"
+    BATTER_HITS = "Batter hits"
+    BATTER_SINGLES = "Batter singles"
+    BATTER_DOUBLES = "Batter doubles"
+    BATTER_TRIPLES = "Batter triples"
+    BATTER_HRS = "Batter hrs"
+    BATTER_PLATE_APPEARANCES = "Batter plate appearances"
+    BATTER_WALKS = "Batter walks"
+    BATTER_RBIS = "Batter rbis"
+    BATTER_RUNS_SCORED = "Batter runs scored"
+    BATTER_PITCHES_FACED = "Batter pitches faced"
+    BATTER_FOUL_BALLS = "Batter foul balls"
+    BATTER_FLYOUTS = "Batter flyouts"
+    BATTER_GROUNDOUTS = "Batter groundouts"
+    BATTER_AT_BATS = "Batter at bats"
 
     # pitcher stats
-    PITCHER_WALKS = 30
-    PITCHER_EARNED_RUNS = 31
-    PITCHER_HITS_ALLOWED = 32
-    PITCHER_HRS_ALLOWED = 33
-    PITCHER_XBH_ALLOWED = 34
-    PITCHER_PITCHES_THROWN = 35
-    PITCHER_INNINGS_PITCHED = 36
-    PITCHER_STRIKEOUTS = 37
-    PITCHER_SHUTOUTS = 38
-    PITCHER_BALLS_THROWN = 39
-    PITCHER_STRIKES_THROWN = 40
-    PITCHER_WINS = 41
-    PITCHER_LOSSES = 42
-    PITCHER_FLYOUTS = 43
-    PITCHER_GROUNDOUTS = 44
-    PITCHER_BATTERS_FACED = 45
-    PITCHER_GAMES_APPEARED = 46
+    PITCHER_WALKS = "Pitcher Walks"
+    PITCHER_EARNED_RUNS = "Pitcher Earned Runs"
+    PITCHER_HITS_ALLOWED = "Pitcher Hits Allowed"
+    PITCHER_HRS_ALLOWED = "Pitcher Hrs Allowed"
+    PITCHER_XBH_ALLOWED = "Pitcher Xbh Allowed"
+    PITCHER_PITCHES_THROWN = "Pitcher Pitches Thrown"
+    PITCHER_INNINGS_PITCHED = "Pitcher Innings Pitched"
+    PITCHER_STRIKEOUTS = "Pitcher Strikeouts"
+    PITCHER_SHUTOUTS = "Pitcher Shutouts"
+    PITCHER_BALLS_THROWN = "Pitcher Balls Thrown"
+    PITCHER_STRIKES_THROWN = "Pitcher Strikes Thrown"
+    PITCHER_WINS = "Pitcher Wins"
+    PITCHER_LOSSES = "Pitcher Losses"
+    PITCHER_FLYOUTS = "Pitcher Flyouts"
+    PITCHER_GROUNDOUTS = "Pitcher Groundouts"
+    PITCHER_BATTERS_FACED = "Pitcher Batters Faced"
+    PITCHER_GAMES_APPEARED = "Pitcher Games Appeared"
 
     # Defense stats
-    DEFENSE_STOLEN_BASE_ATTEMPTS = 50
-    DEFENSE_STOLEN_BASES = 51
-    DEFENSE_CAUGHT_STEALINGS = 52
+    DEFENSE_STOLEN_BASE_ATTEMPTS = "Defense stolen base attempts"
+    DEFENSE_STOLEN_BASES = "Defense stolen bases"
+    DEFENSE_CAUGHT_STEALINGS = "Defense caught stealings"
 
     # Team stats
-    TEAM_WINS = 60
-    TEAM_LOSSES = 61
-    TEAM_RUNS_SCORED = 62
-    TEAM_RUNS_ALLOWED = 63
-    TEAM_SUN2_WINS = 64
-    TEAM_BLACK_HOLE_CONSUMPTION = 65
+    TEAM_WINS = "Team wins"
+    TEAM_LOSSES = "Team losses"
+    TEAM_RUNS_SCORED = "Team runs scored"
+    TEAM_RUNS_ALLOWED = "Team runs allowed"
+    TEAM_SUN2_WINS = "Team sun2 wins"
+    TEAM_BLACK_HOLE_CONSUMPTION = "Team black hole consumption"
 
     # Convenience stats  DO NOT USE
-    GENERIC_ADVANCEMENT = 100
+    GENERIC_ADVANCEMENT = "Generic advancement"
+
+
+class MyEncoder(JSONEncoder):
+    def default(self, o):
+        return o.__dict__
 
 
 class ForbiddenKnowledge(Enum):
