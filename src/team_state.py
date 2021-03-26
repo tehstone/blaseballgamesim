@@ -186,6 +186,8 @@ class TeamState(object):
             "starting_pitcher": self.starting_pitcher,
             "stlats": TeamState.convert_dict(self.stlats),
             "game_stats": TeamState.convert_dict(self.game_stats),
+            "segmented_stats": TeamState.convert_segmented_stats(self.segmented_stats),
+            "segment_size": self.segment_size,
             "blood": TeamState.convert_blood(self.blood),
             "player_names": self.player_names,
             "cur_batter_pos": self.cur_batter_pos,
@@ -228,6 +230,8 @@ class TeamState(object):
         starting_pitcher: str = team_state["starting_pitcher"]
         stlats: Dict[str, Dict[FK, float]] = TeamState.encode_stlats(team_state["stlats"])
         game_stats: Dict[str, Dict[Stats, float]] = TeamState.encode_game_stats(team_state["game_stats"])
+        segmented_stats: Dict[str, Dict[int, Dict[Stats, float]]] = TeamState.encode_segmented_stats(team_state["segmented_stats"])
+        segment_size: int = team_state["segment_size"]
         blood: Dict[str, BloodType] = TeamState.encode_blood(team_state["blood"])
         player_names: Dict[str, str] = team_state["player_names"]
         cur_batter_pos: int = team_state["cur_batter_pos"]
@@ -246,11 +250,11 @@ class TeamState(object):
             starting_pitcher,
             stlats,
             game_stats,
-            # segmented stats wasnt serialized...need to serde it to populate it here.
-            {},
+            segmented_stats,
             blood,
             player_names,
             cur_batter_pos,
+            segment_size,
         )
 
     @classmethod
@@ -271,6 +275,19 @@ class TeamState(object):
             for stat in raw[key]:
                 new_dict[Stats(int(stat))] = raw[key][stat]
             ret_val[key] = new_dict
+        return ret_val
+
+    @classmethod
+    def encode_segmented_stats(cls, raw: Dict[str, Dict[int, Dict[int, float]]]) -> Dict[str, Dict[int, Dict[Stats, float]]]:
+        ret_val: Dict[str, Dict[int, Dict[Stats, float]]] = {}
+        for player_id in raw:
+            new_segment: Dict[int, Dict[Stats, float]] = {}
+            for segment in raw[player_id]:
+                new_stat_dict: Dict[Stats, float] = {}
+                for stat in raw[player_id][segment]:
+                    new_stat_dict[Stats(int(stat))] = raw[player_id][segment][stat]
+                new_segment[int(segment)] = new_stat_dict
+            ret_val[player_id] = new_segment
         return ret_val
 
     @classmethod
@@ -295,6 +312,22 @@ class TeamState(object):
             for stat in encoded[key]:
                 new_dict[stat.value] = encoded[key][stat]
             ret_val[key] = new_dict
+        return ret_val
+
+    @classmethod
+    def convert_segmented_stats(
+        cls,
+        encoded: Dict[str, Dict[int, Dict[Any, float]]]
+    ) -> Dict[str, Dict[int, Dict[int, float]]]:
+        ret_val: Dict[str, Dict[int, Dict[int, float]]] = {}
+        for player_id in encoded:
+            new_segment_dict: Dict[int, Dict[int, float]] = {}
+            for segment in encoded[player_id]:
+                new_stat_dict: Dict[int, float] = {}
+                for stat in encoded[player_id][segment]:
+                    new_stat_dict[stat.value] = encoded[player_id][segment][stat]
+                new_segment_dict[segment] = new_stat_dict
+            ret_val[player_id] = new_segment_dict
         return ret_val
 
     @classmethod

@@ -9,63 +9,63 @@ import requests
 from aiohttp import ClientSession
 
 
-class BlaseballStatistics:
+class BlaseballStatistics(Enum):
     # stolen base stats
-    STOLEN_BASE_ATTEMPTS = "Stolen base attempts"
-    STOLEN_BASES = "Stolen bases"
-    CAUGHT_STEALINGS = "Caught stealings"
+    STOLEN_BASE_ATTEMPTS = 1
+    STOLEN_BASES = 2
+    CAUGHT_STEALINGS = 3
 
     # batting stats
-    BATTER_STRIKEOUTS = "Batter strikeouts"
-    BATTER_HITS = "Batter hits"
-    BATTER_SINGLES = "Batter singles"
-    BATTER_DOUBLES = "Batter doubles"
-    BATTER_TRIPLES = "Batter triples"
-    BATTER_HRS = "Batter hrs"
-    BATTER_PLATE_APPEARANCES = "Batter plate appearances"
-    BATTER_WALKS = "Batter walks"
-    BATTER_RBIS = "Batter rbis"
-    BATTER_RUNS_SCORED = "Batter runs scored"
-    BATTER_PITCHES_FACED = "Batter pitches faced"
-    BATTER_FOUL_BALLS = "Batter foul balls"
-    BATTER_FLYOUTS = "Batter flyouts"
-    BATTER_GROUNDOUTS = "Batter groundouts"
-    BATTER_AT_BATS = "Batter at bats"
+    BATTER_STRIKEOUTS = 10
+    BATTER_HITS = 11
+    BATTER_SINGLES = 12
+    BATTER_DOUBLES = 13
+    BATTER_TRIPLES = 14
+    BATTER_HRS = 15
+    BATTER_PLATE_APPEARANCES = 16
+    BATTER_WALKS = 17
+    BATTER_RBIS = 18
+    BATTER_RUNS_SCORED = 19
+    BATTER_PITCHES_FACED = 20
+    BATTER_FOUL_BALLS = 21
+    BATTER_FLYOUTS = 22
+    BATTER_GROUNDOUTS = 23
+    BATTER_AT_BATS = 24
 
     # pitcher stats
-    PITCHER_WALKS = "Pitcher Walks"
-    PITCHER_EARNED_RUNS = "Pitcher Earned Runs"
-    PITCHER_HITS_ALLOWED = "Pitcher Hits Allowed"
-    PITCHER_HRS_ALLOWED = "Pitcher Hrs Allowed"
-    PITCHER_XBH_ALLOWED = "Pitcher Xbh Allowed"
-    PITCHER_PITCHES_THROWN = "Pitcher Pitches Thrown"
-    PITCHER_INNINGS_PITCHED = "Pitcher Innings Pitched"
-    PITCHER_STRIKEOUTS = "Pitcher Strikeouts"
-    PITCHER_SHUTOUTS = "Pitcher Shutouts"
-    PITCHER_BALLS_THROWN = "Pitcher Balls Thrown"
-    PITCHER_STRIKES_THROWN = "Pitcher Strikes Thrown"
-    PITCHER_WINS = "Pitcher Wins"
-    PITCHER_LOSSES = "Pitcher Losses"
-    PITCHER_FLYOUTS = "Pitcher Flyouts"
-    PITCHER_GROUNDOUTS = "Pitcher Groundouts"
-    PITCHER_BATTERS_FACED = "Pitcher Batters Faced"
-    PITCHER_GAMES_APPEARED = "Pitcher Games Appeared"
+    PITCHER_WALKS = 30
+    PITCHER_EARNED_RUNS = 31
+    PITCHER_HITS_ALLOWED = 32
+    PITCHER_HRS_ALLOWED = 33
+    PITCHER_XBH_ALLOWED = 34
+    PITCHER_PITCHES_THROWN = 35
+    PITCHER_INNINGS_PITCHED = 36
+    PITCHER_STRIKEOUTS = 37
+    PITCHER_SHUTOUTS = 38
+    PITCHER_BALLS_THROWN = 39
+    PITCHER_STRIKES_THROWN = 40
+    PITCHER_WINS = 41
+    PITCHER_LOSSES = 42
+    PITCHER_FLYOUTS = 43
+    PITCHER_GROUNDOUTS = 44
+    PITCHER_BATTERS_FACED = 45
+    PITCHER_GAMES_APPEARED = 46
 
     # Defense stats
-    DEFENSE_STOLEN_BASE_ATTEMPTS = "Defense stolen base attempts"
-    DEFENSE_STOLEN_BASES = "Defense stolen bases"
-    DEFENSE_CAUGHT_STEALINGS = "Defense caught stealings"
+    DEFENSE_STOLEN_BASE_ATTEMPTS = 50
+    DEFENSE_STOLEN_BASES = 51
+    DEFENSE_CAUGHT_STEALINGS = 52
 
     # Team stats
-    TEAM_WINS = "Team wins"
-    TEAM_LOSSES = "Team losses"
-    TEAM_RUNS_SCORED = "Team runs scored"
-    TEAM_RUNS_ALLOWED = "Team runs allowed"
-    TEAM_SUN2_WINS = "Team sun2 wins"
-    TEAM_BLACK_HOLE_CONSUMPTION = "Team black hole consumption"
+    TEAM_WINS = 60
+    TEAM_LOSSES = 61
+    TEAM_RUNS_SCORED = 62
+    TEAM_RUNS_ALLOWED = 63
+    TEAM_SUN2_WINS = 64
+    TEAM_BLACK_HOLE_CONSUMPTION = 65
 
     # Convenience stats  DO NOT USE
-    GENERIC_ADVANCEMENT = "Generic advancement"
+    GENERIC_ADVANCEMENT = 100
 
 
 class MyEncoder(JSONEncoder):
@@ -228,6 +228,65 @@ enabled_player_buffs: List[str] = [
     "HOMEBODY", "OVER_UNDER", "PERK", "SHELLED", "SMOOTH", "SPICY", "SWIM_BLADDER", "TIRED", "TRIPLE_THREAT",
     "UNDER_OVER", "WIRED"]
 
+
+blaseball_statistics_pretty_print_map: Dict[BlaseballStatistics, str] = {
+    # stolen base stats
+    BlaseballStatistics.STOLEN_BASE_ATTEMPTS: "Stolen base attempts",
+    BlaseballStatistics.STOLEN_BASES: "Stolen bases",
+    BlaseballStatistics.CAUGHT_STEALINGS: "Caught stealings",
+
+    # batting stats
+    BlaseballStatistics.BATTER_STRIKEOUTS: "Batter strikeouts",
+    BlaseballStatistics.BATTER_HITS: "Batter hits",
+    BlaseballStatistics.BATTER_SINGLES: "Batter singles",
+    BlaseballStatistics.BATTER_DOUBLES: "Batter doubles",
+    BlaseballStatistics.BATTER_TRIPLES: "Batter triples",
+    BlaseballStatistics.BATTER_HRS: "Batter hrs",
+    BlaseballStatistics.BATTER_PLATE_APPEARANCES: "Batter plate appearances",
+    BlaseballStatistics.BATTER_WALKS: "Batter walks",
+    BlaseballStatistics.BATTER_RBIS: "Batter rbis",
+    BlaseballStatistics.BATTER_RUNS_SCORED: "Batter runs scored",
+    BlaseballStatistics.BATTER_PITCHES_FACED: "Batter pitches faced",
+    BlaseballStatistics.BATTER_FOUL_BALLS: "Batter foul balls",
+    BlaseballStatistics.BATTER_FLYOUTS: "Batter flyouts",
+    BlaseballStatistics.BATTER_GROUNDOUTS: "Batter groundouts",
+    BlaseballStatistics.BATTER_AT_BATS: "Batter at bats",
+
+    # pitcher stats
+    BlaseballStatistics.PITCHER_WALKS: "Pitcher Walks",
+    BlaseballStatistics.PITCHER_EARNED_RUNS: "Pitcher Earned Runs",
+    BlaseballStatistics.PITCHER_HITS_ALLOWED: "Pitcher Hits Allowed",
+    BlaseballStatistics.PITCHER_HRS_ALLOWED: "Pitcher Hrs Allowed",
+    BlaseballStatistics.PITCHER_XBH_ALLOWED: "Pitcher Xbh Allowed",
+    BlaseballStatistics.PITCHER_PITCHES_THROWN: "Pitcher Pitches Thrown",
+    BlaseballStatistics.PITCHER_INNINGS_PITCHED: "Pitcher Innings Pitched",
+    BlaseballStatistics.PITCHER_STRIKEOUTS: "Pitcher Strikeouts",
+    BlaseballStatistics.PITCHER_SHUTOUTS: "Pitcher Shutouts",
+    BlaseballStatistics.PITCHER_BALLS_THROWN: "Pitcher Balls Thrown",
+    BlaseballStatistics.PITCHER_STRIKES_THROWN: "Pitcher Strikes Thrown",
+    BlaseballStatistics.PITCHER_WINS: "Pitcher Wins",
+    BlaseballStatistics.PITCHER_LOSSES: "Pitcher Losses",
+    BlaseballStatistics.PITCHER_FLYOUTS: "Pitcher Flyouts",
+    BlaseballStatistics.PITCHER_GROUNDOUTS: "Pitcher Groundouts",
+    BlaseballStatistics.PITCHER_BATTERS_FACED: "Pitcher Batters Faced",
+    BlaseballStatistics.PITCHER_GAMES_APPEARED: "Pitcher Games Appeared",
+
+    # Defense stats
+    BlaseballStatistics.DEFENSE_STOLEN_BASE_ATTEMPTS: "Defense stolen base attempts",
+    BlaseballStatistics.DEFENSE_STOLEN_BASES: "Defense stolen bases",
+    BlaseballStatistics.DEFENSE_CAUGHT_STEALINGS: "Defense caught stealings",
+
+    # Team stats
+    BlaseballStatistics.TEAM_WINS: "Team wins",
+    BlaseballStatistics.TEAM_LOSSES: "Team losses",
+    BlaseballStatistics.TEAM_RUNS_SCORED: "Team runs scored",
+    BlaseballStatistics.TEAM_RUNS_ALLOWED: "Team runs allowed",
+    BlaseballStatistics.TEAM_SUN2_WINS: "Team sun2 wins",
+    BlaseballStatistics.TEAM_BLACK_HOLE_CONSUMPTION: "Team black hole consumption",
+
+    # Convenience stats  DO NOT USE
+    BlaseballStatistics.GENERIC_ADVANCEMENT: "Generic advancement",
+}
 
 team_id_map: Dict[str, Team] = {
     "b72f3061-f573-40d7-832a-5ad475bd7909": Team.LOVERS,
