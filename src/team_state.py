@@ -28,7 +28,7 @@ class TeamState(object):
         starting_pitcher: str,
         stlats: Dict[str, Dict[FK, float]],
         game_stats: Dict[str, Dict[Stats, float]],
-        segmented_stats: Dict[str, Dict[int, Dict[Stats, float]]],
+        segmented_stats: Dict[int, Dict[str, Dict[Stats, float]]],
         blood: Dict[str, BloodType],
         player_names: Dict[str, str],
         cur_batter_pos: int,
@@ -51,7 +51,7 @@ class TeamState(object):
         self.starting_pitcher: str = starting_pitcher
         self.stlats: Dict[str, Dict[FK, float]] = stlats
         self.game_stats: Dict[str, Dict[Stats, float]] = game_stats
-        self.segmented_stats: Dict[str, Dict[int, Dict[Stats, float]]] = segmented_stats
+        self.segmented_stats: Dict[int, Dict[str, Dict[Stats, float]]] = segmented_stats
         self.segment_size = segment_size
         self.blood: Dict[str, BloodType] = blood
         self.player_names: Dict[str, str] = player_names
@@ -322,15 +322,14 @@ class TeamState(object):
         else:
             self.game_stats[player_id][stat_id] = value
 
-        segment = day // self.segment_size
-        if player_id not in self.segmented_stats:
-            self.segmented_stats[player_id] = {}
-        if segment not in self.segmented_stats[player_id]:
-            self.segmented_stats[player_id][segment] = {}
-        if stat_id in self.segmented_stats[player_id][segment]:
-            self.segmented_stats[player_id][segment][stat_id] += value
+        if day not in self.segmented_stats:
+            self.segmented_stats[day] = {}
+        if player_id not in self.segmented_stats[day]:
+            self.segmented_stats[day][player_id] = {}
+        if stat_id in self.segmented_stats[day][player_id]:
+            self.segmented_stats[day][player_id][stat_id] += value
         else:
-            self.segmented_stats[player_id][segment][stat_id] = value
+            self.segmented_stats[day][player_id][stat_id] = value
 
     def get_defense_feature_vector(self) -> List[float]:
         ret_val: List[float] = [

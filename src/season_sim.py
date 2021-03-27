@@ -15,7 +15,7 @@ from src.game_state import GameState, InningHalf
 lineups_by_team: Dict[str, Dict[int, str]] = {}
 stlats_by_team: Dict[str, Dict[str, Dict[FK, float]]] = {}
 game_stats_by_team: Dict[str, Dict[str, Dict[Stats, float]]] = {}
-segmented_stats_by_team: Dict[str, Dict[str, Dict[int, Dict[Stats, float]]]] = {}
+segmented_stats_by_team: Dict[str, Dict[int, Dict[str, Dict[Stats, float]]]] = {}
 names_by_team: Dict[str, Dict[str, str]] = {}
 blood_by_team: Dict[str, Dict[str, BloodType]] = {}
 team_states: Dict[Team, TeamState] = {}
@@ -112,8 +112,6 @@ def load_all_state(season: int):
 
             if team_id not in segmented_stats_by_team:
                 segmented_stats_by_team[team_id] = {}
-                segmented_stats_by_team[team_id][DEF_ID] = {}
-            segmented_stats_by_team[team_id][player_id] = {}
 
             if team_id not in names_by_team:
                 names_by_team[team_id] = {}
@@ -190,9 +188,9 @@ def update_team_states(season: int, day: int, team: str, starting_pitcher: str,
         team_states[team_id_map[team]].day = day
         team_states[team_id_map[team]].weather = weather
         team_states[team_id_map[team]].is_home = is_home
-        lineup_changed = False
-        if team_states[team_id_map[team]].lineup != day_lineup[day][team]:
-            lineup_changed = True
+        # lineup_changed = False
+        # if team_states[team_id_map[team]].lineup != day_lineup[day][team]:
+        #     lineup_changed = True
         team_states[team_id_map[team]].lineup = day_lineup[day][team]
         team_states[team_id_map[team]].rotation = day_rotations[day][team]
         team_states[team_id_map[team]].starting_pitcher = starting_pitcher
@@ -200,7 +198,7 @@ def update_team_states(season: int, day: int, team: str, starting_pitcher: str,
         team_states[team_id_map[team]].blood = day_blood[day][team]
         #team_states[team_id_map[team]].player_names = day_names[day][team]
         team_states[team_id_map[team]].update_player_names(day_names[day][team])
-        team_states[team_id_map[team]].reset_team_state(lineup_changed=lineup_changed)
+        team_states[team_id_map[team]].reset_team_state(lineup_changed=True)
 
 
 def print_leaders():
@@ -224,11 +222,16 @@ def print_leaders():
                 abs = team_states[cur_team].game_stats[player][Stats.BATTER_AT_BATS]
                 value = hits / abs
                 avg.append((value, player_name))
-        for player_id, stats in team_states[cur_team].segmented_stats.items():
-            for day in stats:
-                if day not in all_segmented_stats:
-                    all_segmented_stats[day] = {}
-                all_segmented_stats[day][player_id] = stats[day]
+        for day, stats in team_states[cur_team].segmented_stats.items():
+            if day not in all_segmented_stats:
+                all_segmented_stats[day] = {}
+            for player_id, player_stats in stats.items():
+                if player_id not in team_states[cur_team].player_names:
+                    continue
+                all_segmented_stats[day][player_id] = {"name": team_states[cur_team].player_names[player_id]}
+                for stat in [Stats.PITCHER_STRIKEOUTS, Stats.BATTER_HITS, Stats.BATTER_HRS, Stats.STOLEN_BASES]:
+                    if stat in player_stats:
+                        all_segmented_stats[day][player_id][stat] = player_stats[stat] / float(iterations)
         filename = os.path.join("..", "season_sim", "results", f"{round(time.time())}_all_segmented_stats.json")
         with open(filename, 'w') as f:
             json.dump(all_segmented_stats, f, cls=MyEncoder)
