@@ -536,7 +536,7 @@ class GameState(object):
         if self.weather == Weather.FLOODING:
             if len(self.cur_base_runners.keys()) > 0:
                 roll = self._random_roll()
-                if roll < self.FLOODING_TRIGGER_PERCENTAGE:
+                if roll < FLOODING_TRIGGER_PERCENTAGE:
                     self.log_event('A surge of Immateria rushes up from Under! Baserunners are swept from play!')
                     to_clear = []
                     for base in self.cur_base_runners.keys():

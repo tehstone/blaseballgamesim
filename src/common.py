@@ -68,9 +68,16 @@ class BlaseballStatistics(Enum):
     GENERIC_ADVANCEMENT = 100
 
 
-class MyEncoder(JSONEncoder):
-    def default(self, o):
-        return o.__dict__
+def convert_keys(obj, convert=str):
+    if isinstance(obj, list):
+        return [convert_keys(i, convert) for i in obj]
+    if not isinstance(obj, dict):
+        return obj
+    ret_dict = {}
+    for k, v in obj.items():
+        k = blaseball_statistics_pretty_print_map[k] if isinstance(k, BlaseballStatistics) else convert(k)
+        ret_dict[k] = convert_keys(v, convert)
+    return ret_dict
 
 
 class ForbiddenKnowledge(Enum):

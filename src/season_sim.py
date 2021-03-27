@@ -5,7 +5,7 @@ import os
 import json
 import time
 
-from src.common import get_stlats_for_season, blood_name_map, MyEncoder
+from src.common import get_stlats_for_season, blood_name_map, PlayerBuff, enabled_player_buffs, convert_keys
 from src.common import BlaseballStatistics as Stats
 from src.common import ForbiddenKnowledge as FK
 from src.common import BloodType, Team, team_id_map, blood_id_map, fk_key, Weather, team_name_map
@@ -14,6 +14,7 @@ from src.game_state import GameState, InningHalf
 
 lineups_by_team: Dict[str, Dict[int, str]] = {}
 stlats_by_team: Dict[str, Dict[str, Dict[FK, float]]] = {}
+buffs_by_team: Dict[str, Dict[str, Dict[PlayerBuff, int]]] = {}
 game_stats_by_team: Dict[str, Dict[str, Dict[Stats, float]]] = {}
 segmented_stats_by_team: Dict[str, Dict[int, Dict[str, Dict[Stats, float]]]] = {}
 names_by_team: Dict[str, Dict[str, str]] = {}
@@ -23,6 +24,7 @@ rotations_by_team: Dict[str, Dict[int, str]] = {}
 
 day_lineup = {}
 day_stlats = {}
+day_buffs = {}
 day_names = {}
 day_blood = {}
 day_rotations = {}
@@ -31,41 +33,57 @@ day_rotations = {}
 def setup_season(season:int, stats_segment_size:int):
     with open(os.path.join('..', 'season_sim', 'season_data', f"season{season + 1}.json"), 'r', encoding='utf8') as json_file:
         raw_season_data = json.load(json_file)
+        failed = 0
         for game in raw_season_data:
-            game_id = game["id"]
-            day = int(game["day"])
-            home_pitcher = game["homePitcher"]
-            away_pitcher = game["awayPitcher"]
-            home_team = game["homeTeam"]
-            away_team = game["awayTeam"]
             home_team_name = game["homeTeamName"]
             away_team_name = game["awayTeamName"]
-            weather = Weather(game["weather"])
-            print(f'Day {day}, Weather {weather.name}: {away_team_name} at {home_team_name}')
-            if day == 99:
-                break
-            update_team_states(season, day, home_team, home_pitcher, weather, True, stats_segment_size)
-            home_team_state = team_states[team_id_map[home_team]]
-            update_team_states(season, day, away_team, away_pitcher, weather, False, stats_segment_size)
-            away_team_state = team_states[team_id_map[away_team]]
-            game = GameState(
-                game_id=game_id,
-                season=season,
-                day=day,
-                home_team=home_team_state,
-                away_team=away_team_state,
-                home_score=Decimal("0"),
-                away_score=Decimal("0"),
-                inning=1,
-                half=InningHalf.TOP,
-                outs=0,
-                strikes=0,
-                balls=0,
-                weather=weather
-            )
-            for x in range(0, iterations):
-                game.simulate_game()
-                game.reset_game_state()
+            try:
+                game_id = game["id"]
+                day = int(game["day"])
+                home_pitcher = game["homePitcher"]
+                away_pitcher = game["awayPitcher"]
+                home_team = game["homeTeam"]
+                away_team = game["awayTeam"]
+                # if home_team != "105bc3ff-1320-4e37-8ef0-8d595cb95dd0" and away_team != "105bc3ff-1320-4e37-8ef0-8d595cb95dd0":
+                #     continue
+
+                weather = Weather(game["weather"])
+                print(f'Day {day}, Weather {weather.name}: {away_team_name} at {home_team_name}')
+                if day == 99:
+                    break
+                update_team_states(season, day, home_team, home_pitcher, weather, True, stats_segment_size)
+                home_team_state = team_states[team_id_map[home_team]]
+                update_team_states(season, day, away_team, away_pitcher, weather, False, stats_segment_size)
+                away_team_state = team_states[team_id_map[away_team]]
+                game = GameState(
+                    game_id=game_id,
+                    season=season,
+                    day=day,
+                    home_team=home_team_state,
+                    away_team=away_team_state,
+                    home_score=Decimal("0"),
+                    away_score=Decimal("0"),
+                    inning=1,
+                    half=InningHalf.TOP,
+                    outs=0,
+                    strikes=0,
+                    balls=0,
+                    weather=weather
+                )
+                home_wins, away_wins = 0, 0
+                for x in range(0, iterations):
+                    home_win = game.simulate_game()
+                    if home_win:
+                        home_wins += 1
+                    else:
+                        away_wins += 1
+                    game.reset_game_state()
+                print(f"{home_team_name}: {home_wins} ({home_wins/iterations}) "
+                      f"{away_team_name}: {away_wins} ({away_wins/iterations})")
+            except KeyError:
+                failed += 1
+                print(f"failed to sim day {day} {home_team_name} vs {away_team_name} game")
+        print(f"{failed} games failed to sim")
 
 
 def load_all_state(season: int):
@@ -105,6 +123,18 @@ def load_all_state(season: int):
                 stlats_by_team[team_id] = {}
             stlats_by_team[team_id][player_id] = get_stlat_dict(player)
 
+            mods = player["modifications"]
+            cur_mod_dict = {}
+            if mods:
+                for mod in mods:
+                    if mod in enabled_player_buffs:
+                        cur_mod_dict[PlayerBuff[mod]] = 1
+                if player_id == "4b3e8e9b-6de1-4840-8751-b1fb45dc5605":
+                    cur_mod_dict[PlayerBuff.BLASERUNNING] = 1
+            if team_id not in buffs_by_team:
+                buffs_by_team[team_id] = {}
+            buffs_by_team[team_id][player_id] = cur_mod_dict
+
             if team_id not in game_stats_by_team:
                 game_stats_by_team[team_id] = {}
                 game_stats_by_team[team_id][DEF_ID] = {}
@@ -126,12 +156,14 @@ def load_all_state(season: int):
         if day > 0 and (len(lineups_by_team) != len(day_lineup[day - 1]) or (len(rotations_by_team) != len(day_rotations[day - 1]))):
             day_lineup[day] = day_lineup[day-1]
             day_stlats[day] = day_stlats[day-1]
+            day_buffs[day] = day_buffs[day-1]
             day_names[day] = day_names[day-1]
             day_blood[day] = day_blood[day-1]
             day_rotations[day] = day_rotations[day - 1]
         else:
             day_lineup[day] = lineups_by_team
             day_stlats[day] = stlats_by_team
+            day_buffs[day] = buffs_by_team
             day_names[day] = names_by_team
             day_blood[day] = blood_by_team
             day_rotations[day] = rotations_by_team
@@ -177,6 +209,7 @@ def update_team_states(season: int, day: int, team: str, starting_pitcher: str,
             rotation=day_rotations[day][team],
             starting_pitcher=starting_pitcher,
             stlats=day_stlats[day][team],
+            buffs=day_buffs[day][team],
             game_stats=game_stats_by_team[team],
             segmented_stats=segmented_stats_by_team[team],
             blood=day_blood[day][team],
@@ -195,6 +228,7 @@ def update_team_states(season: int, day: int, team: str, starting_pitcher: str,
         team_states[team_id_map[team]].rotation = day_rotations[day][team]
         team_states[team_id_map[team]].starting_pitcher = starting_pitcher
         team_states[team_id_map[team]].stlats = day_stlats[day][team]
+        team_states[team_id_map[team]].player_buffs = day_buffs[day][team]
         team_states[team_id_map[team]].blood = day_blood[day][team]
         #team_states[team_id_map[team]].player_names = day_names[day][team]
         team_states[team_id_map[team]].update_player_names(day_names[day][team])
@@ -232,9 +266,9 @@ def print_leaders():
                 for stat in [Stats.PITCHER_STRIKEOUTS, Stats.BATTER_HITS, Stats.BATTER_HRS, Stats.STOLEN_BASES]:
                     if stat in player_stats:
                         all_segmented_stats[day][player_id][stat] = player_stats[stat] / float(iterations)
-        filename = os.path.join("..", "season_sim", "results", f"{round(time.time())}_all_segmented_stats.json")
-        with open(filename, 'w') as f:
-            json.dump(all_segmented_stats, f, cls=MyEncoder)
+    filename = os.path.join("..", "season_sim", "results", f"{round(time.time())}_all_segmented_stats.json")
+    with open(filename, 'w') as f:
+        json.dump(convert_keys(all_segmented_stats), f)
 
     print("STRIKEOUTS")
     count = 0
@@ -258,6 +292,12 @@ def print_leaders():
         print(f'\t{name}: {value:.3f}')
         count += 1
 
+    with open(os.path.join('..', 'season_sim', 'results', "1616749629_top_hrs.txt"), 'w',
+              encoding='utf8') as json_file:
+        json_file.write(top_hrs)
+    with open(os.path.join('..', 'season_sim', 'results', "1616749629_top_sbs.txt"), 'w',
+              encoding='utf8') as json_file:
+        json_file.write(top_sbs)
 
 iterations = 10
 season = 13

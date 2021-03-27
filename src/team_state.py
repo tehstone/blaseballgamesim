@@ -27,6 +27,7 @@ class TeamState(object):
         rotation: Dict[int, str],
         starting_pitcher: str,
         stlats: Dict[str, Dict[FK, float]],
+        buffs: Dict[str, Dict[PlayerBuff, int]],
         game_stats: Dict[str, Dict[Stats, float]],
         segmented_stats: Dict[int, Dict[str, Dict[Stats, float]]],
         blood: Dict[str, BloodType],
@@ -61,20 +62,20 @@ class TeamState(object):
         self.pitching_addition: float = 0.0
         self.defense_addition: float = 0.0
         self.base_running_addition: float = 0.0
-        self.player_buffs = self.find_player_buffs()
+        self.player_buffs = buffs
         self.player_additives = self.pre_load_additives()
         self.calc_additives()
         self._calculate_defense()
 
-    def find_player_buffs(self) -> Dict[str, Dict[PlayerBuff, int]]:
-        cur_cache = {}
-        buff_cache = get_player_buff_cache()
-        for player_id in self.player_names.keys():
-            if player_id in buff_cache:
-                cur_cache[player_id] = buff_cache[player_id]
-            else:
-                cur_cache[player_id] = {}
-        return cur_cache
+    # def find_player_buffs(self) -> Dict[str, Dict[PlayerBuff, int]]:
+    #     cur_cache = {}
+    #     buff_cache = get_player_buff_cache()
+    #     for player_id in self.player_names.keys():
+    #         if player_id in buff_cache:
+    #             cur_cache[player_id] = buff_cache[player_id]
+    #         else:
+    #             cur_cache[player_id] = {}
+    #     return cur_cache
 
     def pre_load_additives(self) -> Dict[str, Dict[AdditiveTypes, float]]:
         player_additives = {}
@@ -149,7 +150,6 @@ class TeamState(object):
         self.cur_batter_pos = 1
         self.cur_batter = self.lineup[self.cur_batter_pos]
         if lineup_changed:
-            self.player_buffs = self.find_player_buffs()
             self.player_additives = self.pre_load_additives()
             self.calc_additives()
         self._calculate_defense()

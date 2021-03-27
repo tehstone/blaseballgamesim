@@ -52,8 +52,8 @@ def load_state(team_id, season, day):
         team_info["game_stats"][player_id] = {}
         team_info["game_stats"][DEF_ID] = {}
 
-        team_info["segmented_stats"][player_id] = {}
-        team_info["segmented_stats"][DEF_ID] = {}
+        team_info["segmented_stats"] = {}
+        team_info["segmented_stats"] = {}
 
         team_info["names"][player_id] = player["player_name"]
 
