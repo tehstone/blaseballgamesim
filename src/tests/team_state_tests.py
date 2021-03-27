@@ -210,6 +210,8 @@ class TestSerialization(TestTeamState):
         self.assertEqual(new_state.team_id, self.team_state.team_id)
         self.assertEqual(new_state.team_enum, self.team_state.team_enum)
         self.assertEqual(new_state.stlats["p4"][FK.THWACKABILITY], self.team_state.stlats["p4"][FK.THWACKABILITY])
+        self.assertEqual(new_state.segmented_stats["p4"][0][Stats.BATTER_AT_BATS],
+                         self.team_state.segmented_stats["p4"][0][Stats.BATTER_AT_BATS])
         os.remove("./foo.test")
 
 

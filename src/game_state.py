@@ -533,6 +533,31 @@ class GameState(object):
 
     # TEAM BUFF SPECIFIC MECHANICS
     def resolve_team_pre_pitch_event(self) -> bool:
+        if self.weather == Weather.FLOODING:
+            if len(self.cur_base_runners.keys()) > 0:
+                roll = self._random_roll()
+                if roll < self.FLOODING_TRIGGER_PERCENTAGE:
+                    self.log_event('A surge of Immateria rushes up from Under! Baserunners are swept from play!')
+                    to_clear = []
+                    for base in self.cur_base_runners.keys():
+                        cur_buff = self.cur_batting_team.player_buffs[self.cur_base_runners[base]]
+                        if PlayerBuff.SWIM_BLADDER in cur_buff:
+                            self.log_event(
+                                f'{self.cur_batting_team.get_player_name(self.cur_base_runners[base])} uses FLIPPERS '
+                                f'to swim home.')
+                            self.increase_batting_team_runs(Decimal(1.0))
+                            to_clear.append(base)
+                        else:
+                            if PlayerBuff.EGO1 in cur_buff or PlayerBuff.EGO2 in cur_buff:
+                                self.log_event(f'{self.cur_batting_team.get_player_name(self.cur_base_runners[base])}'
+                                               f'\'s EGO keeps them on base.')
+                            else:
+                                to_clear.append(base)
+                    for base in to_clear:
+                        del self.cur_base_runners[base]
+                    # Return if we triggered the flood, otherwise continue to the other events
+                    return True
+
         valid_pre_pitch_pitching_events = [PitchEventTeamBuff.CHARM]
         valid_pre_pitch_batting_events = [PitchEventTeamBuff.ZAP, PitchEventTeamBuff.CHARM]
         if self.cur_pitching_team.team_enum in team_pitch_event_map:
