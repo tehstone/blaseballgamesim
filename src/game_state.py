@@ -22,7 +22,8 @@ CHARM_TRIGGER_PERCENTAGE = 0.02
 ZAP_TRIGGER_PERCENTAGE = 0.02
 FLOODING_TRIGGER_PERCENTAGE = 0.01
 COFFEE_PRIME_BEAN_PERCENTAGE = 0.05
-COFFEE_2_PERCENTAGE = 0.01
+COFFEE_2_PERCENTAGE = 0.04
+REMOVE_COFFEE_3_PERCENTAGE = 0.33
 FRIEND_OF_CROWS_PERCENTAGE = 0.02
 BASE_INSTINCT_PRIORS = {
     # num bases: map of priors for base to walk to
@@ -128,6 +129,12 @@ class GameState(object):
         self.home_score = Decimal(0.0)
         self.away_score = Decimal(0.0)
         self.game_log = ["Play ball."]
+        if self.weather == Weather.COFFEE3:
+            self.cur_batting_team.player_buffs[self.cur_batting_team.starting_pitcher][PlayerBuff.TRIPLE_THREAT] = 1
+            self.cur_pitching_team.player_buffs[self.cur_pitching_team.starting_pitcher][PlayerBuff.TRIPLE_THREAT] = 1
+            self.log_event(f'{self.cur_batting_team.player_names[self.cur_batting_team.starting_pitcher]} and'
+                           f'{self.cur_pitching_team.player_names[self.cur_pitching_team.starting_pitcher]} are now '
+                           f'triple threats.')
         self.cur_base_runners = {}
         self.is_game_over = False
         self.refresh_game_status()
@@ -242,7 +249,23 @@ class GameState(object):
         while not self.is_game_over:
             if not self.stolen_base_sim():
                 self.pitch_sim()
+            if len(self.cur_base_runners) > 0:
+                self.cur_batting_team.runners_aboard = True
+            else:
+                self.cur_batting_team.runners_aboard = False
             self.attempt_to_advance_inning()
+            self.cur_batting_team.validate_game_state_additives(self.get_batting_team_score())
+            self.cur_pitching_team.validate_game_state_additives(self.get_pitching_team_score())
+            if self.weather == Weather.COFFEE3 and self.inning == 4 and self.half == InningHalf.TOP and \
+                len(self.cur_base_runners) == 0 and self.outs == 0 and self.strikes == 0 and self.balls == 0:
+                if self._random_roll() <= REMOVE_COFFEE_3_PERCENTAGE:
+                    self.log_event(f'{self.cur_batting_team.player_names[self.cur_batting_team.starting_pitcher]} '
+                                   f'loses triple threat.')
+                    del self.cur_batting_team.player_buffs[self.cur_batting_team.starting_pitcher][PlayerBuff.TRIPLE_THREAT]
+                if self._random_roll() <= REMOVE_COFFEE_3_PERCENTAGE:
+                    self.log_event(f'{self.cur_pitching_team.player_names[self.cur_pitching_team.starting_pitcher]} '
+                                   f'loses triple threat.')
+                    del self.cur_pitching_team.player_buffs[self.cur_pitching_team.starting_pitcher][PlayerBuff.TRIPLE_THREAT]
         if self.away_score == 0:
             self.home_team.update_stat(self.home_team.starting_pitcher, Stats.PITCHER_SHUTOUTS, 1.0, self.day)
         if self.home_score == 0:
@@ -348,6 +371,7 @@ class GameState(object):
             self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
                                               Stats.BATTER_AT_BATS, 1.0, self.day)
             self.hit_sim(pitch_fv)
+            self.cur_batting_team.apply_hit_to_buffs(self.cur_batting_team.cur_batter)
             self.reset_pitch_count()
             self.cur_batting_team.next_batter()
             if self.outs < self.outs_for_inning:
@@ -365,6 +389,7 @@ class GameState(object):
                 self.day
             )
             self.in_play_sim(pitch_fv)
+            self.cur_batting_team.reset_hit_buffs(self.cur_batting_team.cur_batter)
             self.reset_pitch_count()
             self.cur_batting_team.next_batter()
             if self.outs < self.outs_for_inning:
@@ -388,6 +413,18 @@ class GameState(object):
         self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
                                           Stats.BATTER_STRIKEOUTS, 1.0, self.day)
         self.outs += 1
+        self.cur_batting_team.reset_hit_buffs(self.cur_batting_team.cur_batter)
+
+        # Let's check if coffee3 applies
+        if self.weather == Weather.COFFEE3 and \
+            PlayerBuff.TRIPLE_THREAT in self.cur_pitching_team.player_buffs[self.cur_pitching_team.starting_pitcher]:
+            if self.balls == 3:
+                self.increase_batting_team_runs(Decimal(-0.3))
+            if len(self.cur_base_runners) == 3:
+                self.increase_batting_team_runs(Decimal(-0.3))
+            if 3 in self.cur_base_runners:
+                self.increase_batting_team_runs(Decimal(-0.3))
+
         self.reset_pitch_count()
         self.cur_batting_team.next_batter()
         if self.outs < self.outs_for_inning:
@@ -531,8 +568,9 @@ class GameState(object):
     def _random_roll(self) -> float:
         return random.random()
 
-    # TEAM BUFF SPECIFIC MECHANICS
+    # TEAM BUFF AND WEATHER SPECIFIC MECHANICS
     def resolve_team_pre_pitch_event(self) -> bool:
+        # Deal with flooding
         if self.weather == Weather.FLOODING:
             if len(self.cur_base_runners.keys()) > 0:
                 roll = self._random_roll()
@@ -557,6 +595,27 @@ class GameState(object):
                         del self.cur_base_runners[base]
                     # Return if we triggered the flood, otherwise continue to the other events
                     return True
+
+        # Deal with Coffee Prime
+        if self.weather == Weather.COFFEE:
+            if self._random_roll() < COFFEE_PRIME_BEAN_PERCENTAGE:
+                self.log_event(f'{self.cur_batting_team.get_cur_batter_name()} is beaned.')
+                if PlayerBuff.TIRED in self.cur_batting_team.player_buffs[self.cur_batting_team.cur_batter]:
+                    return True
+                if PlayerBuff.WIRED in self.cur_batting_team.player_buffs[self.cur_batting_team.cur_batter]:
+                    self.log_event(f'{self.cur_batting_team.get_cur_batter_name()} becomes Tired.')
+                    del self.cur_batting_team.player_buffs[self.cur_batting_team.cur_batter][PlayerBuff.WIRED]
+                    self.cur_batting_team.player_buffs[self.cur_batting_team.cur_batter][PlayerBuff.TIRED] = 1
+                    return True
+                self.cur_batting_team.player_buffs[self.cur_batting_team.cur_batter][PlayerBuff.WIRED] = 1
+                return True
+
+        # Deal with Coffee2
+        if self.weather == Weather.COFFEE2:
+            if self._random_roll() < COFFEE_2_PERCENTAGE:
+                self.log_event(f'{self.cur_batting_team.get_cur_batter_name()} is filled up.')
+                self.cur_batting_team.player_buffs[self.cur_batting_team.cur_batter][PlayerBuff.COFFEE_RALLY] = 1
+                return True
 
         valid_pre_pitch_pitching_events = [PitchEventTeamBuff.CHARM]
         valid_pre_pitch_batting_events = [PitchEventTeamBuff.ZAP, PitchEventTeamBuff.CHARM]
@@ -690,6 +749,8 @@ class GameState(object):
                             self.day
                         )
                         self.update_base_runner(base, Stats.STOLEN_BASES)
+                        if PlayerBuff.BLASERUNNING in self.cur_batting_team.player_buffs[base_runner_id]:
+                            self.increase_batting_team_runs(Decimal(0.2))
                     else:
                         self.cur_batting_team.update_stat(base_runner_id, Stats.CAUGHT_STEALINGS, 1.0, self.day)
                         self.cur_pitching_team.update_stat(DEF_ID, Stats.DEFENSE_CAUGHT_STEALINGS, 1.0, self.day)
@@ -808,6 +869,7 @@ class GameState(object):
             if self.outs == self.outs_for_inning:
                 # Team has reached their max number of outs
                 self.cur_base_runners = {}
+                self.cur_batting_team.runners_aboard = False
                 self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher,
                                                    Stats.PITCHER_INNINGS_PITCHED, 1.0, self.day)
                 if self.half == InningHalf.TOP:
@@ -831,6 +893,8 @@ class GameState(object):
                         self.is_game_over = True
                     else:
                         self.half = InningHalf.BOTTOM
+                        self.cur_base_runners = {}
+                        self.cur_batting_team.runners_aboard = False
                         self.log_event(f'Side retired. {self.half.name} of inning {self.inning}.')
                         self.log_score()
                         self.refresh_game_status()
@@ -844,10 +908,24 @@ class GameState(object):
                     else:
                         self.half = InningHalf.TOP
                         self.inning += 1
+                        self.cur_base_runners = {}
+                        self.cur_batting_team.runners_aboard = False
                         self.log_event(f'Side retired. {self.half.name} of inning {self.inning}.')
                         self.log_score()
                         self.refresh_game_status()
                         self.reset_inning_counts()
+
+    def get_batting_team_score(self) -> Decimal:
+        if self.inning == InningHalf.TOP:
+            return self.away_score
+        else:
+            return self.home_score
+
+    def get_pitching_team_score(self) -> Decimal:
+        if self.inning == InningHalf.TOP:
+            return self.home_score
+        else:
+            return self.away_score
 
     @classmethod
     def gen_runner_fv(

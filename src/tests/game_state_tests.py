@@ -110,11 +110,19 @@ class TestGameState(unittest.TestCase):
                 "p3": {},
                 "p4": {},
             },
-            segmented_stats={
+            buffs={
                 "p1": {},
                 "p2": {},
                 "p3": {},
                 "p4": {},
+            },
+            segmented_stats={
+                0:{
+                    "p1": {},
+                    "p2": {},
+                    "p3": {},
+                    "p4": {},
+                },
             },
             blood={
                 "p1": BloodType.O,
@@ -150,6 +158,12 @@ class TestGameState(unittest.TestCase):
                 "p13": DEFAULT_FKS,
                 "p14": DEFAULT_FKS,
             },
+            buffs={
+                "p11": {},
+                "p12": {},
+                "p13": {},
+                "p14": {},
+            },
             game_stats={
                 "p11": {},
                 "p12": {},
@@ -157,10 +171,12 @@ class TestGameState(unittest.TestCase):
                 "p14": {},
             },
             segmented_stats={
-                "p11": {},
-                "p12": {},
-                "p13": {},
-                "p14": {},
+                0: {
+                    "p11": {},
+                    "p12": {},
+                    "p13": {},
+                    "p14": {},
+                },
             },
             blood={
                 "p11": BloodType.O,
@@ -660,7 +676,7 @@ class TestPrePitchEvents(TestGameState):
         self.assertTrue(self.game_state.resolve_team_pre_pitch_event())
 
     def testFloodingNotTriggering(self):
-        self.game_state.FLOODING_TRIGGER_PERCENTAGE = 1.0
+        src.game_state.FLOODING_TRIGGER_PERCENTAGE = 1.0
         self.game_state.weather = Weather.SUN2
         self.game_state.cur_base_runners[1] = "p11"
         self.game_state.cur_base_runners[2] = "p12"
@@ -672,7 +688,7 @@ class TestPrePitchEvents(TestGameState):
         self.assertFalse(self.game_state.resolve_team_pre_pitch_event())
 
     def testFloodingWipesEveryoneAway(self):
-        self.game_state.FLOODING_TRIGGER_PERCENTAGE = 1.0
+        src.game_state.FLOODING_TRIGGER_PERCENTAGE = 1.0
         self.game_state.weather = Weather.FLOODING
         self.game_state.cur_base_runners[1] = "p11"
         self.game_state.cur_base_runners[2] = "p12"
@@ -691,7 +707,7 @@ class TestPrePitchEvents(TestGameState):
         self.assertEqual(self.game_state.away_score, 0)
 
     def testFloodingScores1(self):
-        self.game_state.FLOODING_TRIGGER_PERCENTAGE = 1.0
+        src.game_state.FLOODING_TRIGGER_PERCENTAGE = 1.0
         self.game_state.weather = Weather.FLOODING
         self.game_state.cur_batting_team.player_buffs["p11"] = {PlayerBuff.SWIM_BLADDER: 1}
         self.game_state.cur_base_runners[1] = "p11"
@@ -711,7 +727,7 @@ class TestPrePitchEvents(TestGameState):
         self.assertEqual(self.game_state.away_score, 1)
 
     def testFloodingScores1Leaves1(self):
-        self.game_state.FLOODING_TRIGGER_PERCENTAGE = 1.0
+        src.game_state.FLOODING_TRIGGER_PERCENTAGE = 1.0
         self.game_state.weather = Weather.FLOODING
         self.game_state.cur_batting_team.player_buffs["p11"] = {PlayerBuff.SWIM_BLADDER: 1}
         self.game_state.cur_batting_team.player_buffs["p12"] = {PlayerBuff.EGO1: 1}

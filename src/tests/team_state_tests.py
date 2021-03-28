@@ -4,7 +4,7 @@ import unittest
 from src.team_state import TeamState
 from src.common import BlaseballStatistics as Stats
 from src.common import ForbiddenKnowledge as FK
-from src.common import BloodType, Team, Weather
+from src.common import AdditiveTypes, BloodType, PlayerBuff, Team, Weather
 
 
 class TestTeamState(unittest.TestCase):
@@ -136,6 +136,12 @@ class TestTeamState(unittest.TestCase):
                     FK.CINNAMON: 3.0,
                 },
             },
+            buffs={
+                "p1": {},
+                "p2": {},
+                "p3": {},
+                "p4": {},
+            },
             game_stats={
                 "p1": {
                     Stats.BATTER_AT_BATS: 1.0,
@@ -151,17 +157,17 @@ class TestTeamState(unittest.TestCase):
                 },
             },
             segmented_stats={
-                "p1": {
-                    0: {Stats.BATTER_AT_BATS: 1.0},
+                0: {
+                    "p1": {Stats.BATTER_AT_BATS: 1.0},
+                    "p2": {Stats.BATTER_AT_BATS: 1.0},
+                    "p3": {Stats.BATTER_AT_BATS: 1.0},
+                    "p4": {Stats.BATTER_AT_BATS: 1.0},
                 },
-                "p2": {
-                    0: {Stats.BATTER_AT_BATS: 1.0},
-                },
-                "p3": {
-                    0: {Stats.BATTER_AT_BATS: 1.0},
-                },
-                "p4": {
-                    0: {Stats.BATTER_AT_BATS: 1.0},
+                3: {
+                    "p1": {Stats.BATTER_AT_BATS: 1.0},
+                    "p2": {Stats.BATTER_AT_BATS: 1.0},
+                    "p3": {Stats.BATTER_AT_BATS: 1.0},
+                    "p4": {Stats.BATTER_AT_BATS: 1.0},
                 },
             },
             blood={
@@ -210,8 +216,8 @@ class TestSerialization(TestTeamState):
         self.assertEqual(new_state.team_id, self.team_state.team_id)
         self.assertEqual(new_state.team_enum, self.team_state.team_enum)
         self.assertEqual(new_state.stlats["p4"][FK.THWACKABILITY], self.team_state.stlats["p4"][FK.THWACKABILITY])
-        self.assertEqual(new_state.segmented_stats["p4"][0][Stats.BATTER_AT_BATS],
-                         self.team_state.segmented_stats["p4"][0][Stats.BATTER_AT_BATS])
+        self.assertEqual(new_state.segmented_stats[0]["p4"][Stats.BATTER_AT_BATS],
+                         self.team_state.segmented_stats[0]["p4"][Stats.BATTER_AT_BATS])
         os.remove("./foo.test")
 
 
@@ -232,43 +238,6 @@ class TestBatterAdvancement(TestTeamState):
         cur_batter_pos = self.team_state.cur_batter_pos
         self.assertEqual(cur_batter, "p1")
         self.assertEqual(cur_batter_pos, 1)
-
-class TestTeamBuffChange(TestTeamState):
-    def test_crows_weather(self):
-        self.team_state.weather = Weather.BIRD
-        self.team_state.calc_additives()
-        new_p1 = self.team_state.get_batter_feature_vector("p1")
-        self.assertEqual(2.0, new_p1[5])
-        self.assertEqual(0.0, new_p1[6])
-        self.assertEqual(3.0, new_p1[8])
-        self.assertEqual(0.0, self.team_state.batting_addition)
-        self.assertEqual(0.0, self.team_state.pitching_addition)
-        self.assertEqual(0.0, self.team_state.defense_addition)
-        self.assertEqual(0.0, self.team_state.base_running_addition)
-        self.team_state.team_enum = Team.PIES
-        self.team_state.weather = Weather.SUN2
-        self.team_state.season = 12
-        self.team_state.calc_additives()
-        new_p1 = self.team_state.get_batter_feature_vector("p1")
-        self.assertEqual(2.0, new_p1[5])
-        self.assertEqual(0.0, new_p1[6])
-        self.assertEqual(3.0, new_p1[8])
-        self.assertEqual(0.0, self.team_state.batting_addition)
-        self.assertEqual(0.0, self.team_state.pitching_addition)
-        self.assertEqual(0.0, self.team_state.defense_addition)
-        self.assertEqual(0.0, self.team_state.base_running_addition)
-        self.team_state.weather = Weather.BIRD
-        self.team_state.calc_additives()
-        self.assertEqual(0.5, self.team_state.batting_addition)
-        self.assertEqual(0.5, self.team_state.pitching_addition)
-        self.assertEqual(0.0, self.team_state.defense_addition)
-        self.assertEqual(0.0, self.team_state.base_running_addition)
-        new_p1 = self.team_state.get_batter_feature_vector("p1")
-        self.assertEqual(1.5, new_p1[5])
-        self.assertEqual(0.5, new_p1[6])
-        self.assertEqual(3.0, new_p1[8])
-        new_p1 = self.team_state.get_batter_feature_vector("p4")
-        self.assertEqual(0.001, new_p1[5])
 
     def test_travelling(self):
         self.team_state.is_home = True
@@ -327,3 +296,120 @@ class TestTeamBuffChange(TestTeamState):
         self.assertEqual(3.1, new_p1[8])
         new_p1 = self.team_state.get_batter_feature_vector("p4")
         self.assertEqual(0.001, new_p1[5])
+
+
+class TestHitBuffModifiers(TestTeamState):
+    def test_reset_hit_buff(self):
+        self.team_state.player_buffs["p1"][PlayerBuff.SPICY] = 4
+        self.assertEqual(4, self.team_state.player_buffs["p1"][PlayerBuff.SPICY])
+        self.team_state.reset_hit_buffs("p1")
+        self.assertEqual(1, self.team_state.player_buffs["p1"][PlayerBuff.SPICY])
+
+    def test_spicy_buff(self):
+        self.team_state.player_buffs["p1"][PlayerBuff.SPICY] = 1
+        self.assertEqual(1, self.team_state.player_buffs["p1"][PlayerBuff.SPICY])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.team_state.apply_hit_to_buffs("p1")
+        self.assertEqual(2, self.team_state.player_buffs["p1"][PlayerBuff.SPICY])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.team_state.apply_hit_to_buffs("p1")
+        self.assertEqual(3, self.team_state.player_buffs["p1"][PlayerBuff.SPICY])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.team_state.apply_hit_to_buffs("p1")
+        self.assertEqual(4, self.team_state.player_buffs["p1"][PlayerBuff.SPICY])
+        self.assertEqual(0.5, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.team_state.apply_hit_to_buffs("p1")
+        self.assertEqual(4, self.team_state.player_buffs["p1"][PlayerBuff.SPICY])
+        self.assertEqual(0.5, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.team_state.reset_hit_buffs("p1")
+        self.assertEqual(1, self.team_state.player_buffs["p1"][PlayerBuff.SPICY])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+
+
+class TestPreloadModifiers(TestTeamState):
+    def test_chunky(self):
+        self.team_state.player_buffs["p1"][PlayerBuff.CHUNKY] = 1
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.team_state.weather = Weather.SUN2
+        self.team_state.reset_preload_additives()
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.team_state.weather = Weather.PEANUTS
+        self.team_state.reset_preload_additives()
+        self.assertEqual(1.0, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+
+    def test_smooth(self):
+        self.team_state.player_buffs["p1"][PlayerBuff.SMOOTH] = 1
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.BASE_RUNNING])
+        self.team_state.weather = Weather.SUN2
+        self.team_state.reset_preload_additives()
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.BASE_RUNNING])
+        self.team_state.weather = Weather.PEANUTS
+        self.team_state.reset_preload_additives()
+        self.assertEqual(1.0, self.team_state.player_additives["p1"][AdditiveTypes.BASE_RUNNING])
+
+    def test_homebody(self):
+        self.team_state.player_buffs["p1"][PlayerBuff.HOMEBODY] = 1
+        self.team_state.is_home = False
+        self.team_state.reset_preload_additives()
+        self.assertEqual(-0.2, self.team_state.player_additives["p1"][AdditiveTypes.BASE_RUNNING])
+        self.assertEqual(-0.2, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.assertEqual(-0.2, self.team_state.player_additives["p1"][AdditiveTypes.PITCHING])
+        self.assertEqual(-0.2, self.team_state.player_additives["p1"][AdditiveTypes.DEFENSE])
+        self.team_state.is_home = True
+        self.team_state.reset_preload_additives()
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.BASE_RUNNING])
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.PITCHING])
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.DEFENSE])
+
+    def test_perk(self):
+        self.team_state.player_buffs["p1"][PlayerBuff.PERK] = 1
+        self.team_state.weather = Weather.SUN2
+        self.team_state.reset_preload_additives()
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.BASE_RUNNING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.PITCHING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.DEFENSE])
+        self.assertEqual(1, self.team_state.player_buffs["p1"][PlayerBuff.PERK])
+        self.team_state.player_buffs["p1"][PlayerBuff.PERK] = 1
+        self.team_state.weather = Weather.COFFEE
+        self.team_state.reset_preload_additives()
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.BASE_RUNNING])
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.PITCHING])
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.DEFENSE])
+        self.assertEqual(2, self.team_state.player_buffs["p1"][PlayerBuff.PERK])
+        self.team_state.player_buffs["p1"][PlayerBuff.PERK] = 1
+        self.team_state.weather = Weather.COFFEE2
+        self.team_state.reset_preload_additives()
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.BASE_RUNNING])
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.PITCHING])
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.DEFENSE])
+        self.assertEqual(2, self.team_state.player_buffs["p1"][PlayerBuff.PERK])
+        self.team_state.player_buffs["p1"][PlayerBuff.PERK] = 1
+        self.team_state.weather = Weather.COFFEE3
+        self.team_state.reset_preload_additives()
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.BASE_RUNNING])
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.PITCHING])
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.DEFENSE])
+        self.assertEqual(2, self.team_state.player_buffs["p1"][PlayerBuff.PERK])
+        self.team_state.player_buffs["p1"][PlayerBuff.PERK] = 1
+        self.team_state.weather = Weather.SUN2
+        self.team_state.reset_preload_additives()
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.BASE_RUNNING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.PITCHING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.DEFENSE])
+        self.assertEqual(1, self.team_state.player_buffs["p1"][PlayerBuff.PERK])
+
+    def test_under_over(self):
+        self.team_state.player_buffs["p1"][PlayerBuff.UNDER_OVER] = 1
+        self.team_state.reset_preload_additives()
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.BASE_RUNNING])
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.PITCHING])
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.DEFENSE])
+        self.assertEqual(2, self.team_state.player_buffs["p1"][PlayerBuff.UNDER_OVER])
+

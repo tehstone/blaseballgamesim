@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import Any, Dict, List, Tuple
 import json
 import logging
@@ -51,6 +52,7 @@ class TeamState(object):
         self.rotation: Dict[int, str] = rotation
         self.starting_pitcher: str = starting_pitcher
         self.stlats: Dict[str, Dict[FK, float]] = stlats
+        self.player_buffs: Dict[str, Dict[PlayerBuff, int]] = buffs
         self.game_stats: Dict[str, Dict[Stats, float]] = game_stats
         self.segmented_stats: Dict[int, Dict[str, Dict[Stats, float]]] = segmented_stats
         self.segment_size = segment_size
@@ -62,20 +64,76 @@ class TeamState(object):
         self.pitching_addition: float = 0.0
         self.defense_addition: float = 0.0
         self.base_running_addition: float = 0.0
-        self.player_buffs = buffs
         self.player_additives = self.pre_load_additives()
         self.calc_additives()
         self._calculate_defense()
 
-    # def find_player_buffs(self) -> Dict[str, Dict[PlayerBuff, int]]:
-    #     cur_cache = {}
-    #     buff_cache = get_player_buff_cache()
-    #     for player_id in self.player_names.keys():
-    #         if player_id in buff_cache:
-    #             cur_cache[player_id] = buff_cache[player_id]
-    #         else:
-    #             cur_cache[player_id] = {}
-    #     return cur_cache
+    def validate_game_state_additives(self, cur_runs: Decimal):
+        if self.team_enum in team_game_event_map:
+            buff, start_season, end_season, req_weather = team_game_event_map[self.team_enum]
+            if buff == GameEventTeamBuff.PRESSURE and \
+                    self.season >= start_season and \
+                    req_weather == self.weather and \
+                    self.runners_aboard:
+                self.batting_addition = 0.25
+                self.pitching_addition = 0.25
+                self.defense_addition = 0.25
+                self.base_running_addition = 0.25
+            if buff == GameEventTeamBuff.PRESSURE and \
+                    self.season >= start_season and \
+                    req_weather == self.weather and \
+                    not self.runners_aboard:
+                self.batting_addition = 0.0
+                self.pitching_addition = 0.0
+                self.defense_addition = 0.0
+                self.base_running_addition = 0.0
+
+        for player_id in self.player_buffs.keys():
+            cur_buffs = self.player_buffs[player_id]
+            for cur_mod in cur_buffs.keys():
+                if cur_mod == PlayerBuff.UNDER_OVER and cur_buffs[cur_mod] == 2 and cur_runs > 5:
+                    # turn off the buff
+                    self.player_buffs[player_id][cur_mod] = 1
+                    self.player_additives[player_id][AdditiveTypes.BATTING] -= 0.2
+                    self.player_additives[player_id][AdditiveTypes.PITCHING] -= 0.2
+                    self.player_additives[player_id][AdditiveTypes.DEFENSE] -= 0.2
+                    self.player_additives[player_id][AdditiveTypes.BASE_RUNNING] -= 0.2
+                if cur_mod == PlayerBuff.UNDER_OVER and cur_buffs[cur_mod] == 1 and cur_runs < 5:
+                    # turn on the buff
+                    self.player_buffs[player_id][cur_mod] = 2
+                    self.player_additives[player_id][AdditiveTypes.BATTING] += 0.2
+                    self.player_additives[player_id][AdditiveTypes.PITCHING] += 0.2
+                    self.player_additives[player_id][AdditiveTypes.DEFENSE] += 0.2
+                    self.player_additives[player_id][AdditiveTypes.BASE_RUNNING] += 0.2
+                if cur_mod == PlayerBuff.OVER_UNDER and cur_buffs[cur_mod] == 1 and cur_runs > 5:
+                    # turn on the debuff
+                    self.player_buffs[player_id][cur_mod] = 2
+                    self.player_additives[player_id][AdditiveTypes.BATTING] -= 0.2
+                    self.player_additives[player_id][AdditiveTypes.PITCHING] -= 0.2
+                    self.player_additives[player_id][AdditiveTypes.DEFENSE] -= 0.2
+                    self.player_additives[player_id][AdditiveTypes.BASE_RUNNING] -= 0.2
+                if cur_mod == PlayerBuff.OVER_UNDER and cur_buffs[cur_mod] == 2 and cur_runs <= 5:
+                    # turn off the debuff
+                    self.player_buffs[player_id][cur_mod] = 1
+                    self.player_additives[player_id][AdditiveTypes.BATTING] += 0.2
+                    self.player_additives[player_id][AdditiveTypes.PITCHING] += 0.2
+                    self.player_additives[player_id][AdditiveTypes.DEFENSE] += 0.2
+                    self.player_additives[player_id][AdditiveTypes.BASE_RUNNING] += 0.2
+
+    def apply_hit_to_buffs(self, player_id: str):
+        if PlayerBuff.SPICY in self.player_buffs[player_id]:
+            if self.player_buffs[player_id][PlayerBuff.SPICY] < 3:
+                self.player_buffs[player_id][PlayerBuff.SPICY] += 1
+            else:
+                if self.player_buffs[player_id][PlayerBuff.SPICY] == 3:
+                    self.player_buffs[player_id][PlayerBuff.SPICY] += 1
+                    self.player_additives[player_id][AdditiveTypes.BATTING] += 0.5
+
+    def reset_hit_buffs(self, player_id: str):
+        if PlayerBuff.SPICY in self.player_buffs[player_id]:
+            if self.player_buffs[player_id][PlayerBuff.SPICY] == 4:
+                self.player_additives[player_id][AdditiveTypes.BATTING] -= 0.5
+            self.player_buffs[player_id][PlayerBuff.SPICY] = 1
 
     def pre_load_additives(self) -> Dict[str, Dict[AdditiveTypes, float]]:
         player_additives = {}
@@ -95,17 +153,23 @@ class TeamState(object):
                         (cur_mod == PlayerBuff.HOMEBODY and self.is_home) or \
                         (cur_mod == PlayerBuff.PERK and
                          self.weather in [Weather.COFFEE, Weather.COFFEE2, Weather.COFFEE3]):
+                    # turn on the buff
+                    self.player_buffs[player_id][cur_mod] = 2
                     cur_additives[AdditiveTypes.BATTING] += 0.2
                     cur_additives[AdditiveTypes.PITCHING] += 0.2
                     cur_additives[AdditiveTypes.DEFENSE] += 0.2
                     cur_additives[AdditiveTypes.BASE_RUNNING] += 0.2
                 if cur_mod == PlayerBuff.HOMEBODY and not self.is_home:
+                    self.player_buffs[player_id][cur_mod] = 1
                     cur_additives[AdditiveTypes.BATTING] -= 0.2
                     cur_additives[AdditiveTypes.PITCHING] -= 0.2
                     cur_additives[AdditiveTypes.DEFENSE] -= 0.2
                     cur_additives[AdditiveTypes.BASE_RUNNING] -= 0.2
             player_additives[player_id] = cur_additives
         return player_additives
+
+    def reset_preload_additives(self) -> None:
+        self.player_additives = self.pre_load_additives()
 
     def _calculate_defense(self):
         """Calculate the average team defense and store it in the stlats dict under DEF_ID"""
@@ -185,6 +249,7 @@ class TeamState(object):
             "rotation": self.rotation,
             "starting_pitcher": self.starting_pitcher,
             "stlats": TeamState.convert_dict(self.stlats),
+            "buffs": TeamState.convert_buffs(self.player_buffs),
             "game_stats": TeamState.convert_dict(self.game_stats),
             "segmented_stats": TeamState.convert_segmented_stats(self.segmented_stats),
             "segment_size": self.segment_size,
@@ -229,8 +294,9 @@ class TeamState(object):
         rotation: Dict[int, str] = TeamState.encode_lineup(team_state["rotation"])
         starting_pitcher: str = team_state["starting_pitcher"]
         stlats: Dict[str, Dict[FK, float]] = TeamState.encode_stlats(team_state["stlats"])
+        buffs: Dict[str, Dict[PlayerBuff, int]] = TeamState.encode_buffs(team_state["buffs"])
         game_stats: Dict[str, Dict[Stats, float]] = TeamState.encode_game_stats(team_state["game_stats"])
-        segmented_stats: Dict[str, Dict[int, Dict[Stats, float]]] = TeamState.encode_segmented_stats(team_state["segmented_stats"])
+        segmented_stats: Dict[int, Dict[str, Dict[Stats, float]]] = TeamState.encode_segmented_stats(team_state["segmented_stats"])
         segment_size: int = team_state["segment_size"]
         blood: Dict[str, BloodType] = TeamState.encode_blood(team_state["blood"])
         player_names: Dict[str, str] = team_state["player_names"]
@@ -249,6 +315,7 @@ class TeamState(object):
             rotation,
             starting_pitcher,
             stlats,
+            buffs,
             game_stats,
             segmented_stats,
             blood,
@@ -268,6 +335,16 @@ class TeamState(object):
         return ret_val
 
     @classmethod
+    def encode_buffs(cls, raw: Dict[str, Dict[int, int]]) -> Dict[str, Dict[PlayerBuff, int]]:
+        ret_val: Dict[str, Dict[PlayerBuff, int]] = {}
+        for key in raw:
+            new_dict: Dict[PlayerBuff, int] = {}
+            for stat in raw[key]:
+                new_dict[PlayerBuff(int(stat))] = raw[key][stat]
+            ret_val[key] = new_dict
+        return ret_val
+
+    @classmethod
     def encode_game_stats(cls, raw: Dict[str, Dict[int, float]]) -> Dict[str, Dict[Stats, float]]:
         ret_val: Dict[str, Dict[Stats, float]] = {}
         for key in raw:
@@ -278,16 +355,16 @@ class TeamState(object):
         return ret_val
 
     @classmethod
-    def encode_segmented_stats(cls, raw: Dict[str, Dict[int, Dict[int, float]]]) -> Dict[str, Dict[int, Dict[Stats, float]]]:
-        ret_val: Dict[str, Dict[int, Dict[Stats, float]]] = {}
-        for player_id in raw:
-            new_segment: Dict[int, Dict[Stats, float]] = {}
-            for segment in raw[player_id]:
+    def encode_segmented_stats(cls, raw: Dict[int, Dict[str, Dict[int, float]]]) -> Dict[int, Dict[str, Dict[Stats, float]]]:
+        ret_val: Dict[int, Dict[str, Dict[Stats, float]]] = {}
+        for segment in raw:
+            new_player: Dict[str, Dict[Stats, float]] = {}
+            for player_id in raw[segment]:
                 new_stat_dict: Dict[Stats, float] = {}
-                for stat in raw[player_id][segment]:
-                    new_stat_dict[Stats(int(stat))] = raw[player_id][segment][stat]
-                new_segment[int(segment)] = new_stat_dict
-            ret_val[player_id] = new_segment
+                for stat in raw[segment][player_id]:
+                    new_stat_dict[Stats(int(stat))] = raw[segment][player_id][stat]
+                new_player[player_id] = new_stat_dict
+            ret_val[int(segment)] = new_player
         return ret_val
 
     @classmethod
@@ -315,19 +392,29 @@ class TeamState(object):
         return ret_val
 
     @classmethod
+    def convert_buffs(cls, encoded: Dict[str, Dict[Any, int]]) -> Dict[str, Dict[int, int]]:
+        ret_val: Dict[str, Dict[int, int]] = {}
+        for key in encoded:
+            new_dict: Dict[int, int] = {}
+            for stat in encoded[key]:
+                new_dict[stat.value] = encoded[key][stat]
+            ret_val[key] = new_dict
+        return ret_val
+
+    @classmethod
     def convert_segmented_stats(
         cls,
-        encoded: Dict[str, Dict[int, Dict[Any, float]]]
-    ) -> Dict[str, Dict[int, Dict[int, float]]]:
-        ret_val: Dict[str, Dict[int, Dict[int, float]]] = {}
-        for player_id in encoded:
-            new_segment_dict: Dict[int, Dict[int, float]] = {}
-            for segment in encoded[player_id]:
+        encoded: Dict[int, Dict[str, Dict[Any, float]]]
+    ) -> Dict[int, Dict[str, Dict[int, float]]]:
+        ret_val: Dict[int, Dict[str, Dict[int, float]]] = {}
+        for segment in encoded:
+            new_player_dict: Dict[str, Dict[int, float]] = {}
+            for player_id in encoded[segment]:
                 new_stat_dict: Dict[int, float] = {}
-                for stat in encoded[player_id][segment]:
-                    new_stat_dict[stat.value] = encoded[player_id][segment][stat]
-                new_segment_dict[segment] = new_stat_dict
-            ret_val[player_id] = new_segment_dict
+                for stat in encoded[segment][player_id]:
+                    new_stat_dict[stat.value] = encoded[segment][player_id][stat]
+                new_player_dict[player_id] = new_stat_dict
+            ret_val[segment] = new_player_dict
         return ret_val
 
     @classmethod
