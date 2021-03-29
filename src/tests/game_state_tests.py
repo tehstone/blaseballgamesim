@@ -1296,32 +1296,30 @@ class TestPitchSim(TestGameState):
         self.assertEqual(self.game_state.home_score, 0)
         self.assertEqual(self.game_state.away_score, 0)
 
+    class TestSun2Blackhole(TestGameState):
+        def testSun2(self):
+            self.game_state.home_score = Decimal("9.0")
+            self.game_state.away_score = Decimal("9.0")
+            self.assertEqual(self.game_state.cur_batting_team.team_enum, self.game_state.away_team.team_enum)
+            self.assertEqual(self.game_state.cur_pitching_team.team_enum, self.game_state.home_team.team_enum)
+            self.game_state.increase_batting_team_runs(Decimal("0.9"))
+            self.assertEqual(Decimal("9.9"), self.game_state.away_score)
+            self.game_state.increase_batting_team_runs(Decimal("1.0"))
+            self.assertEqual(Decimal("0.9"), self.game_state.away_score)
+            self.assertEqual(1.0, self.game_state.cur_batting_team.game_stats[TEAM_ID][Stats.TEAM_SUN2_WINS])
+            self.game_state.home_score = Decimal("9.0")
+            self.game_state.away_score = Decimal("9.0")
 
-
-class TestSun2Blackhole(TestGameState):
-    def testSun2(self):
-        self.game_state.home_score = Decimal("9.0")
-        self.game_state.away_score = Decimal("9.0")
-        self.assertEqual(self.game_state.cur_batting_team.team_enum, self.game_state.away_team.team_enum)
-        self.assertEqual(self.game_state.cur_pitching_team.team_enum, self.game_state.home_team.team_enum)
-        self.game_state.increase_batting_team_runs(Decimal("0.9"))
-        self.assertEqual(Decimal("9.9"), self.game_state.away_score)
-        self.game_state.increase_batting_team_runs(Decimal("1.0"))
-        self.assertEqual(Decimal("0.9"), self.game_state.away_score)
-        self.assertEqual(1.0, self.game_state.cur_batting_team.game_stats[TEAM_ID][Stats.TEAM_SUN2_WINS])
-        self.game_state.home_score = Decimal("9.0")
-        self.game_state.away_score = Decimal("9.0")
-
-        self.game_state.half = InningHalf.BOTTOM
-        self.game_state.cur_batting_team = self.game_state.home_team
-        self.game_state.cur_pitching_team = self.game_state.away_team
-        self.assertEqual(self.game_state.cur_batting_team.team_enum, self.game_state.home_team.team_enum)
-        self.assertEqual(self.game_state.cur_pitching_team.team_enum, self.game_state.away_team.team_enum)
-        self.game_state.increase_batting_team_runs(Decimal("0.9"))
-        self.assertEqual(Decimal("9.9"), self.game_state.home_score)
-        self.game_state.increase_batting_team_runs(Decimal("1.0"))
-        self.assertEqual(Decimal("0.9"), self.game_state.home_score)
-        self.assertEqual(1.0, self.game_state.cur_batting_team.game_stats[TEAM_ID][Stats.TEAM_SUN2_WINS])
+            self.game_state.half = InningHalf.BOTTOM
+            self.game_state.cur_batting_team = self.game_state.home_team
+            self.game_state.cur_pitching_team = self.game_state.away_team
+            self.assertEqual(self.game_state.cur_batting_team.team_enum, self.game_state.home_team.team_enum)
+            self.assertEqual(self.game_state.cur_pitching_team.team_enum, self.game_state.away_team.team_enum)
+            self.game_state.increase_batting_team_runs(Decimal("0.9"))
+            self.assertEqual(Decimal("9.9"), self.game_state.home_score)
+            self.game_state.increase_batting_team_runs(Decimal("1.0"))
+            self.assertEqual(Decimal("0.9"), self.game_state.home_score)
+            self.assertEqual(1.0, self.game_state.cur_batting_team.game_stats[TEAM_ID][Stats.TEAM_SUN2_WINS])
 
     def testBlackhole(self):
         self.game_state.home_score = Decimal("9.0")
@@ -1368,3 +1366,115 @@ class TestUnavailability(TestGameState):
         self.assertEqual("p11", self.game_state.cur_batting_team.cur_batter)
         self.game_state.validate_current_batter_state()
         self.assertEqual("p13", self.game_state.cur_batting_team.cur_batter)
+
+
+class TestBlaserunning(TestGameState):
+    def testSBAttemptSuccess(self):
+        global SBA_PRIORS
+        global SB_PRIORS
+        SBA_PRIORS = [0.0, 1.0]
+        SB_PRIORS = [0.0, 1.0]
+        self.game_state.cur_base_runners[1] = "p11"
+        self.game_state.cur_batting_team.player_buffs["p11"][PlayerBuff.BLASERUNNING] = 1
+        self.assertEqual(self.game_state.outs, 0)
+        self.assertEqual(Decimal("0"), self.game_state.away_score)
+        self.assertEqual(len(self.game_state.cur_base_runners), 1)
+        self.assertTrue(self.game_state.stolen_base_sim())
+        self.assertEqual(self.game_state.outs, 0)
+        self.assertEqual(len(self.game_state.cur_base_runners), 1)
+        self.assertEqual(self.game_state.cur_base_runners[2], "p11")
+        self.assertEqual(Decimal("0.2"), self.game_state.away_score)
+
+    def testSBAttemptSuccessHome(self):
+        global SBA_PRIORS
+        global SB_PRIORS
+        SBA_PRIORS = [0.0, 1.0]
+        SB_PRIORS = [0.0, 1.0]
+        self.game_state.cur_base_runners[1] = "p11"
+        self.game_state.cur_base_runners[2] = "p12"
+        self.game_state.cur_base_runners[3] = "p13"
+        self.game_state.cur_batting_team.player_buffs["p13"][PlayerBuff.BLASERUNNING] = 1
+        self.assertEqual(self.game_state.outs, 0)
+        self.assertEqual(self.game_state.away_score, Decimal("0"))
+        self.assertEqual(len(self.game_state.cur_base_runners), 3)
+        self.assertTrue(self.game_state.stolen_base_sim())
+        self.assertEqual(self.game_state.outs, 0)
+        self.assertEqual(len(self.game_state.cur_base_runners), 2)
+        self.assertEqual(self.game_state.cur_base_runners[2], "p12")
+        self.assertEqual(self.game_state.cur_base_runners[1], "p11")
+        self.assertEqual(self.game_state.away_score, Decimal("1.2"))
+
+
+class TestCoffeePrimeScoring(TestGameState):
+    def testGenericWiredAdvancement(self):
+        self.game_state.weather = Weather.COFFEE
+        self.game_state.cur_base_runners[3] = "p11"
+        self.game_state.cur_batting_team.player_buffs["p11"][PlayerBuff.WIRED] = 1
+        self.assertEqual(Decimal("0"), self.game_state.away_score)
+        self.assertEqual(len(self.game_state.cur_base_runners), 1)
+        self.game_state.advance_all_runners(1)
+        self.assertEqual(self.game_state.outs, 0)
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(Decimal("1.5"), self.game_state.away_score)
+
+    def testGenericTiredAdvancement(self):
+        self.game_state.weather = Weather.COFFEE
+        self.game_state.cur_base_runners[3] = "p11"
+        self.game_state.cur_batting_team.player_buffs["p11"][PlayerBuff.TIRED] = 1
+        self.assertEqual(Decimal("0"), self.game_state.away_score)
+        self.assertEqual(len(self.game_state.cur_base_runners), 1)
+        self.game_state.advance_all_runners(1)
+        self.assertEqual(self.game_state.outs, 0)
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(Decimal("0.5"), self.game_state.away_score)
+
+    def testSBAttemptSuccessHome(self):
+        global SBA_PRIORS
+        global SB_PRIORS
+        SBA_PRIORS = [0.0, 1.0]
+        SB_PRIORS = [0.0, 1.0]
+        self.game_state.weather = Weather.COFFEE
+        self.game_state.cur_base_runners[1] = "p11"
+        self.game_state.cur_base_runners[2] = "p12"
+        self.game_state.cur_base_runners[3] = "p13"
+        self.game_state.cur_batting_team.player_buffs["p13"][PlayerBuff.WIRED] = 1
+        self.assertEqual(self.game_state.outs, 0)
+        self.assertEqual(self.game_state.away_score, Decimal("0"))
+        self.assertEqual(len(self.game_state.cur_base_runners), 3)
+        self.assertTrue(self.game_state.stolen_base_sim())
+        self.assertEqual(self.game_state.outs, 0)
+        self.assertEqual(len(self.game_state.cur_base_runners), 2)
+        self.assertEqual(self.game_state.cur_base_runners[2], "p12")
+        self.assertEqual(self.game_state.cur_base_runners[1], "p11")
+        self.assertEqual(self.game_state.away_score, Decimal("1.5"))
+
+
+class TestCoffee2Out(TestGameState):
+    def testGenericRefillAdvancement(self):
+        self.game_state.weather = Weather.COFFEE2
+        self.game_state.cur_base_runners[3] = "p11"
+        self.game_state.cur_batting_team.player_buffs["p11"][PlayerBuff.COFFEE_RALLY] = 1
+        self.game_state.outs = 1
+        self.assertEqual(self.game_state.outs, 1)
+        self.assertEqual(Decimal("0"), self.game_state.away_score)
+        self.assertEqual(len(self.game_state.cur_base_runners), 1)
+        self.game_state.advance_all_runners(1)
+        self.assertEqual(self.game_state.outs, 0)
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(Decimal("1.0"), self.game_state.away_score)
+        self.assertFalse(PlayerBuff.COFFEE_RALLY in self.game_state.cur_batting_team.player_buffs["p11"])
+
+
+    def testGenericRefillNoOutAdvancement(self):
+        self.game_state.weather = Weather.COFFEE2
+        self.game_state.cur_base_runners[3] = "p11"
+        self.game_state.cur_batting_team.player_buffs["p11"][PlayerBuff.COFFEE_RALLY] = 1
+        self.assertEqual(Decimal("0"), self.game_state.away_score)
+        self.assertEqual(len(self.game_state.cur_base_runners), 1)
+        self.assertEqual(self.game_state.outs, 0)
+        self.game_state.advance_all_runners(1)
+        self.assertEqual(self.game_state.outs, 0)
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(Decimal("1.0"), self.game_state.away_score)
+        self.assertTrue(PlayerBuff.COFFEE_RALLY in self.game_state.cur_batting_team.player_buffs["p11"])
+

@@ -126,8 +126,8 @@ class GameState(object):
         self.refresh_game_status()
         self.home_team.reset_team_state(game_stats_reset)
         self.away_team.reset_team_state(game_stats_reset)
-        self.home_score = Decimal(0.0)
-        self.away_score = Decimal(0.0)
+        self.home_score = Decimal("0.0")
+        self.away_score = Decimal("0.0")
         self.game_log = ["Play ball."]
         if self.weather == Weather.COFFEE3:
             self.cur_batting_team.player_buffs[self.cur_batting_team.starting_pitcher][PlayerBuff.TRIPLE_THREAT] = 1
@@ -419,11 +419,11 @@ class GameState(object):
         if self.weather == Weather.COFFEE3 and \
             PlayerBuff.TRIPLE_THREAT in self.cur_pitching_team.player_buffs[self.cur_pitching_team.starting_pitcher]:
             if self.balls == 3:
-                self.increase_batting_team_runs(Decimal(-0.3))
+                self.increase_batting_team_runs(Decimal("-0.3"))
             if len(self.cur_base_runners) == 3:
-                self.increase_batting_team_runs(Decimal(-0.3))
+                self.increase_batting_team_runs(Decimal("-0.3"))
             if 3 in self.cur_base_runners:
-                self.increase_batting_team_runs(Decimal(-0.3))
+                self.increase_batting_team_runs(Decimal("-0.3"))
 
         self.reset_pitch_count()
         self.cur_batting_team.next_batter()
@@ -515,13 +515,13 @@ class GameState(object):
                 1.0,
                 self.day
             )
-            run_val = Decimal(1.0)
+            run_val = Decimal("1.0")
             if self.weather == Weather.COFFEE and \
                     PlayerBuff.WIRED in self.cur_batting_team.player_buffs[self.cur_batting_team.cur_batter]:
-                run_val = Decimal(1.5)
+                run_val = Decimal("1.5")
             if self.weather == Weather.COFFEE and \
                     PlayerBuff.TIRED in self.cur_batting_team.player_buffs[self.cur_batting_team.cur_batter]:
-                run_val = Decimal(0.5)
+                run_val = Decimal("0.5")
             if self.weather == Weather.COFFEE2 and \
                     PlayerBuff.COFFEE_RALLY in self.cur_batting_team.player_buffs[self.cur_batting_team.cur_batter]:
                 if self.outs > 0:
@@ -595,7 +595,7 @@ class GameState(object):
                             self.log_event(
                                 f'{self.cur_batting_team.get_player_name(self.cur_base_runners[base])} uses FLIPPERS '
                                 f'to swim home.')
-                            self.increase_batting_team_runs(Decimal(1.0))
+                            self.increase_batting_team_runs(Decimal("1.0"))
                             to_clear.append(base)
                         else:
                             if PlayerBuff.EGO1 in cur_buff or PlayerBuff.EGO2 in cur_buff:
@@ -765,7 +765,7 @@ class GameState(object):
                         )
                         self.update_base_runner(base, Stats.STOLEN_BASES)
                         if PlayerBuff.BLASERUNNING in self.cur_batting_team.player_buffs[base_runner_id]:
-                            self.increase_batting_team_runs(Decimal(0.2))
+                            self.increase_batting_team_runs(Decimal("0.2"))
                     else:
                         self.cur_batting_team.update_stat(base_runner_id, Stats.CAUGHT_STEALINGS, 1.0, self.day)
                         self.cur_pitching_team.update_stat(DEF_ID, Stats.DEFENSE_CAUGHT_STEALINGS, 1.0, self.day)
@@ -803,13 +803,13 @@ class GameState(object):
                     1.0,
                     self.day
                 )
-                run_val = Decimal(1.0)
+                run_val = Decimal("1.0")
                 if self.weather == Weather.COFFEE and \
                         PlayerBuff.WIRED in self.cur_batting_team.player_buffs[self.cur_base_runners[base]]:
-                    run_val = Decimal(1.5)
+                    run_val = Decimal("1.5")
                 if self.weather == Weather.COFFEE and \
                         PlayerBuff.TIRED in self.cur_batting_team.player_buffs[self.cur_base_runners[base]]:
-                    run_val = Decimal(0.5)
+                    run_val = Decimal("0.5")
                 if self.weather == Weather.COFFEE2 and \
                         PlayerBuff.COFFEE_RALLY in self.cur_batting_team.player_buffs[self.cur_base_runners[base]]:
                     if self.outs > 0:
@@ -840,13 +840,13 @@ class GameState(object):
                     1.0,
                     self.day
                 )
-                run_val = Decimal(1.0)
+                run_val = Decimal("1.0")
                 if self.weather == Weather.COFFEE and \
                         PlayerBuff.WIRED in self.cur_batting_team.player_buffs[self.cur_base_runners[base]]:
-                    run_val = Decimal(1.5)
+                    run_val = Decimal("1.5")
                 if self.weather == Weather.COFFEE and \
                         PlayerBuff.TIRED in self.cur_batting_team.player_buffs[self.cur_base_runners[base]]:
-                    run_val = Decimal(0.5)
+                    run_val = Decimal("0.5")
                 if self.weather == Weather.COFFEE2 and \
                         PlayerBuff.COFFEE_RALLY in self.cur_batting_team.player_buffs[self.cur_base_runners[base]]:
                     if self.outs > 0:
@@ -886,21 +886,21 @@ class GameState(object):
             if self.weather == Weather.SUN2 and self.away_score >= 10.0:
                 self.log_event(f'Sun2 sets a win upon the {self.cur_batting_team.team_enum.name}.')
                 self.cur_batting_team.update_stat(TEAM_ID, Stats.TEAM_SUN2_WINS, 1.0, self.day)
-                self.away_score = self.away_score - Decimal(10.0)
+                self.away_score = self.away_score - Decimal("10.0")
             if self.weather == Weather.BLACKHOLE and self.away_score >= 10.0:
                 self.log_event(f'Black hole steals a win from {self.cur_pitching_team.team_enum.name}.')
                 self.cur_pitching_team.update_stat(TEAM_ID, Stats.TEAM_BLACK_HOLE_CONSUMPTION, 1.0, self.day)
-                self.away_score = self.away_score - Decimal(10.0)
+                self.away_score = self.away_score - Decimal("10.0")
         else:
             self.home_score = self.home_score + amt
             if self.weather == Weather.SUN2 and self.home_score >= 10.0:
                 self.log_event(f'Sun2 sets a win upon the {self.cur_batting_team.team_enum.name}.')
                 self.cur_batting_team.update_stat(TEAM_ID, Stats.TEAM_SUN2_WINS, 1.0, self.day)
-                self.home_score = self.home_score - Decimal(10.0)
+                self.home_score = self.home_score - Decimal("10.0")
             if self.weather == Weather.BLACKHOLE and self.home_score >= 10.0:
                 self.log_event(f'Black hole steals a win from {self.cur_pitching_team.team_enum.name}.')
                 self.cur_pitching_team.update_stat(TEAM_ID, Stats.TEAM_BLACK_HOLE_CONSUMPTION, 1.0, self.day)
-                self.home_score = self.home_score - Decimal(10.0)
+                self.home_score = self.home_score - Decimal("10.0")
 
     def attempt_to_advance_inning(self) -> None:
         if self.inning < 9:
