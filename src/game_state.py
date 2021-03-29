@@ -515,7 +515,19 @@ class GameState(object):
                 1.0,
                 self.day
             )
-            self.increase_batting_team_runs(Decimal(1.0))
+            run_val = Decimal(1.0)
+            if self.weather == Weather.COFFEE and \
+                    PlayerBuff.WIRED in self.cur_batting_team.player_buffs[self.cur_batting_team.cur_batter]:
+                run_val = Decimal(1.5)
+            if self.weather == Weather.COFFEE and \
+                    PlayerBuff.TIRED in self.cur_batting_team.player_buffs[self.cur_batting_team.cur_batter]:
+                run_val = Decimal(0.5)
+            if self.weather == Weather.COFFEE2 and \
+                    PlayerBuff.COFFEE_RALLY in self.cur_batting_team.player_buffs[self.cur_batting_team.cur_batter]:
+                if self.outs > 0:
+                    self.outs -= 1
+                    del self.cur_batting_team.player_buffs[self.cur_batting_team.cur_batter][PlayerBuff.COFFEE_RALLY]
+            self.increase_batting_team_runs(run_val)
             self.log_event(
                 f'Batter {self.cur_batting_team.get_player_name(self.cur_batting_team.cur_batter)} scores.')
             self.log_score()
@@ -601,12 +613,15 @@ class GameState(object):
             if self._random_roll() < COFFEE_PRIME_BEAN_PERCENTAGE:
                 self.log_event(f'{self.cur_batting_team.get_cur_batter_name()} is beaned.')
                 if PlayerBuff.TIRED in self.cur_batting_team.player_buffs[self.cur_batting_team.cur_batter]:
+                    self.log_event(f'{self.cur_batting_team.get_cur_batter_name()} loses Tired.')
+                    del self.cur_batting_team.player_buffs[self.cur_batting_team.cur_batter][PlayerBuff.TIRED]
                     return True
                 if PlayerBuff.WIRED in self.cur_batting_team.player_buffs[self.cur_batting_team.cur_batter]:
                     self.log_event(f'{self.cur_batting_team.get_cur_batter_name()} becomes Tired.')
                     del self.cur_batting_team.player_buffs[self.cur_batting_team.cur_batter][PlayerBuff.WIRED]
                     self.cur_batting_team.player_buffs[self.cur_batting_team.cur_batter][PlayerBuff.TIRED] = 1
                     return True
+                self.log_event(f'{self.cur_batting_team.get_cur_batter_name()} becomes Wired.')
                 self.cur_batting_team.player_buffs[self.cur_batting_team.cur_batter][PlayerBuff.WIRED] = 1
                 return True
 
@@ -788,7 +803,19 @@ class GameState(object):
                     1.0,
                     self.day
                 )
-                self.increase_batting_team_runs(Decimal(1.0))
+                run_val = Decimal(1.0)
+                if self.weather == Weather.COFFEE and \
+                        PlayerBuff.WIRED in self.cur_batting_team.player_buffs[self.cur_base_runners[base]]:
+                    run_val = Decimal(1.5)
+                if self.weather == Weather.COFFEE and \
+                        PlayerBuff.TIRED in self.cur_batting_team.player_buffs[self.cur_base_runners[base]]:
+                    run_val = Decimal(0.5)
+                if self.weather == Weather.COFFEE2 and \
+                        PlayerBuff.COFFEE_RALLY in self.cur_batting_team.player_buffs[self.cur_base_runners[base]]:
+                    if self.outs > 0:
+                        self.outs -= 1
+                        del self.cur_batting_team.player_buffs[self.cur_base_runners[base]][PlayerBuff.COFFEE_RALLY]
+                self.increase_batting_team_runs(run_val)
                 del self.cur_base_runners[base]
             else:
                 new_base = base + 1
@@ -813,7 +840,19 @@ class GameState(object):
                     1.0,
                     self.day
                 )
-                self.increase_batting_team_runs(Decimal(1.0))
+                run_val = Decimal(1.0)
+                if self.weather == Weather.COFFEE and \
+                        PlayerBuff.WIRED in self.cur_batting_team.player_buffs[self.cur_base_runners[base]]:
+                    run_val = Decimal(1.5)
+                if self.weather == Weather.COFFEE and \
+                        PlayerBuff.TIRED in self.cur_batting_team.player_buffs[self.cur_base_runners[base]]:
+                    run_val = Decimal(0.5)
+                if self.weather == Weather.COFFEE2 and \
+                        PlayerBuff.COFFEE_RALLY in self.cur_batting_team.player_buffs[self.cur_base_runners[base]]:
+                    if self.outs > 0:
+                        self.outs -= 1
+                        del self.cur_batting_team.player_buffs[self.cur_base_runners[base]][PlayerBuff.COFFEE_RALLY]
+                self.increase_batting_team_runs(run_val)
                 self.log_score()
                 del self.cur_base_runners[base]
             else:
