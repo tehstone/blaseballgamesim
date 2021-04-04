@@ -86,3 +86,18 @@ class Stadium(object):
             stats[StadiumStats.GRANDIOSITY],
             stats[StadiumStats.OMINOUSNESS],
         )
+
+    @classmethod
+    def from_ballpark_json(cls, raw: Dict[str, Any]):
+        return cls(
+            raw["teamId"],
+            raw["id"],
+            raw["name"],
+            raw["mysticism"],
+            raw["viscosity"],
+            raw["elongation"],
+            raw["obtuseness"],
+            raw["forwardness"],
+            raw["grandiosity"],
+            raw["ominousness"]
+        )

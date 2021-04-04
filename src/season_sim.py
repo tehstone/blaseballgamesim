@@ -9,6 +9,7 @@ from src.common import get_stlats_for_season, blood_name_map, PlayerBuff, enable
 from src.common import BlaseballStatistics as Stats
 from src.common import ForbiddenKnowledge as FK
 from src.common import BloodType, Team, team_id_map, blood_id_map, fk_key, Weather, team_name_map
+from src.stadium import Stadium
 from src.team_state import TeamState, DEF_ID
 from src.game_state import GameState, InningHalf
 
@@ -21,6 +22,18 @@ names_by_team: Dict[str, Dict[str, str]] = {}
 blood_by_team: Dict[str, Dict[str, BloodType]] = {}
 team_states: Dict[Team, TeamState] = {}
 rotations_by_team: Dict[str, Dict[int, str]] = {}
+default_stadium: Stadium = Stadium(
+    "team_id",
+    "stadium_id",
+    "stadium_name",
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+)
 
 day_lineup = {}
 day_stlats = {}
@@ -28,6 +41,7 @@ day_buffs = {}
 day_names = {}
 day_blood = {}
 day_rotations = {}
+stadiums = {}
 
 
 def setup_season(season:int, stats_segment_size:int):
@@ -59,6 +73,7 @@ def setup_season(season:int, stats_segment_size:int):
                     game_id=game_id,
                     season=season,
                     day=day,
+                    stadium=home_team_state.stadium,
                     home_team=home_team_state,
                     away_team=away_team_state,
                     home_score=Decimal("0"),
@@ -89,6 +104,12 @@ def setup_season(season:int, stats_segment_size:int):
 def load_all_state(season: int):
     if not path.exists(os.path.join('..', 'season_sim', 'stlats', f"s{season}_d98_stlats.json")):
         get_stlats_for_season(season)
+
+    with open(os.path.join('..', 'season_sim', "ballparks.json"), 'r', encoding='utf8') as json_file:
+        ballparks = json.load(json_file)
+    for team in ballparks.keys():
+        stadium = Stadium.from_ballpark_json(ballparks[team])
+        stadiums[team] = stadium
 
     for day in range(0, 99):
         reset_daily_cache()
@@ -153,6 +174,7 @@ def load_all_state(season: int):
                 blood_by_team[team_id][player_id] = blood_id_map[int(player["blood"])]
             except ValueError:
                 blood_by_team[team_id][player_id] = blood_name_map[player["blood"]]
+
         if day > 0 and (len(lineups_by_team) != len(day_lineup[day - 1]) or (len(rotations_by_team) != len(day_rotations[day - 1]))):
             day_lineup[day] = day_lineup[day-1]
             day_stlats[day] = day_stlats[day-1]
@@ -195,10 +217,15 @@ def get_stlat_dict(player: Dict[str, Any]) -> Dict[FK, float]:
 def update_team_states(season: int, day: int, team: str, starting_pitcher: str,
                        weather: Weather, is_home: bool, stats_segment_size: int):
     if team_id_map[team] not in team_states:
+        if team in stadiums:
+            stadium = stadiums[team]
+        else:
+            stadium = default_stadium
         team_states[team_id_map[team]] = TeamState(
             team_id=team,
             season=season,
             day=day,
+            stadium=stadium,
             weather=weather,
             is_home=is_home,
             num_bases=4,

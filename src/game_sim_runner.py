@@ -118,12 +118,20 @@ def print_info():
         print()
 
 def make_team_states(season: int, day: int):
+    with open(os.path.join('..', 'season_sim', "ballparks.json"), 'r', encoding='utf8') as json_file:
+        ballparks = json.load(json_file)
     for team in names_by_team.keys():
         if team in team_id_map:
+            if team in ballparks.keys():
+                park = ballparks[team]
+                stadium = Stadium.from_ballpark_json(park)
+            else:
+                stadium = default_stadium
             team_states[team_id_map[team]] = TeamState(
                 team_id=team,
                 season=season,
                 day=day,
+                stadium=stadium,
                 weather=Weather.SUN2,
                 is_home=True,
                 num_bases=4,
@@ -152,7 +160,7 @@ game = GameState(
     game_id="1",
     season=season,
     day=day,
-    stadium=default_stadium,
+    stadium=team_states[Team.DALE].stadium,
     home_team=team_states[Team.DALE],
     away_team=team_states[Team.TIGERS],
     home_score=Decimal("0"),

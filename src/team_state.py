@@ -8,6 +8,7 @@ from src.common import BlaseballStatistics as Stats
 from src.common import ForbiddenKnowledge as FK
 from src.common import AdditiveTypes, BloodType, calc_vibes, GameEventTeamBuff, PlayerBuff, \
     Team, team_game_event_map, team_id_map, Weather
+from src.stadium import Stadium
 
 DEF_ID = "DEFENSE"
 TEAM_ID = "TEAM"
@@ -19,6 +20,7 @@ class TeamState(object):
         team_id: str,
         season: int,
         day: int,
+        stadium: Stadium,
         weather: Weather,
         is_home: bool,
         num_bases: int,
@@ -42,6 +44,7 @@ class TeamState(object):
         self.team_enum: Team = team_id_map[team_id]
         self.season: int = season
         self.day: int = day
+        self.stadium = stadium
         self.weather: Weather = weather
         self.is_home: bool = is_home
         self.runners_aboard: bool = False
@@ -244,6 +247,7 @@ class TeamState(object):
             "team_id": self.team_id,
             "season": self.season,
             "day": self.day,
+            "stadium": Stadium.to_dict(self.stadium),
             "weather": self.weather.value,
             "is_home": self.is_home,
             "num_bases": self.num_bases,
@@ -289,6 +293,7 @@ class TeamState(object):
         team_id: str = team_state["team_id"]
         season: int = team_state["season"]
         day: int = team_state["day"]
+        stadium: Stadium = Stadium.from_config(team_state['stadium'])
         num_bases: int = team_state["num_bases"]
         weather: Weather = Weather(team_state["weather"])
         is_home: bool = team_state["is_home"]
@@ -310,6 +315,7 @@ class TeamState(object):
             team_id,
             season,
             day,
+            stadium,
             weather,
             is_home,
             num_bases,
