@@ -5,7 +5,7 @@ import json
 import time
 from joblib import load
 
-from src.common import get_player_stlats
+from src.common import get_player_stlats, enabled_player_buffs, PlayerBuff
 from src.common import BlaseballStatistics as Stats, blood_name_map
 from src.common import ForbiddenKnowledge as FK
 from src.common import BloodType, Team, team_id_map, blood_id_map, fk_key, PlayerBuff, Weather
@@ -17,7 +17,7 @@ lineups_by_team: Dict[str, Dict[int, str]] = {}
 stlats_by_team: Dict[str, Dict[str, Dict[FK, float]]] = {}
 buffs_by_team: Dict[str, Dict[str, Dict[PlayerBuff, int]]] = {}
 game_stats_by_team: Dict[str, Dict[str, Dict[Stats, float]]] = {}
-segmented_stats_by_team: Dict[str, Dict[str, Dict[int, Dict[Stats, float]]]] = {}
+segmented_stats_by_team: Dict[str, Dict[int, Dict[str, Dict[Stats, float]]]] = {}
 names_by_team: Dict[str, Dict[str, str]] = {}
 blood_by_team: Dict[str, Dict[str, BloodType]] = {}
 team_states: Dict[Team, TeamState] = {}
@@ -34,6 +34,7 @@ default_stadium: Stadium = Stadium(
     0.5,
     0.5,
 )
+
 
 def setup(season: int, day: int):
     try:
@@ -66,6 +67,18 @@ def setup(season: int, day: int):
             stlats_by_team[team_id] = {}
         stlats_by_team[team_id][player_id] = get_stlat_dict(player)
 
+        mods = player["modifications"]
+        cur_mod_dict = {}
+        if mods:
+            for mod in mods:
+                if mod in enabled_player_buffs:
+                    cur_mod_dict[PlayerBuff[mod]] = 1
+            if player_id == "4b3e8e9b-6de1-4840-8751-b1fb45dc5605":
+                cur_mod_dict[PlayerBuff.BLASERUNNING] = 1
+        if team_id not in buffs_by_team:
+            buffs_by_team[team_id] = {}
+        buffs_by_team[team_id][player_id] = cur_mod_dict
+
         if team_id not in game_stats_by_team:
             game_stats_by_team[team_id] = {}
             game_stats_by_team[team_id][DEF_ID] = {}
@@ -77,8 +90,6 @@ def setup(season: int, day: int):
 
         if team_id not in segmented_stats_by_team:
             segmented_stats_by_team[team_id] = {}
-            segmented_stats_by_team[team_id][DEF_ID] = {}
-        segmented_stats_by_team[team_id][player_id] = {}
 
         if team_id not in names_by_team:
             names_by_team[team_id] = {}
