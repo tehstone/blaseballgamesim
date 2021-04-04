@@ -216,7 +216,7 @@ class TeamState(object):
         self.stlats[DEF_ID][FK.WATCHFULNESS] = def_watchfulness
         self.stlats[DEF_ID][FK.VIBES] = def_vibes
 
-    def reset_team_state(self, game_stat_reset=False, lineup_changed=False) -> None:
+    def reset_team_state(self, game_stat_reset=False, lineup_changed=True) -> None:
         if game_stat_reset:
             self.reset_game_stats()
         self.cur_batter_pos = 1
@@ -550,6 +550,7 @@ class TeamState(object):
         return self.get_player_name(self.starting_pitcher)
 
     def calc_additives(self):
+        self.reset_team_additives()
         if self.team_enum in team_game_event_map:
             buff, start_season, end_season, req_weather = team_game_event_map[self.team_enum]
             if buff == GameEventTeamBuff.CROWS and self.season >= start_season and req_weather == self.weather:
@@ -575,3 +576,9 @@ class TeamState(object):
                 self.pitching_addition = mod
                 self.defense_addition = mod
                 self.base_running_addition = mod
+
+    def reset_team_additives(self):
+        self.batting_addition = 0.0
+        self.pitching_addition = 0.0
+        self.base_running_addition = 0.0
+        self.defense_addition = 0.0

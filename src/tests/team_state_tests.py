@@ -5,7 +5,20 @@ from src.team_state import TeamState
 from src.common import BlaseballStatistics as Stats
 from src.common import ForbiddenKnowledge as FK
 from src.common import AdditiveTypes, BloodType, PlayerBuff, Team, Weather
+from src.stadium import Stadium
 
+default_stadium = Stadium(
+    "team_id",
+    "stadium_id",
+    "stadium_name",
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+)
 
 class TestTeamState(unittest.TestCase):
     def setUp(self):
@@ -13,6 +26,7 @@ class TestTeamState(unittest.TestCase):
             team_id="747b8e4a-7e50-4638-a973-ea7950a3e739",
             season=1,
             day=1,
+            stadium=default_stadium,
             weather=Weather.SUN2,
             is_home=False,
             num_bases=4,
@@ -239,6 +253,8 @@ class TestBatterAdvancement(TestTeamState):
         self.assertEqual(cur_batter, "p1")
         self.assertEqual(cur_batter_pos, 1)
 
+
+class TestTeamBuffs(TestTeamState):
     def test_travelling(self):
         self.team_state.is_home = True
         self.team_state.calc_additives()
@@ -296,6 +312,42 @@ class TestBatterAdvancement(TestTeamState):
         self.assertEqual(3.1, new_p1[8])
         new_p1 = self.team_state.get_batter_feature_vector("p4")
         self.assertEqual(0.001, new_p1[5])
+
+    def test_crows(self):
+        new_p1 = self.team_state.get_batter_feature_vector("p1")
+        self.assertEqual(2.0, new_p1[5])
+        self.assertEqual(0.0, new_p1[6])
+        self.assertEqual(3.0, new_p1[8])
+        self.assertEqual(0.0, self.team_state.batting_addition)
+        self.assertEqual(0.0, self.team_state.pitching_addition)
+        self.assertEqual(0.0, self.team_state.defense_addition)
+        self.assertEqual(0.0, self.team_state.base_running_addition)
+        self.team_state.team_enum = Team.PIES
+        self.team_state.weather = Weather.BIRD
+        self.team_state.season = 14
+        self.team_state.calc_additives()
+        self.assertEqual(0.5, self.team_state.batting_addition)
+        self.assertEqual(0.5, self.team_state.pitching_addition)
+        self.assertEqual(0.0, self.team_state.defense_addition)
+        self.assertEqual(0.0, self.team_state.base_running_addition)
+        new_p1 = self.team_state.get_batter_feature_vector("p1")
+        self.assertEqual(1.5, new_p1[5])
+        self.assertEqual(0.5, new_p1[6])
+        self.assertEqual(3.0, new_p1[8])
+        new_p1 = self.team_state.get_batter_feature_vector("p4")
+        self.assertEqual(0.001, new_p1[5])
+
+        self.team_state.weather = Weather.SUN2
+        self.team_state.reset_team_state()
+        new_p1 = self.team_state.get_batter_feature_vector("p1")
+        self.assertEqual(2.0, new_p1[5])
+        self.assertEqual(0.0, new_p1[6])
+        self.assertEqual(3.0, new_p1[8])
+        self.assertEqual(0.0, self.team_state.batting_addition)
+        self.assertEqual(0.0, self.team_state.pitching_addition)
+        self.assertEqual(0.0, self.team_state.defense_addition)
+        self.assertEqual(0.0, self.team_state.base_running_addition)
+
 
 
 class TestHitBuffModifiers(TestTeamState):

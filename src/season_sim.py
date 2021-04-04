@@ -326,7 +326,7 @@ def print_leaders():
               encoding='utf8') as json_file:
         json_file.write(top_sbs)
 
-iterations = 10
+iterations = 20
 season = 13
 stats_segment_size = 3
 #print_info()
