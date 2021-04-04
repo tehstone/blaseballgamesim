@@ -121,13 +121,13 @@ class ForbiddenKnowledge(Enum):
 
 
 class StadiumStats(Enum):
-    MYSTICISM = 1,
-    VISCOSITY = 2,
-    ELONGATION = 3,
-    OBTUSENESS = 4,
-    FORWARDNESS = 5,
-    GRANDIOSITY = 6,
-    OMINOUSNESS = 7,
+    MYSTICISM = 1
+    VISCOSITY = 2
+    ELONGATION = 3
+    OBTUSENESS = 4
+    FORWARDNESS = 5
+    GRANDIOSITY = 6
+    OMINOUSNESS = 7
 
 
 class MachineLearnedModel(Enum):

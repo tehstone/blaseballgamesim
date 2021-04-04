@@ -65,7 +65,7 @@ class Stadium(object):
     def encode_stats(cls, raw: Dict[int, float]) -> Dict[StadiumStats, float]:
         ret_val: Dict[StadiumStats, float] = {}
         for key in raw:
-            ret_val[StadiumStats(key)] = raw[key]
+            ret_val[StadiumStats(int(key))] = float(raw[key])
         return ret_val
 
     @classmethod
