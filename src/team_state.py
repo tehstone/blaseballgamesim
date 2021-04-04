@@ -6,7 +6,8 @@ import statistics
 
 from src.common import BlaseballStatistics as Stats
 from src.common import ForbiddenKnowledge as FK
-from src.common import AdditiveTypes, BloodType, GameEventTeamBuff, get_player_buff_cache, PlayerBuff, Team, team_game_event_map, team_id_map, Weather
+from src.common import AdditiveTypes, BloodType, calc_vibes, GameEventTeamBuff, PlayerBuff, \
+    Team, team_game_event_map, team_id_map, Weather
 
 DEF_ID = "DEFENSE"
 TEAM_ID = "TEAM"
@@ -178,6 +179,7 @@ class TeamState(object):
         omniscience: List[float] = []
         tenaciousness: List[float] = []
         watchfulness: List[float] = []
+        defense_vibes: List[float] = []
         defense_pressurization: List[float] = []
         defense_cinnamon: List[float] = []
         for pos in self.lineup.keys():
@@ -190,14 +192,18 @@ class TeamState(object):
             watchfulness.append(self.stlats[cur_id][FK.WATCHFULNESS] + self.defense_addition + player_def_additive)
             defense_pressurization.append(self.stlats[cur_id][FK.PRESSURIZATION])
             defense_cinnamon.append(self.stlats[cur_id][FK.CINNAMON])
+            defense_vibes.append(calc_vibes(self.stlats[cur_id][FK.PRESSURIZATION],
+                                            self.stlats[cur_id][FK.CINNAMON],
+                                            self.stlats[cur_id][FK.BUOYANCY],
+                                            self.day
+                                            ))
 
         def_anticapitalism = statistics.mean(anticapitalism)
         def_chasiness = statistics.mean(chasiness)
         def_omniscience = statistics.mean(omniscience)
         def_tenaciousness = statistics.mean(tenaciousness)
         def_watchfulness = statistics.mean(watchfulness)
-        def_defense_pressurization = statistics.mean(defense_pressurization)
-        def_defense_cinnamon = statistics.mean(defense_cinnamon)
+        def_vibes = statistics.mean(defense_vibes)
 
         self.stlats[DEF_ID]: Dict[FK, float] = {}
         self.stlats[DEF_ID][FK.ANTICAPITALISM] = def_anticapitalism
@@ -205,8 +211,7 @@ class TeamState(object):
         self.stlats[DEF_ID][FK.OMNISCIENCE] = def_omniscience
         self.stlats[DEF_ID][FK.TENACIOUSNESS] = def_tenaciousness
         self.stlats[DEF_ID][FK.WATCHFULNESS] = def_watchfulness
-        self.stlats[DEF_ID][FK.PRESSURIZATION] = def_defense_pressurization
-        self.stlats[DEF_ID][FK.CINNAMON] = def_defense_cinnamon
+        self.stlats[DEF_ID][FK.VIBES] = def_vibes
 
     def reset_team_state(self, game_stat_reset=False, lineup_changed=False) -> None:
         if game_stat_reset:
@@ -458,8 +463,7 @@ class TeamState(object):
             self.stlats[DEF_ID][FK.OMNISCIENCE],
             self.stlats[DEF_ID][FK.TENACIOUSNESS],
             self.stlats[DEF_ID][FK.WATCHFULNESS],
-            self.stlats[DEF_ID][FK.PRESSURIZATION],
-            self.stlats[DEF_ID][FK.CINNAMON],
+            self.stlats[DEF_ID][FK.VIBES],
         ]
         return ret_val
 
@@ -473,8 +477,11 @@ class TeamState(object):
             self.stlats[player_id][FK.SHAKESPEARIANISM] + self.pitching_addition + player_pitching_additive,
             self.stlats[player_id][FK.SUPPRESSION] + self.pitching_addition + player_pitching_additive,
             self.stlats[player_id][FK.UNTHWACKABILITY] + self.pitching_addition + player_pitching_additive,
-            self.stlats[player_id][FK.CINNAMON],
-            self.stlats[player_id][FK.PRESSURIZATION],
+            calc_vibes(self.stlats[player_id][FK.PRESSURIZATION],
+                       self.stlats[player_id][FK.CINNAMON],
+                       self.stlats[player_id][FK.BUOYANCY],
+                       self.day
+                       ),
         ]
         return ret_val
 
@@ -498,8 +505,11 @@ class TeamState(object):
             self.stlats[player_id][FK.GROUND_FRICTION] + self.base_running_addition + player_base_running_additive,
             self.stlats[player_id][FK.INDULGENCE] + self.base_running_addition + player_base_running_additive,
             self.stlats[player_id][FK.LASERLIKENESS] + self.base_running_addition + player_base_running_additive,
-            self.stlats[player_id][FK.CINNAMON],
-            self.stlats[player_id][FK.PRESSURIZATION],
+            calc_vibes(self.stlats[player_id][FK.PRESSURIZATION],
+                       self.stlats[player_id][FK.CINNAMON],
+                       self.stlats[player_id][FK.BUOYANCY],
+                       self.day
+                       ),
         ]
         return ret_val
 
@@ -510,8 +520,11 @@ class TeamState(object):
             self.stlats[player_id][FK.GROUND_FRICTION],
             self.stlats[player_id][FK.INDULGENCE],
             self.stlats[player_id][FK.LASERLIKENESS],
-            self.stlats[player_id][FK.CINNAMON],
-            self.stlats[player_id][FK.PRESSURIZATION],
+            calc_vibes(self.stlats[player_id][FK.PRESSURIZATION],
+                       self.stlats[player_id][FK.CINNAMON],
+                       self.stlats[player_id][FK.BUOYANCY],
+                       self.day
+                       ),
         ]
         return ret_val
 

@@ -14,6 +14,7 @@ from src.common import BlaseballStatistics as Stats
 from src.common import ForbiddenKnowledge as FK
 from src.common import MachineLearnedModel as Ml
 from src.common import BloodType, Team, Weather
+from src.stadium import Stadium
 
 DEFAULT_FKS = {
     FK.BASE_THIRST: 0.0,
@@ -53,6 +54,18 @@ ADVANCE_HIT_PRIORS = [0.5, 0.5]
 ADVANCE_OUT_PRIORS = [0.5, 0.5]
 OUT_PRIORS = [0.5, 0.5]
 
+default_stadium = Stadium(
+    "team_id",
+    "stadium_id",
+    "stadium_name",
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+)
 
 def new_generic_model_roll(self, model: Ml, feature_vector: List[float]) -> int:
     probs: List[float] = []
@@ -212,6 +225,7 @@ class TestGameState(unittest.TestCase):
             game_id="1",
             season=11,
             day=1,
+            stadium=default_stadium,
             home_team=self.home_team_state,
             away_team=self.away_team_state,
             home_score=Decimal("0.0"),

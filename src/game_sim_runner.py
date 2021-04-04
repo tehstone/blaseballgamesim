@@ -8,18 +8,32 @@ from joblib import load
 from src.common import get_player_stlats
 from src.common import BlaseballStatistics as Stats, blood_name_map
 from src.common import ForbiddenKnowledge as FK
-from src.common import BloodType, Team, team_id_map, blood_id_map, fk_key, Weather
-from src.team_state import TeamState, DEF_ID
+from src.common import BloodType, Team, team_id_map, blood_id_map, fk_key, PlayerBuff, Weather
+from src.team_state import TeamState, DEF_ID, TEAM_ID
 from src.game_state import GameState, InningHalf
+from src.stadium import Stadium
 
 lineups_by_team: Dict[str, Dict[int, str]] = {}
 stlats_by_team: Dict[str, Dict[str, Dict[FK, float]]] = {}
+buffs_by_team: Dict[str, Dict[str, Dict[PlayerBuff, int]]] = {}
 game_stats_by_team: Dict[str, Dict[str, Dict[Stats, float]]] = {}
 segmented_stats_by_team: Dict[str, Dict[str, Dict[int, Dict[Stats, float]]]] = {}
 names_by_team: Dict[str, Dict[str, str]] = {}
 blood_by_team: Dict[str, Dict[str, BloodType]] = {}
 team_states: Dict[Team, TeamState] = {}
 starting_pitchers: Dict[str, str] = {}
+default_stadium: Stadium = Stadium(
+    "team_id",
+    "stadium_id",
+    "stadium_name",
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+)
 
 def setup(season: int, day: int):
     try:
@@ -56,6 +70,10 @@ def setup(season: int, day: int):
             game_stats_by_team[team_id] = {}
             game_stats_by_team[team_id][DEF_ID] = {}
         game_stats_by_team[team_id][player_id] = {}
+
+        if team_id not in buffs_by_team:
+            buffs_by_team[team_id] = {}
+        buffs_by_team[team_id][player_id] = {}
 
         if team_id not in segmented_stats_by_team:
             segmented_stats_by_team[team_id] = {}
@@ -95,6 +113,8 @@ def make_team_states(season: int, day: int):
                 team_id=team,
                 season=season,
                 day=day,
+                weather=Weather.SUN2,
+                is_home=True,
                 num_bases=4,
                 balls_for_walk=4,
                 strikes_for_out=3,
@@ -103,6 +123,7 @@ def make_team_states(season: int, day: int):
                 rotation={1: "starting_pitcher"},
                 starting_pitcher=starting_pitchers[team],
                 stlats=stlats_by_team[team],
+                buffs=buffs_by_team[team],
                 game_stats=game_stats_by_team[team],
                 segmented_stats=segmented_stats_by_team[team],
                 blood=blood_by_team[team],
@@ -110,15 +131,17 @@ def make_team_states(season: int, day: int):
                 cur_batter_pos=1,
             )
 
-season = 13
+season = 10
 day = 0
 setup(season, day)
 #print_info()
 make_team_states(season, day)
+team_states[Team.TIGERS].is_home = False
 game = GameState(
     game_id="1",
     season=season,
     day=day,
+    stadium=default_stadium,
     home_team=team_states[Team.DALE],
     away_team=team_states[Team.TIGERS],
     home_score=Decimal("0"),
@@ -128,13 +151,14 @@ game = GameState(
     outs=0,
     strikes=0,
     balls=0,
-    weather=Weather.BIRDS,
+    weather=Weather.SUN2,
 )
 model = load(os.path.join("..", "season_sim", "models", "pitch_v1.joblib"))
 fv = game.gen_pitch_fv(
     game.cur_batting_team.get_cur_batter_feature_vector(),
     game.cur_pitching_team.get_pitcher_feature_vector(),
-    game.cur_pitching_team.get_defense_feature_vector()
+    game.cur_pitching_team.get_defense_feature_vector(),
+    game.stadium.get_stadium_fv(),
 )
 #print("fv = "+ str(fv))
 #model.predict_proba()
@@ -155,8 +179,8 @@ away_so_total = game.away_team.game_stats[game.away_team.starting_pitcher][Stats
 away_sho_total = game.away_team.game_stats[game.away_team.starting_pitcher][Stats.PITCHER_SHUTOUTS]
 away_so_avg = away_so_total / sim_run_count
 away_sho_avg = away_sho_total / sim_run_count
-home_wins = game.home_team.game_stats[DEF_ID][Stats.TEAM_WINS]
-away_wins = game.away_team.game_stats[DEF_ID][Stats.TEAM_WINS]
+home_wins = game.home_team.game_stats[TEAM_ID][Stats.TEAM_WINS]
+away_wins = game.away_team.game_stats[TEAM_ID][Stats.TEAM_WINS]
 home_win_per = home_wins / sim_run_count
 away_win_per = away_wins / sim_run_count
 

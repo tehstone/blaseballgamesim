@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, Tuple, Any
 from enum import Enum
 
 import json
+import math
 import os
 import requests
 from aiohttp import ClientSession
@@ -114,6 +115,19 @@ class ForbiddenKnowledge(Enum):
     UNTHWACKABILITY = 35
     CINNAMON = 36
     PRESSURIZATION = 37
+
+    # Common
+    VIBES = 40
+
+
+class StadiumStats(Enum):
+    MYSTICISM = 1,
+    VISCOSITY = 2,
+    ELONGATION = 3,
+    OBTUSENESS = 4,
+    FORWARDNESS = 5,
+    GRANDIOSITY = 6,
+    OMINOUSNESS = 7,
 
 
 class MachineLearnedModel(Enum):
@@ -524,3 +538,8 @@ def get_player_buff_cache() -> Dict[str, Dict[PlayerBuff, int]]:
                         cur_mod_dict[PlayerBuff[mod]] = 1
                 player_buffs[id] = cur_mod_dict
     return player_buffs
+
+
+def calc_vibes(pres, cin, buo, day):
+    vibes = 0.5 * ((pres + cin) * math.sin(math.pi * (2 / (6 + round(10 * buo)) * day + 0.5)) - pres + cin)
+    return vibes

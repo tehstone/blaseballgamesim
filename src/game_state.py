@@ -17,6 +17,8 @@ from src.team_state import DEF_ID, TEAM_ID, TeamState
 from src.common import BlaseballStatistics as Stats, Team
 from src.common import MachineLearnedModel as Ml
 from src.common import BloodType, PitchEventTeamBuff, PlayerBuff, team_pitch_event_map, Weather
+from src.stadium import Stadium
+
 
 CHARM_TRIGGER_PERCENTAGE = 0.02
 ZAP_TRIGGER_PERCENTAGE = 0.02
@@ -51,6 +53,7 @@ class GameState(object):
         game_id: str,
         season: int,
         day: int,
+        stadium: Stadium,
         home_team: TeamState,
         away_team: TeamState,
         home_score: Decimal,
@@ -66,6 +69,7 @@ class GameState(object):
         self.game_id = game_id
         self.season = season
         self.day = day
+        self.stadium = stadium
         self.home_team = home_team
         self.away_team = away_team
         self.home_score = home_score
@@ -96,14 +100,13 @@ class GameState(object):
 
     def _load_ml_models(self):
         self.clf = {
-            Ml.PITCH: load(os.path.join("..", "season_sim", "models", "pitch_v2.joblib")),
-            Ml.IS_HIT: load(os.path.join("..", "season_sim", "models", "is_hit_v1.joblib")),
-            Ml.HIT_TYPE: load(os.path.join("..", "season_sim", "models", "hit_type_v1.joblib")),
-            Ml.RUNNER_ADV_OUT: load(os.path.join("..", "season_sim", "models", "runner_advanced_on_out_v1.joblib")),
-            Ml.RUNNER_ADV_HIT: load(os.path.join("..", "season_sim", "models", "extra_base_on_hit_v1.joblib")),
-            Ml.SB_ATTEMPT: load(os.path.join("..", "season_sim", "models", "sba_v1.joblib")),
-            Ml.SB_SUCCESS: load(os.path.join("..", "season_sim", "models", "sb_success_v1.joblib")),
-            Ml.OUT_TYPE: load(os.path.join("..", "season_sim", "models", "out_type_v1.joblib")),
+            Ml.PITCH: load(os.path.join("..", "season_sim", "models", "pitch_v3.joblib")),
+            Ml.HIT_TYPE: load(os.path.join("..", "season_sim", "models", "hit_type_v2.joblib")),
+            Ml.RUNNER_ADV_OUT: load(os.path.join("..", "season_sim", "models", "runner_advanced_on_out_v2.joblib")),
+            Ml.RUNNER_ADV_HIT: load(os.path.join("..", "season_sim", "models", "extra_base_on_hit_v2.joblib")),
+            Ml.SB_ATTEMPT: load(os.path.join("..", "season_sim", "models", "sba_v2.joblib")),
+            Ml.SB_SUCCESS: load(os.path.join("..", "season_sim", "models", "sb_success_v2.joblib")),
+            Ml.OUT_TYPE: load(os.path.join("..", "season_sim", "models", "out_type_v2.joblib")),
         }
 
     def log_event(self, event: str) -> None:
@@ -175,6 +178,7 @@ class GameState(object):
             "game_id": self.game_id,
             "season": self.season,
             "day": self.day,
+            "stadium": self.stadium.to_dict(),
             "num_bases": self.num_bases,
             "inning": self.inning,
             "half": self.half.value,
@@ -214,6 +218,7 @@ class GameState(object):
         game_id: str = game_state["game_id"]
         season: int = game_state["season"]
         day: int = game_state["day"]
+        stadium: Stadium = Stadium.from_config(game_state["stadium"])
         inning: int = game_state["inning"]
         half: InningHalf = InningHalf(int(game_state["half"]))
         outs: int = game_state["outs"]
@@ -229,6 +234,7 @@ class GameState(object):
             game_id,
             season,
             day,
+            stadium,
             home_team,
             away_team,
             home_score,
@@ -306,9 +312,10 @@ class GameState(object):
             self.cur_batting_team.get_cur_batter_feature_vector(),
             self.cur_pitching_team.get_pitcher_feature_vector(),
             self.cur_pitching_team.get_defense_feature_vector(),
+            self.stadium.get_stadium_fv(),
         )
         pitch_result = self.generic_model_roll(Ml.PITCH, pitch_fv)
-        # 0 = ball, 1 = strike, 2 = foul, 3 = in_play
+        # 0 = ball, 1 = strike, 2 = foul, 3 = in_play_hit, 4 = in_play_out
         if pitch_result == 0:
             self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher,
                                                Stats.PITCHER_BALLS_THROWN, 1.0, self.day)
@@ -546,6 +553,7 @@ class GameState(object):
                     self.cur_batting_team.get_runner_feature_vector(base_runner_id),
                     self.cur_pitching_team.get_defense_feature_vector(),
                     self.cur_pitching_team.get_pitcher_feature_vector(),
+                    self.stadium.get_stadium_fv(),
                 )
                 if self.generic_model_roll(Ml.RUNNER_ADV_HIT, base_runner_fv) == 1:
                     self.log_event(
@@ -565,6 +573,7 @@ class GameState(object):
                     self.cur_batting_team.get_runner_feature_vector(base_runner_id),
                     self.cur_pitching_team.get_defense_feature_vector(),
                     self.cur_pitching_team.get_pitcher_feature_vector(),
+                    self.stadium.get_stadium_fv(),
                 )
                 if self.generic_model_roll(Ml.RUNNER_ADV_OUT, base_runner_fv) == 1:
                     self.log_event(
@@ -744,6 +753,7 @@ class GameState(object):
                     self.cur_batting_team.get_runner_feature_vector(base_runner_id),
                     self.cur_pitching_team.get_defense_feature_vector(),
                     self.cur_pitching_team.get_pitcher_feature_vector(),
+                    self.stadium.get_stadium_fv(),
                 )
                 if self.generic_model_roll(Ml.SB_ATTEMPT, base_runner_fv) == 1:
                     self.cur_batting_team.update_stat(base_runner_id, Stats.STOLEN_BASE_ATTEMPTS, 1.0, self.day)
@@ -971,11 +981,13 @@ class GameState(object):
             cls,
             runner_stlats: List[float],
             defense_stlats: List[float],
-            pitcher_stlats: List[float]
+            pitcher_stlats: List[float],
+            stadium_stlats: List[float],
     ) -> List[List[float]]:
         ret_val = runner_stlats
         ret_val.extend(defense_stlats)
         ret_val.extend(pitcher_stlats)
+        ret_val.extend(stadium_stlats)
         return [ret_val]
 
     @classmethod
@@ -984,8 +996,10 @@ class GameState(object):
             batter_stlats: List[float],
             pitcher_stlats: List[float],
             defense_stlats: List[float],
+            stadium_stlats: List[float],
     ) -> List[List[float]]:
         ret_val = batter_stlats
         ret_val.extend(pitcher_stlats)
         ret_val.extend(defense_stlats)
+        ret_val.extend(stadium_stlats)
         return [ret_val]
