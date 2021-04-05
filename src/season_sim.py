@@ -51,6 +51,8 @@ def setup_season(season:int, stats_segment_size:int, iterations:int):
     with open(os.path.join('..', 'season_sim', 'season_data', f"season{season + 1}.json"), 'r', encoding='utf8') as json_file:
         raw_season_data = json.load(json_file)
         failed = 0
+        cur_day = 0
+        threads = []
         for game in raw_season_data:
             home_team_name = game["homeTeamName"]
             away_team_name = game["awayTeamName"]
@@ -339,13 +341,6 @@ def print_leaders(iterations):
             break
         print(f'\t{name}: {value:.3f}')
         count += 1
-
-    with open(os.path.join('..', 'season_sim', 'results', "1616749629_top_hrs.txt"), 'w',
-              encoding='utf8') as json_file:
-        json_file.write(top_hrs)
-    with open(os.path.join('..', 'season_sim', 'results', "1616749629_top_sbs.txt"), 'w',
-              encoding='utf8') as json_file:
-        json_file.write(top_sbs)
 
 iterations = 10
 season = 13
