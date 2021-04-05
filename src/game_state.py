@@ -272,12 +272,12 @@ class GameState(object):
             self.cur_pitching_team.validate_game_state_additives(self.get_pitching_team_score())
             if self.inning == 4 and self.half == InningHalf.TOP and len(self.cur_base_runners) == 0 and \
                 self.outs == 0 and self.strikes == 0 and self.balls == 0:
-                if PlayerBuff.TRIPLE_THREAD in self.cur_batting_team.player_buffs[self.cur_batting_team.starting_pitcher]:
+                if PlayerBuff.TRIPLE_THREAT in self.cur_batting_team.player_buffs[self.cur_batting_team.starting_pitcher]:
                     if self._random_roll() <= REMOVE_COFFEE_3_PERCENTAGE:
                         self.log_event(f'{self.cur_batting_team.player_names[self.cur_batting_team.starting_pitcher]} '
                                        f'loses triple threat.')
                         del self.cur_batting_team.player_buffs[self.cur_batting_team.starting_pitcher][PlayerBuff.TRIPLE_THREAT]
-                if PlayerBuff.TRIPLE_THREAD in self.cur_pitching_team.player_buffs[self.cur_pitching_team.starting_pitcher]:
+                if PlayerBuff.TRIPLE_THREAT in self.cur_pitching_team.player_buffs[self.cur_pitching_team.starting_pitcher]:
                     if self._random_roll() <= REMOVE_COFFEE_3_PERCENTAGE:
                         self.log_event(f'{self.cur_pitching_team.player_names[self.cur_pitching_team.starting_pitcher]} '
                                        f'loses triple threat.')
