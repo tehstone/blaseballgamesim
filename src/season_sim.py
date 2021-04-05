@@ -3,7 +3,6 @@ from os import path
 from typing import Any, Dict
 import os
 import json
-import threading
 import time
 
 from src.common import get_stlats_for_season, blood_name_map, PlayerBuff, enabled_player_buffs, convert_keys
@@ -45,50 +44,27 @@ day_rotations = {}
 stadiums = {}
 
 
-def process_game(game: GameState, day: int, home_team_name: str, away_team_name: str):
-    try:
-        home_wins, away_wins = 0, 0
-        for x in range(0, iterations):
-            home_win = game.simulate_game()
-            if home_win:
-                home_wins += 1
-            else:
-                away_wins += 1
-            game.reset_game_state()
-        print(f"{home_team_name}: {home_wins} ({home_wins / iterations}) "
-              f"{away_team_name}: {away_wins} ({away_wins / iterations})")
-    except KeyError:
-        print(f"failed to sim day {day} {home_team_name} vs {away_team_name} game")
-
-
 def setup_season(season:int, stats_segment_size:int):
     with open(os.path.join('..', 'season_sim', 'season_data', f"season{season + 1}.json"), 'r', encoding='utf8') as json_file:
         raw_season_data = json.load(json_file)
         failed = 0
-        cur_day = 0
-        threads = []
         for game in raw_season_data:
             home_team_name = game["homeTeamName"]
             away_team_name = game["awayTeamName"]
-            game_id = game["id"]
-            day = int(game["day"])
-            home_pitcher = game["homePitcher"]
-            away_pitcher = game["awayPitcher"]
-            home_team = game["homeTeam"]
-            away_team = game["awayTeam"]
-            weather = Weather(game["weather"])
-            if day == 99:
-                break
             try:
-                if day != cur_day:
-                    for curThread in threads:
-                        curThread.start()
-                    for curThread in threads:
-                        curThread.join()
-                    cur_day = day
-                    print("moving on...")
-                    threads = []
+                game_id = game["id"]
+                day = int(game["day"])
+                home_pitcher = game["homePitcher"]
+                away_pitcher = game["awayPitcher"]
+                home_team = game["homeTeam"]
+                away_team = game["awayTeam"]
+                # if home_team != "105bc3ff-1320-4e37-8ef0-8d595cb95dd0" and away_team != "105bc3ff-1320-4e37-8ef0-8d595cb95dd0":
+                #     continue
+
+                weather = Weather(game["weather"])
                 print(f'Day {day}, Weather {weather.name}: {away_team_name} at {home_team_name}')
+                if day == 99:
+                    break
                 update_team_states(season, day, home_team, home_pitcher, weather, True, stats_segment_size)
                 home_team_state = team_states[team_id_map[home_team]]
                 update_team_states(season, day, away_team, away_pitcher, weather, False, stats_segment_size)
@@ -109,7 +85,16 @@ def setup_season(season:int, stats_segment_size:int):
                     balls=0,
                     weather=weather
                 )
-                threads.append(threading.Thread(target=process_game, args=(game, day, home_team_name, away_team_name)))
+                home_wins, away_wins = 0, 0
+                for x in range(0, iterations):
+                    home_win = game.simulate_game()
+                    if home_win:
+                        home_wins += 1
+                    else:
+                        away_wins += 1
+                    game.reset_game_state()
+                print(f"{home_team_name}: {home_wins} ({home_wins/iterations}) "
+                      f"{away_team_name}: {away_wins} ({away_wins/iterations})")
             except KeyError:
                 failed += 1
                 print(f"failed to sim day {day} {home_team_name} vs {away_team_name} game")
