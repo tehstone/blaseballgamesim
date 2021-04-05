@@ -3,8 +3,10 @@ from os import path
 from typing import Any, Dict
 import os
 import json
-import threading
 import time
+
+import requests
+from requests import Timeout
 
 from src.common import get_stlats_for_season, blood_name_map, PlayerBuff, enabled_player_buffs, convert_keys
 from src.common import BlaseballStatistics as Stats
@@ -45,50 +47,27 @@ day_rotations = {}
 stadiums = {}
 
 
-def process_game(game: GameState, day: int, home_team_name: str, away_team_name: str):
-    try:
-        home_wins, away_wins = 0, 0
-        for x in range(0, iterations):
-            home_win = game.simulate_game()
-            if home_win:
-                home_wins += 1
-            else:
-                away_wins += 1
-            game.reset_game_state()
-        print(f"{home_team_name}: {home_wins} ({home_wins / iterations}) "
-              f"{away_team_name}: {away_wins} ({away_wins / iterations})")
-    except KeyError:
-        print(f"failed to sim day {day} {home_team_name} vs {away_team_name} game")
-
-
-def setup_season(season:int, stats_segment_size:int):
+def setup_season(season:int, stats_segment_size:int, iterations:int):
     with open(os.path.join('..', 'season_sim', 'season_data', f"season{season + 1}.json"), 'r', encoding='utf8') as json_file:
         raw_season_data = json.load(json_file)
         failed = 0
-        cur_day = 0
-        threads = []
         for game in raw_season_data:
             home_team_name = game["homeTeamName"]
             away_team_name = game["awayTeamName"]
-            game_id = game["id"]
-            day = int(game["day"])
-            home_pitcher = game["homePitcher"]
-            away_pitcher = game["awayPitcher"]
-            home_team = game["homeTeam"]
-            away_team = game["awayTeam"]
-            weather = Weather(game["weather"])
-            if day == 99:
-                break
             try:
-                if day != cur_day:
-                    for curThread in threads:
-                        curThread.start()
-                    for curThread in threads:
-                        curThread.join()
-                    cur_day = day
-                    print("moving on...")
-                    threads = []
-                print(f'Day {day}, Weather {weather.name}: {away_team_name} at {home_team_name}')
+                game_id = game["id"]
+                day = int(game["day"])
+                home_pitcher = game["homePitcher"]
+                away_pitcher = game["awayPitcher"]
+                home_team = game["homeTeam"]
+                away_team = game["awayTeam"]
+                home_odds = game["homeOdds"]
+                away_odds = game["awayOdds"]
+
+                weather = Weather(game["weather"])
+
+                if day == 99:
+                    break
                 update_team_states(season, day, home_team, home_pitcher, weather, True, stats_segment_size)
                 home_team_state = team_states[team_id_map[home_team]]
                 update_team_states(season, day, away_team, away_pitcher, weather, False, stats_segment_size)
@@ -109,16 +88,28 @@ def setup_season(season:int, stats_segment_size:int):
                     balls=0,
                     weather=weather
                 )
-                threads.append(threading.Thread(target=process_game, args=(game, day, home_team_name, away_team_name)))
-            except KeyError:
+                home_wins, away_wins = 0, 0
+                for x in range(0, iterations):
+                    home_win = game.simulate_game()
+                    if home_win:
+                        home_wins += 1
+                    else:
+                        away_wins += 1
+                    game.reset_game_state()
+                home_odds_str = round(home_odds * 1000) / 10
+                away_odds_str = round(away_odds * 1000) / 10
+                print(f"{home_team_name}: {home_wins} ({home_wins/iterations}) - {home_odds_str}% "
+                      f"{away_team_name}: {away_wins} ({away_wins/iterations}) - {away_odds_str}%")
+            except KeyError as e:
                 failed += 1
                 print(f"failed to sim day {day} {home_team_name} vs {away_team_name} game")
         print(f"{failed} games failed to sim")
 
 
-def load_all_state(season: int):
-    if not path.exists(os.path.join('..', 'season_sim', 'stlats', f"s{season}_d98_stlats.json")):
-        get_stlats_for_season(season)
+def load_all_state(season: int, future=False):
+    if not future:
+        if not path.exists(os.path.join('..', 'season_sim', 'stlats', f"s{season}_d98_stlats.json")):
+            get_stlats_for_season(season)
 
     with open(os.path.join('..', 'season_sim', "ballparks.json"), 'r', encoding='utf8') as json_file:
         ballparks = json.load(json_file)
@@ -128,9 +119,14 @@ def load_all_state(season: int):
 
     for day in range(0, 99):
         reset_daily_cache()
-        filename = os.path.join('..', 'season_sim', 'stlats', f"s{season}_d{day}_stlats.json")
-        with open(filename, 'r', encoding='utf8') as json_file:
-            player_stlats_list = json.load(json_file)
+        if future:
+            filename = os.path.join('..', 'season_sim', 'stlats', f"s{season}_d0_stlats.json")
+            with open(filename, 'r', encoding='utf8') as json_file:
+                player_stlats_list = json.load(json_file)
+        else:
+            filename = os.path.join('..', 'season_sim', 'stlats', f"s{season}_d{day}_stlats.json")
+            with open(filename, 'r', encoding='utf8') as json_file:
+                player_stlats_list = json.load(json_file)
         for player in player_stlats_list:
             if day == 6 and player["team_id"] == "105bc3ff-1320-4e37-8ef0-8d595cb95dd0":
                 x = 1
@@ -189,6 +185,8 @@ def load_all_state(season: int):
                 blood_by_team[team_id][player_id] = blood_id_map[int(player["blood"])]
             except ValueError:
                 blood_by_team[team_id][player_id] = blood_name_map[player["blood"]]
+            except TypeError:
+                blood_by_team[team_id][player_id] = BloodType.A
 
         if day > 0 and (len(lineups_by_team) != len(day_lineup[day - 1]) or (len(rotations_by_team) != len(day_rotations[day - 1]))):
             day_lineup[day] = day_lineup[day-1]
@@ -236,6 +234,8 @@ def update_team_states(season: int, day: int, team: str, starting_pitcher: str,
             stadium = stadiums[team]
         else:
             stadium = default_stadium
+        if not starting_pitcher:
+            starting_pitcher = day_rotations[day][team][1]
         team_states[team_id_map[team]] = TeamState(
             team_id=team,
             season=season,
@@ -250,6 +250,7 @@ def update_team_states(season: int, day: int, team: str, starting_pitcher: str,
             lineup=day_lineup[day][team],
             rotation=day_rotations[day][team],
             starting_pitcher=starting_pitcher,
+            cur_pitcher_pos=1,
             stlats=day_stlats[day][team],
             buffs=day_buffs[day][team],
             game_stats=game_stats_by_team[team],
@@ -268,7 +269,12 @@ def update_team_states(season: int, day: int, team: str, starting_pitcher: str,
         #     lineup_changed = True
         team_states[team_id_map[team]].lineup = day_lineup[day][team]
         team_states[team_id_map[team]].rotation = day_rotations[day][team]
-        team_states[team_id_map[team]].starting_pitcher = starting_pitcher
+        rotation_idx = team_states[team_id_map[team]].next_pitcher()
+        team_states[team_id_map[team]].cur_pitcher_pos = rotation_idx
+        if starting_pitcher:
+            team_states[team_id_map[team]].starting_pitcher = starting_pitcher
+        else:
+            team_states[team_id_map[team]].starting_pitcher = team_states[team_id_map[team]].rotation[rotation_idx]
         team_states[team_id_map[team]].stlats = day_stlats[day][team]
         team_states[team_id_map[team]].player_buffs = day_buffs[day][team]
         team_states[team_id_map[team]].blood = day_blood[day][team]
@@ -277,7 +283,7 @@ def update_team_states(season: int, day: int, team: str, starting_pitcher: str,
         team_states[team_id_map[team]].reset_team_state(lineup_changed=True)
 
 
-def print_leaders():
+def print_leaders(iterations):
     strikeouts = []
     hrs = []
     avg = []

@@ -30,6 +30,7 @@ class TeamState(object):
         lineup: Dict[int, str],
         rotation: Dict[int, str],
         starting_pitcher: str,
+        cur_pitcher_pos: int,
         stlats: Dict[str, Dict[FK, float]],
         buffs: Dict[str, Dict[PlayerBuff, int]],
         game_stats: Dict[str, Dict[Stats, float]],
@@ -55,6 +56,7 @@ class TeamState(object):
         self.lineup: Dict[int, str] = lineup
         self.rotation: Dict[int, str] = rotation
         self.starting_pitcher: str = starting_pitcher
+        self.cur_pitcher_pos: int = cur_pitcher_pos
         self.stlats: Dict[str, Dict[FK, float]] = stlats
         self.player_buffs: Dict[str, Dict[PlayerBuff, int]] = buffs
         self.game_stats: Dict[str, Dict[Stats, float]] = game_stats
@@ -444,6 +446,13 @@ class TeamState(object):
         else:
             self.cur_batter_pos += 1
         self.cur_batter = self.lineup[self.cur_batter_pos]
+
+    def next_pitcher(self) -> int:
+        if len(self.rotation) == self.cur_pitcher_pos:
+            self.cur_pitcher_pos = 1
+        else:
+            self.cur_pitcher_pos += 1
+        return self.cur_pitcher_pos
 
     def update_stat(self, player_id: str, stat_id: Stats, value: float, day: int) -> None:
         if player_id not in self.game_stats:

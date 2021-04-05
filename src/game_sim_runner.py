@@ -141,6 +141,7 @@ def make_team_states(season: int, day: int):
                 lineup=lineups_by_team[team],
                 rotation={1: "starting_pitcher"},
                 starting_pitcher=starting_pitchers[team],
+                cur_pitcher_pos=0,
                 stlats=stlats_by_team[team],
                 buffs=buffs_by_team[team],
                 game_stats=game_stats_by_team[team],

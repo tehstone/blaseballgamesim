@@ -36,6 +36,7 @@ class TestTeamState(unittest.TestCase):
             lineup={1: "p1", 2: "p2", 3: "p3"},
             rotation={1: "p4"},
             starting_pitcher="p4",
+            cur_pitcher_pos=1,
             stlats={
                 "p1": {
                     FK.BASE_THIRST: 3.0,

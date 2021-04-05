@@ -152,6 +152,7 @@ class TestGameState(unittest.TestCase):
             },
             rotation={1: "p4"},
             cur_batter_pos=1,
+            cur_pitcher_pos=1
         )
 
         self.away_team_state = TeamState(
@@ -207,6 +208,7 @@ class TestGameState(unittest.TestCase):
             },
             rotation={1: "p14"},
             cur_batter_pos=1,
+            cur_pitcher_pos=1
         )
         self.home_team_state.reset_team_state()
         self.away_team_state.reset_team_state()

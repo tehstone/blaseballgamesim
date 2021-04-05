@@ -213,6 +213,10 @@ class Weather(Enum):
     COFFEE2 = 16
     COFFEE3 = 17
     FLOODING = 18
+    SALMON = 19
+    aaa = 20
+    bbb = 21
+    ccc = 22
 
 
 class PlayerBuff(Enum):
