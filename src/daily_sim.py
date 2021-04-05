@@ -64,7 +64,7 @@ def get_stlat_dict(player: Dict[str, Any]) -> Dict[FK, float]:
 
 
 async def get_current_player_stlats(season, day, team_ids):
-    filename = os.path.join('data', 'season_sim', "stlats", f"s{season}_d{day}_stlats.json")
+    filename = os.path.join('..', 'season_sim', "stlats", f"s{season}_d{day}_stlats.json")
     try:
         with open(filename, 'r', encoding='utf8', ) as json_file:
             stlats_json = json.load(json_file)
@@ -225,7 +225,7 @@ async def run_daily_sim(iterations=250):
     [team_ids.append(g['homeTeam']) for g in games_json]
     [team_ids.append(g['awayTeam']) for g in games_json]
     await setup_stlats(season, day, team_ids)
-    with open(os.path.join('data', 'season_sim', "ballparks.json"), 'r', encoding='utf8') as json_file:
+    with open(os.path.join('..', 'season_sim', "ballparks.json"), 'r', encoding='utf8') as json_file:
         ballparks = json.load(json_file)
     results = {}
     for game in games_json:
