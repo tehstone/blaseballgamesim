@@ -13,11 +13,11 @@ import logging
 import os
 import random
 
-from src.team_state import DEF_ID, TEAM_ID, TeamState
-from src.common import BlaseballStatistics as Stats, Team
-from src.common import MachineLearnedModel as Ml
-from src.common import BloodType, PitchEventTeamBuff, PlayerBuff, team_pitch_event_map, Weather
-from src.stadium import Stadium
+from team_state import DEF_ID, TEAM_ID, TeamState
+from common import BlaseballStatistics as Stats, Team
+from common import MachineLearnedModel as Ml
+from common import BloodType, PitchEventTeamBuff, PlayerBuff, team_pitch_event_map, Weather
+from stadium import Stadium
 
 
 CHARM_TRIGGER_PERCENTAGE = 0.02
@@ -290,15 +290,13 @@ class GameState(object):
         self.away_team.update_stat(self.away_team.starting_pitcher, Stats.PITCHER_SHUTOUTS, 0.0, self.day)
         self.home_team.update_stat(self.home_team.starting_pitcher, Stats.PITCHER_GAMES_APPEARED, 1.0, self.day)
         self.away_team.update_stat(self.away_team.starting_pitcher, Stats.PITCHER_GAMES_APPEARED, 1.0, self.day)
-        home_win = False
         if self.home_score > self.away_score:
-            home_win = True
             self.home_team.update_stat(TEAM_ID, Stats.TEAM_WINS, 1.0, self.day)
             self.away_team.update_stat(TEAM_ID, Stats.TEAM_LOSSES, 1.0, self.day)
         else:
             self.home_team.update_stat(TEAM_ID, Stats.TEAM_LOSSES, 1.0, self.day)
             self.away_team.update_stat(TEAM_ID, Stats.TEAM_WINS, 1.0, self.day)
-        return home_win
+        return self.home_score, self.away_score
 
     def validate_current_batter_state(self):
         cur_buffs = self.cur_batting_team.player_buffs[self.cur_batting_team.cur_batter]

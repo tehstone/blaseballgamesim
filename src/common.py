@@ -417,9 +417,9 @@ team_game_event_map: Dict[Team, Tuple[GameEventTeamBuff, int, Optional[int], Opt
 }
 
 fk_key: Dict[ForbiddenKnowledge, str] = {
-    ForbiddenKnowledge.BASE_THIRST: "base_thirst",
+    ForbiddenKnowledge.BASE_THIRST: "baseThirst",
     ForbiddenKnowledge.CONTINUATION: "continuation",
-    ForbiddenKnowledge.GROUND_FRICTION: "ground_friction",
+    ForbiddenKnowledge.GROUND_FRICTION: "groundFriction",
     ForbiddenKnowledge.INDULGENCE: "indulgence",
     ForbiddenKnowledge.LASERLIKENESS: "laserlikeness",
     ForbiddenKnowledge.ANTICAPITALISM: "anticapitalism",

@@ -1,14 +1,15 @@
+import copy
 from decimal import Decimal
 from typing import Any, Dict, List, Tuple
 import json
 import logging
 import statistics
 
-from src.common import BlaseballStatistics as Stats
-from src.common import ForbiddenKnowledge as FK
-from src.common import AdditiveTypes, BloodType, calc_vibes, GameEventTeamBuff, PlayerBuff, \
+from common import BlaseballStatistics as Stats
+from common import ForbiddenKnowledge as FK
+from common import AdditiveTypes, BloodType, calc_vibes, GameEventTeamBuff, PlayerBuff, \
     Team, team_game_event_map, team_id_map, Weather
-from src.stadium import Stadium
+from stadium import Stadium
 
 DEF_ID = "DEFENSE"
 TEAM_ID = "TEAM"
@@ -233,10 +234,10 @@ class TeamState(object):
         for k in Stats:
             new_dict[k] = 0.0
         for p_key in self.lineup.keys():
-            self.game_stats[self.lineup[p_key]] = new_dict
-        self.game_stats[self.starting_pitcher] = new_dict
-        self.game_stats[DEF_ID] = new_dict
-        self.game_stats[TEAM_ID] = new_dict
+            self.game_stats[self.lineup[p_key]] = copy.deepcopy(new_dict)
+        self.game_stats[self.starting_pitcher] = copy.deepcopy(new_dict)
+        self.game_stats[DEF_ID] = copy.deepcopy(new_dict)
+        self.game_stats[TEAM_ID] = copy.deepcopy(new_dict)
 
     def update_player_names(self, new_names: Dict[str, str]):
         for id in new_names:

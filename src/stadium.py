@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional
 import logging
 import os
 
-from src.common import StadiumStats
+from common import StadiumStats
 
 
 class Stadium(object):

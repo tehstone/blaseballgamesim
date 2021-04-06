@@ -1,19 +1,19 @@
-import asyncio
 import json
 import os
+import time
 from decimal import Decimal
 from typing import Dict, Any, List
 
 import requests
 from requests import Timeout
 
-from src.common import enabled_player_buffs
-from src.common import BlaseballStatistics as Stats, blood_name_map
-from src.common import ForbiddenKnowledge as FK
-from src.common import BloodType, Team, blood_id_map, fk_key, PlayerBuff, Weather
-from src.team_state import TeamState, DEF_ID
-from src.game_state import GameState, InningHalf
-from src.stadium import Stadium
+from common import enabled_player_buffs
+from common import BlaseballStatistics as Stats, blood_name_map
+from common import ForbiddenKnowledge as FK
+from common import BloodType, Team, blood_id_map, fk_key, PlayerBuff, Weather
+from team_state import TeamState, DEF_ID, TEAM_ID
+from game_state import GameState, InningHalf
+from stadium import Stadium
 
 lineups_by_team: Dict[str, Dict[int, str]] = {}
 stlats_by_team: Dict[str, Dict[str, Dict[FK, float]]] = {}
@@ -38,7 +38,7 @@ default_stadium: Stadium = Stadium(
 )
 
 
-async def retry_request(url, tries=10):
+def retry_request(url, tries=10):
     headers = {
         'User-Agent': 'sibrGameSim/0.1test (tehstone#8448@sibr)'
     }
@@ -51,7 +51,7 @@ async def retry_request(url, tries=10):
         except (Timeout, Exception):
             continue
         finally:
-            await asyncio.sleep(.5)
+            time.sleep(.5)
     return None
 
 
@@ -63,7 +63,7 @@ def get_stlat_dict(player: Dict[str, Any]) -> Dict[FK, float]:
     return ret_val
 
 
-async def get_current_player_stlats(season, day, team_ids):
+def get_current_player_stlats(season, day, team_ids):
     filename = os.path.join('..', 'season_sim', "stlats", f"s{season}_d{day}_stlats.json")
     try:
         with open(filename, 'r', encoding='utf8', ) as json_file:
@@ -73,7 +73,7 @@ async def get_current_player_stlats(season, day, team_ids):
         stlats_json = {}
         pitchers = {}
         batters = {}
-        teams_response = await retry_request("https://www.blaseball.com/database/allteams")
+        teams_response = retry_request("https://www.blaseball.com/database/allteams")
         teams_json = teams_response.json()
         for team in teams_json:
             if team["id"] not in team_ids:
@@ -95,7 +95,7 @@ async def get_current_player_stlats(season, day, team_ids):
         chunked_pitcher_ids = [pitcher_ids[i:i + 50] for i in range(0, len(pitcher_ids), 50)]
         for chunk in chunked_pitcher_ids:
             b_url = f"https://www.blaseball.com/database/players?ids={','.join(chunk)}"
-            pitcher_response = await retry_request(b_url)
+            pitcher_response = retry_request(b_url)
             pitcher_json = pitcher_response.json()
             for pitcher in pitcher_json:
                 pitcher["position_id"] = pitchers[pitcher["id"]]["position_id"]
@@ -105,7 +105,7 @@ async def get_current_player_stlats(season, day, team_ids):
         chunked_batter_ids = [batter_ids[i:i + 50] for i in range(0, len(batter_ids), 50)]
         for chunk in chunked_batter_ids:
             b_url = f"https://www.blaseball.com/database/players?ids={','.join(chunk)}"
-            batter_response = await retry_request(b_url)
+            batter_response = retry_request(b_url)
             batter_json = batter_response.json()
             for batter in batter_json:
                 batter["position_id"] = batters[batter["id"]]["position_id"]
@@ -116,8 +116,8 @@ async def get_current_player_stlats(season, day, team_ids):
         return stlats_json
 
 
-async def setup_stlats(season: int, day: int, team_ids: List):
-    player_stlats_list = await get_current_player_stlats(season, day, team_ids)
+def setup_stlats(season: int, day: int, team_ids: List):
+    player_stlats_list = get_current_player_stlats(season, day, team_ids)
     for player_id, player in player_stlats_list.items():
         team_id = player["leagueTeamId"]
         pos = int(player["position_id"])
@@ -157,6 +157,7 @@ async def setup_stlats(season: int, day: int, team_ids: List):
         if team_id not in game_stats_by_team:
             game_stats_by_team[team_id] = {}
             game_stats_by_team[team_id][DEF_ID] = {}
+            game_stats_by_team[team_id][TEAM_ID] = {}
         game_stats_by_team[team_id][player_id] = {}
 
         if team_id not in buffs_by_team:
@@ -211,23 +212,24 @@ def make_team_state(team, pitcher, ballparks, season, day):
     )
 
 
-async def run_daily_sim(iterations=250):
-    html_response = await retry_request("https://www.blaseball.com/database/simulationdata")
+def run_daily_sim(iterations=250):
+    html_response = retry_request("https://www.blaseball.com/database/simulationdata")
     if not html_response:
         print('Bet Advice daily message failed to acquire sim data and exited.')
         return
     sim_data = html_response.json()
     season = sim_data['season']
     day = sim_data['day'] + 1
-    games = await retry_request(f"https://www.blaseball.com/database/games?day={day}&season={season}")
+    games = retry_request(f"https://www.blaseball.com/database/games?day={day}&season={season}")
     games_json = games.json()
     team_ids = []
     [team_ids.append(g['homeTeam']) for g in games_json]
     [team_ids.append(g['awayTeam']) for g in games_json]
-    await setup_stlats(season, day, team_ids)
+    setup_stlats(season, day, team_ids)
     with open(os.path.join('..', 'season_sim', "ballparks.json"), 'r', encoding='utf8') as json_file:
         ballparks = json.load(json_file)
     results = {}
+    output = ""
     for game in games_json:
         home_team_name = game["homeTeamName"]
         away_team_name = game["awayTeamName"]
@@ -247,6 +249,8 @@ async def run_daily_sim(iterations=250):
 
         home_team_state = make_team_state(home_team, home_pitcher, ballparks, season, day)
         away_team_state = make_team_state(away_team, away_pitcher, ballparks, season, day)
+        home_team_state.reset_team_state(game_stat_reset=True)
+        away_team_state.reset_team_state(game_stat_reset=True)
 
         game_sim = GameState(
             game_id=game_id,
@@ -271,14 +275,18 @@ async def run_daily_sim(iterations=250):
             away_scores.append(away_score)
             game_sim.reset_game_state()
 
-        home_wins = home_team_state.game_stats["TEAM"].get(Stats.TEAM_WINS, 0)
-        away_wins = away_team_state.game_stats["TEAM"].get(Stats.TEAM_WINS, 0)
+        home_wins = home_team_state.game_stats[TEAM_ID].get(Stats.TEAM_WINS, 0)
+        away_wins = away_team_state.game_stats[TEAM_ID].get(Stats.TEAM_WINS, 0)
         home_odds_str = round(home_odds * 1000) / 10
         away_odds_str = round(away_odds * 1000) / 10
         print(f"{home_team_name}: {home_wins} ({home_wins / iterations}) - {home_odds_str}% "
               f"{away_team_name}: {away_wins} ({away_wins / iterations}) - {away_odds_str}%")
+
         home_win_per = round((home_wins / iterations) * 1000) / 10
         away_win_per = round((away_wins / iterations) * 1000) / 10
+
+        output += f"{home_team_name}: home_wins {home_wins}, home_win_per {home_win_per}, iterations {iterations}\n"
+        output += f"{away_team_name}: away_wins {away_wins}, away_win_per {away_win_per}, iterations {iterations}\n"
 
         home_ks = 0
         for player_id, stats in home_team_state.game_stats.items():
@@ -307,27 +315,27 @@ async def run_daily_sim(iterations=250):
         home_xbig_scores = sum(1 for x in home_scores if x > 20) / iterations
         away_xbig_scores = sum(1 for x in away_scores if x > 20) / iterations
 
-        upset = False
+        home_upset, away_upset = False, False
         home_odds = game["homeOdds"]
         away_odds = game["awayOdds"]
         if home_odds > away_odds:
             if away_wins > home_wins:
-                upset = True
+                away_upset = True
         else:
             if home_wins > away_wins:
-                upset = True
+                home_upset = True
 
         results[game['homeTeam']] = {
             "game_info": {
-                game["id"],
-                game["homeOdds"],
-                game["awayOdds"],
-                game["homeTeam"],
-                game["awayTeam"],
-                game["homeTeamName"],
-                game["awayTeamName"],
+                "id": game["id"],
+                "homeOdds": game["homeOdds"],
+                "awayOdds": game["awayOdds"],
+                "homeTeam": game["homeTeam"],
+                "awayTeam": game["awayTeam"],
+                "homeTeamName": game["homeTeamName"],
+                "awayTeamName": game["awayTeamName"]
             },
-            "upset": upset,
+            "upset": home_upset,
             "shutout_percentage": home_shutout_per,
             "win_percentage": home_win_per,
             "strikeout_avg": home_k_per,
@@ -343,15 +351,15 @@ async def run_daily_sim(iterations=250):
              }
         results[game['awayTeam']] = {
             "game_info": {
-                game["id"],
-                game["homeOdds"],
-                game["awayOdds"],
-                game["homeTeam"],
-                game["awayTeam"],
-                game["homeTeamName"],
-                game["awayTeamName"],
+                "id": game["id"],
+                "homeOdds": game["homeOdds"],
+                "awayOdds": game["awayOdds"],
+                "homeTeam": game["homeTeam"],
+                "awayTeam": game["awayTeam"],
+                "homeTeamName": game["homeTeamName"],
+                "awayTeamName": game["awayTeamName"]
             },
-            "upset": upset,
+            "upset": away_upset,
             "shutout_percentage": away_shutout_per,
             "win_percentage": away_win_per,
             "strikeout_avg": away_k_per,
@@ -365,4 +373,6 @@ async def run_daily_sim(iterations=250):
                 "p_team_name": game["homeTeamName"]
             }
         }
-    return results, day
+    with open(os.path.join('..', 'season_sim', 'results', f'{round(time.time())}_output.txt'), 'w') as file:
+        file.write(output)
+    return {"data": results, "day": day}
