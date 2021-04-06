@@ -11,7 +11,7 @@ from src.common import enabled_player_buffs
 from src.common import BlaseballStatistics as Stats, blood_name_map
 from src.common import ForbiddenKnowledge as FK
 from src.common import BloodType, Team, blood_id_map, fk_key, PlayerBuff, Weather
-from src.team_state import TeamState, DEF_ID
+from src.team_state import TeamState, DEF_ID, TEAM_ID
 from src.game_state import GameState, InningHalf
 from src.stadium import Stadium
 
@@ -157,6 +157,7 @@ async def setup_stlats(season: int, day: int, team_ids: List):
         if team_id not in game_stats_by_team:
             game_stats_by_team[team_id] = {}
             game_stats_by_team[team_id][DEF_ID] = {}
+            game_stats_by_team[team_id][TEAM_ID] = {}
         game_stats_by_team[team_id][player_id] = {}
 
         if team_id not in buffs_by_team:
@@ -271,8 +272,8 @@ async def run_daily_sim(iterations=250):
             away_scores.append(away_score)
             game_sim.reset_game_state()
 
-        home_wins = home_team_state.game_stats["TEAM"].get(Stats.TEAM_WINS, 0)
-        away_wins = away_team_state.game_stats["TEAM"].get(Stats.TEAM_WINS, 0)
+        home_wins = home_team_state.game_stats[TEAM_ID].get(Stats.TEAM_WINS, 0)
+        away_wins = away_team_state.game_stats[TEAM_ID].get(Stats.TEAM_WINS, 0)
         home_odds_str = round(home_odds * 1000) / 10
         away_odds_str = round(away_odds * 1000) / 10
         print(f"{home_team_name}: {home_wins} ({home_wins / iterations}) - {home_odds_str}% "
