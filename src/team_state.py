@@ -230,6 +230,8 @@ class TeamState(object):
         self._calculate_defense()
 
     def reset_game_stats(self) -> None:
+        self.game_stats = {}
+        self.segmented_stats = {}
         new_dict: Dict[Stats, float] = {}
         for k in Stats:
             new_dict[k] = 0.0
