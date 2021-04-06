@@ -3,8 +3,8 @@ def warn(*args, **kwargs):
 import warnings
 warnings.warn = warn
 
-from decimal import Decimal, getcontext
-from typing import Any, Dict, List, Optional
+from decimal import Decimal
+from typing import Any, Dict, List, Optional, Tuple, Union
 from enum import Enum
 from joblib import load
 
@@ -14,7 +14,7 @@ import os
 import random
 
 from team_state import DEF_ID, TEAM_ID, TeamState
-from common import BlaseballStatistics as Stats, Team
+from common import BlaseballStatistics as Stats
 from common import MachineLearnedModel as Ml
 from common import BloodType, PitchEventTeamBuff, PlayerBuff, team_pitch_event_map, Weather
 from stadium import Stadium
@@ -258,7 +258,7 @@ class GameState(object):
         ret_val.cur_base_runners = cur_base_runners
         return ret_val
 
-    def simulate_game(self) -> bool:
+    def simulate_game(self) -> Tuple[Union[Decimal, Decimal], Union[Decimal, Decimal]]:
         """Loop until the game over state is true"""
         while not self.is_game_over:
             if not self.stolen_base_sim():

@@ -5,16 +5,13 @@ import os
 import json
 import time
 
-import requests
-from requests import Timeout
-
-from src.common import get_stlats_for_season, blood_name_map, PlayerBuff, enabled_player_buffs, convert_keys
-from src.common import BlaseballStatistics as Stats
-from src.common import ForbiddenKnowledge as FK
-from src.common import BloodType, Team, team_id_map, blood_id_map, fk_key, Weather, team_name_map
-from src.stadium import Stadium
-from src.team_state import TeamState, DEF_ID
-from src.game_state import GameState, InningHalf
+from common import get_stlats_for_season, blood_name_map, PlayerBuff, enabled_player_buffs, convert_keys
+from common import BlaseballStatistics as Stats
+from common import ForbiddenKnowledge as FK
+from common import BloodType, Team, team_id_map, blood_id_map, fk_key, Weather, team_name_map
+from stadium import Stadium
+from team_state import TeamState, DEF_ID, TEAM_ID
+from game_state import GameState, InningHalf
 
 lineups_by_team: Dict[str, Dict[int, str]] = {}
 stlats_by_team: Dict[str, Dict[str, Dict[FK, float]]] = {}
@@ -90,16 +87,14 @@ def setup_season(season:int, stats_segment_size:int, iterations:int):
                     balls=0,
                     weather=weather
                 )
-                home_wins, away_wins = 0, 0
                 for x in range(0, iterations):
-                    home_win = game.simulate_game()
-                    if home_win:
-                        home_wins += 1
-                    else:
-                        away_wins += 1
+                    game.simulate_game()
+
                     game.reset_game_state()
                 home_odds_str = round(home_odds * 1000) / 10
                 away_odds_str = round(away_odds * 1000) / 10
+                home_wins = game.home_team.game_stats[TEAM_ID][Stats.TEAM_WINS]
+                away_wins = game.away_team.game_stats[TEAM_ID][Stats.TEAM_WINS]
                 print(f"{home_team_name}: {home_wins} ({home_wins/iterations}) - {home_odds_str}% "
                       f"{away_team_name}: {away_wins} ({away_wins/iterations}) - {away_odds_str}%")
             except KeyError as e:
