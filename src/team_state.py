@@ -460,6 +460,23 @@ class TeamState(object):
             self.cur_pitcher_pos += 1
         return self.cur_pitcher_pos
 
+    def update_starting_pitcher(self):
+        if PlayerBuff.SHELLED in self.player_buffs[self.starting_pitcher]:
+            # must find the next pitcher available and set them to be the starting pitcher but not update the pitcher_pos
+            test_idx = self.cur_pitcher_pos
+            count = 0
+            while True:
+                count += 1
+                if PlayerBuff.SHELLED not in self.player_buffs[self.rotation[test_idx]]:
+                    self.starting_pitcher = self.rotation[test_idx]
+                    break
+                if len(self.rotation) == test_idx:
+                    test_idx = 1
+                else:
+                    test_idx += 1
+                if count > 50:
+                    raise Exception("No valid pitchers to pitch")
+
     def update_stat(self, player_id: str, stat_id: Stats, value: float, day: int) -> None:
         if player_id not in self.game_stats:
             self.game_stats[player_id] = {}

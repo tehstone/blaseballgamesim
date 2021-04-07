@@ -336,6 +336,86 @@ class TestBaseAdvancement(TestGameState):
         self.assertEqual(self.game_state.away_score, 3)
 
 
+class TestForcedBaseAdvancement(TestGameState):
+    def test_no_runners(self):
+        self.assertEqual(self.game_state.cur_base_runners, {})
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.advance_all_forced_runners()
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.assertEqual(self.game_state.cur_base_runners, {})
+
+    def test_one_runner(self):
+        self.game_state.cur_base_runners[1] = "p11"
+        self.assertEqual(len(self.game_state.cur_base_runners), 1)
+        self.assertEqual(self.game_state.cur_base_runners[1], "p11")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.advance_all_forced_runners()
+        self.assertEqual(self.game_state.cur_base_runners[2], "p11")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.advance_all_forced_runners()
+        self.assertEqual(self.game_state.cur_base_runners[2], "p11")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+
+    def test_two_runners_consec(self):
+        self.game_state.cur_base_runners[1] = "p11"
+        self.game_state.cur_base_runners[2] = "p12"
+        self.assertEqual(len(self.game_state.cur_base_runners), 2)
+        self.assertEqual(self.game_state.cur_base_runners[1], "p11")
+        self.assertEqual(self.game_state.cur_base_runners[2], "p12")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.advance_all_forced_runners()
+        self.assertEqual(self.game_state.cur_base_runners[2], "p11")
+        self.assertEqual(self.game_state.cur_base_runners[3], "p12")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.cur_base_runners[1] = "p13"
+        self.game_state.advance_all_forced_runners()
+        self.assertEqual(self.game_state.cur_base_runners[2], "p13")
+        self.assertEqual(self.game_state.cur_base_runners[3], "p11")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 1)
+
+    def test_two_runners_split(self):
+        self.game_state.cur_base_runners[1] = "p11"
+        self.game_state.cur_base_runners[3] = "p12"
+        self.assertEqual(len(self.game_state.cur_base_runners), 2)
+        self.assertEqual(self.game_state.cur_base_runners[1], "p11")
+        self.assertEqual(self.game_state.cur_base_runners[3], "p12")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.advance_all_forced_runners()
+        self.assertEqual(self.game_state.cur_base_runners[2], "p11")
+        self.assertEqual(self.game_state.cur_base_runners[3], "p12")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+
+    def test_three_runners(self):
+        self.game_state.cur_base_runners[1] = "p11"
+        self.game_state.cur_base_runners[2] = "p12"
+        self.game_state.cur_base_runners[3] = "p13"
+        self.assertEqual(len(self.game_state.cur_base_runners), 3)
+        self.assertEqual(self.game_state.cur_base_runners[1], "p11")
+        self.assertEqual(self.game_state.cur_base_runners[2], "p12")
+        self.assertEqual(self.game_state.cur_base_runners[3], "p13")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.advance_all_forced_runners()
+        self.assertEqual(self.game_state.cur_base_runners[2], "p11")
+        self.assertEqual(self.game_state.cur_base_runners[3], "p12")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 1)
+        self.game_state.advance_all_forced_runners()
+        self.assertEqual(self.game_state.cur_base_runners[2], "p11")
+        self.assertEqual(self.game_state.cur_base_runners[3], "p12")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 1)
+
 class TestInningAdvancement(TestGameState):
     def testTopToBottom(self):
         self.game_state.strikes = 2
@@ -1287,7 +1367,7 @@ class TestPitchSim(TestGameState):
 
     def testFlinchStrike(self):
         global PITCH_PRIORS
-        PITCH_PRIORS = [0.0, 0.0, 0.0, 1.0]
+        PITCH_PRIORS = [0.0, 0.0, 0.0, 1.0, 0.0]
         self.game_state.cur_batting_team.player_buffs["p11"] = {PlayerBuff.FLINCH: 1}
         self.game_state.cur_batting_team.team_enum = Team.SUNBEAMS
         self.game_state.cur_pitching_team.team_enum = Team.TIGERS
@@ -1305,6 +1385,18 @@ class TestPitchSim(TestGameState):
         self.assertEqual(self.game_state.balls, 0)
         self.assertEqual(self.game_state.strikes, 1)
 
+        PITCH_PRIORS = [0.0, 0.0, 0.0, 0.0, 1.0]
+        self.game_state.strikes = 0
+        self.assertEqual(self.game_state.strikes, 0)
+        self.game_state.pitch_sim()
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.assertEqual(self.game_state.outs, 0)
+        self.assertEqual(self.game_state.balls, 0)
+        self.assertEqual(self.game_state.strikes, 1)
+
+        PITCH_PRIORS = [0.0, 0.0, 0.0, 1.0, 0.0]
         global HIT_PRIORS
         # test single
         HIT_PRIORS = [1.0, 0.0, 0.0, 0.0]
