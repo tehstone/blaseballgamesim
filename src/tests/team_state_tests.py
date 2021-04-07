@@ -1,11 +1,11 @@
 import os
 import unittest
 
-from src.team_state import TeamState
-from src.common import BlaseballStatistics as Stats
-from src.common import ForbiddenKnowledge as FK
-from src.common import AdditiveTypes, BloodType, PlayerBuff, Team, Weather
-from src.stadium import Stadium
+from team_state import TeamState
+from common import BlaseballStatistics as Stats
+from common import ForbiddenKnowledge as FK
+from common import AdditiveTypes, BloodType, PlayerBuff, Team, Weather
+from stadium import Stadium
 
 default_stadium = Stadium(
     "team_id",
