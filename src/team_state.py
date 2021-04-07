@@ -458,6 +458,7 @@ class TeamState(object):
             self.cur_pitcher_pos = 1
         else:
             self.cur_pitcher_pos += 1
+        self.update_starting_pitcher()
         return self.cur_pitcher_pos
 
     def update_starting_pitcher(self):
@@ -476,6 +477,8 @@ class TeamState(object):
                     test_idx += 1
                 if count > 50:
                     raise Exception("No valid pitchers to pitch")
+        else:
+            self.starting_pitcher = self.rotation[self.cur_pitcher_pos]
 
     def update_stat(self, player_id: str, stat_id: Stats, value: float, day: int) -> None:
         if player_id not in self.game_stats:
