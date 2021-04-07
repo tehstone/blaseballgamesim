@@ -1,7 +1,7 @@
 import os
 import logging
 from logging import Formatter, FileHandler
-from flask import Flask, render_template
+from flask import Flask, request, render_template
 
 app = Flask(__name__)
 from daily_sim import run_daily_sim
@@ -15,8 +15,10 @@ def main():
 
 
 @app.route('/v{}/dailysim'.format(_VERSION), methods=["GET"])
-def expass():
-    return run_daily_sim(250)
+def dailysim():
+    iterations = request.get_json()['iterations']
+    print(f"Running daily sim with {iterations} iterations")
+    return run_daily_sim(iterations)
 
 
 @app.errorhandler(500)

@@ -213,6 +213,7 @@ def make_team_state(team, pitcher, ballparks, season, day):
 
 
 def run_daily_sim(iterations=250):
+    t1 = time.time()
     html_response = retry_request("https://www.blaseball.com/database/simulationdata")
     if not html_response:
         print('Bet Advice daily message failed to acquire sim data and exited.')
@@ -282,11 +283,11 @@ def run_daily_sim(iterations=250):
         print(f"{home_team_name}: {home_wins} ({home_wins / iterations}) - {home_odds_str}% "
               f"{away_team_name}: {away_wins} ({away_wins / iterations}) - {away_odds_str}%")
 
+        output += f"{home_team_name}: {home_wins} ({home_wins / iterations}) - {home_odds_str}% " \
+                  f"{away_team_name}: {away_wins} ({away_wins / iterations}) - {away_odds_str}%\n"
+
         home_win_per = round((home_wins / iterations) * 1000) / 10
         away_win_per = round((away_wins / iterations) * 1000) / 10
-
-        output += f"{home_team_name}: home_wins {home_wins}, home_win_per {home_win_per}, iterations {iterations}\n"
-        output += f"{away_team_name}: away_wins {away_wins}, away_win_per {away_win_per}, iterations {iterations}\n"
 
         home_ks = 0
         for player_id, stats in home_team_state.game_stats.items():
@@ -325,54 +326,60 @@ def run_daily_sim(iterations=250):
             if home_wins > away_wins:
                 home_upset = True
 
-        results[game['homeTeam']] = {
-            "game_info": {
-                "id": game["id"],
-                "homeOdds": game["homeOdds"],
-                "awayOdds": game["awayOdds"],
-                "homeTeam": game["homeTeam"],
-                "awayTeam": game["awayTeam"],
-                "homeTeamName": game["homeTeamName"],
-                "awayTeamName": game["awayTeamName"]
-            },
-            "upset": home_upset,
-            "shutout_percentage": home_shutout_per,
-            "win_percentage": home_win_per,
-            "strikeout_avg": home_k_per,
-            "over_ten": home_big_scores,
-            "over_twenty": home_xbig_scores,
+        results[game["id"]] = {
             "weather": game['weather'],
-            "opp_pitcher": {
-                "pitcher_id": away_pitcher,
-                "pitcher_name": game["awayPitcherName"],
-                "p_team_id": away_team,
-                "p_team_name": game["awayTeamName"]
-                }
-             }
-        results[game['awayTeam']] = {
-            "game_info": {
-                "id": game["id"],
-                "homeOdds": game["homeOdds"],
-                "awayOdds": game["awayOdds"],
-                "homeTeam": game["homeTeam"],
-                "awayTeam": game["awayTeam"],
-                "homeTeamName": game["homeTeamName"],
-                "awayTeamName": game["awayTeamName"]
-            },
-            "upset": away_upset,
-            "shutout_percentage": away_shutout_per,
-            "win_percentage": away_win_per,
-            "strikeout_avg": away_k_per,
-            "over_ten": away_big_scores,
-            "over_twenty": away_xbig_scores,
-            "weather": game['weather'],
-            "opp_pitcher": {
-                "pitcher_id": home_pitcher,
-                "pitcher_name": game["homePitcherName"],
-                "p_team_id": home_team,
-                "p_team_name": game["homeTeamName"]
+            "teams": {
+                    game['homeTeam']: {
+                        "game_info": {
+                            "id": game["id"],
+                            "homeOdds": game["homeOdds"],
+                            "awayOdds": game["awayOdds"],
+                            "homeTeam": game["homeTeam"],
+                            "awayTeam": game["awayTeam"],
+                            "homeTeamName": game["homeTeamName"],
+                            "awayTeamName": game["awayTeamName"]
+                        },
+                        "upset": home_upset,
+                        "shutout_percentage": home_shutout_per,
+                        "win_percentage": home_win_per,
+                        "strikeout_avg": home_k_per,
+                        "over_ten": home_big_scores,
+                        "over_twenty": home_xbig_scores,
+
+                        "opp_pitcher": {
+                            "pitcher_id": away_pitcher,
+                            "pitcher_name": game["awayPitcherName"],
+                            "p_team_id": away_team,
+                            "p_team_name": game["awayTeamName"]
+                            }
+                         },
+                    game['awayTeam']: {
+                        "game_info": {
+                            "id": game["id"],
+                            "homeOdds": game["homeOdds"],
+                            "awayOdds": game["awayOdds"],
+                            "homeTeam": game["homeTeam"],
+                            "awayTeam": game["awayTeam"],
+                            "homeTeamName": game["homeTeamName"],
+                            "awayTeamName": game["awayTeamName"]
+                        },
+                        "upset": away_upset,
+                        "shutout_percentage": away_shutout_per,
+                        "win_percentage": away_win_per,
+                        "strikeout_avg": away_k_per,
+                        "over_ten": away_big_scores,
+                        "over_twenty": away_xbig_scores,
+                        "opp_pitcher": {
+                            "pitcher_id": home_pitcher,
+                            "pitcher_name": game["homePitcherName"],
+                            "p_team_id": home_team,
+                            "p_team_name": game["homeTeamName"]
+                        }
+                    }
             }
         }
     with open(os.path.join('..', 'season_sim', 'results', f'{round(time.time())}_output.txt'), 'w') as file:
         file.write(output)
-    return {"data": results, "day": day}
+    t2 = time.time()
+    time_elapsed = round(t2-t1)
+    return {"data": results, "day": day, "output": output, "time_elapsed": time_elapsed}
