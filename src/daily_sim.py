@@ -119,8 +119,15 @@ def get_current_player_stlats(season, day, team_ids):
 def setup_stlats(season: int, day: int, team_ids: List):
     player_stlats_list = get_current_player_stlats(season, day, team_ids)
     for player_id, player in player_stlats_list.items():
-        team_id = player["leagueTeamId"]
+        plus_pos = False
+        if "leagueTeamId" in player:
+            team_id = player["leagueTeamId"]
+        else:
+            plus_pos = True
+            team_id = player["team_id"]
         pos = int(player["position_id"])
+        if plus_pos:
+            pos += 1
         if "position_type_id" in player:
             if player["position_type_id"] == "0":
                 if team_id not in lineups_by_team:
@@ -142,7 +149,12 @@ def setup_stlats(season: int, day: int, team_ids: List):
             stlats_by_team[team_id] = {}
         stlats_by_team[team_id][player_id] = get_stlat_dict(player)
 
-        mods = player["permAttr"]
+        if "permAttr" in player:
+            mods = player["permAttr"]
+        elif "modifications" in player:
+            mods = player["modifications"]
+        else:
+            mods = None
         cur_mod_dict = {}
         if mods:
             for mod in mods:
@@ -169,7 +181,10 @@ def setup_stlats(season: int, day: int, team_ids: List):
 
         if team_id not in names_by_team:
             names_by_team[team_id] = {}
-        names_by_team[team_id][player_id] = player["name"]
+        if "name" in player:
+            names_by_team[team_id][player_id] = player["name"]
+        else:
+            names_by_team[team_id][player_id] = player["player_name"]
 
         if team_id not in blood_by_team:
             blood_by_team[team_id] = {}
@@ -212,7 +227,7 @@ def make_team_state(team, pitcher, ballparks, season, day):
     )
 
 
-def run_daily_sim(iterations=250):
+def run_daily_sim(iterations=250, day=None, home_team_in=None, away_team_in=None):
     t1 = time.time()
     html_response = retry_request("https://www.blaseball.com/database/simulationdata")
     if not html_response:
@@ -220,29 +235,39 @@ def run_daily_sim(iterations=250):
         return
     sim_data = html_response.json()
     season = sim_data['season']
-    day = sim_data['day'] + 1
+    if day is None:
+        day = sim_data['day'] + 1
+
     games = retry_request(f"https://www.blaseball.com/database/games?day={day}&season={season}")
     games_json = games.json()
-    team_ids = []
-    [team_ids.append(g['homeTeam']) for g in games_json]
-    [team_ids.append(g['awayTeam']) for g in games_json]
+    if home_team_in is None or away_team_in is None:
+        team_ids = []
+        [team_ids.append(g['homeTeam']) for g in games_json]
+        [team_ids.append(g['awayTeam']) for g in games_json]
+    else:
+        team_ids = [home_team_in, away_team_in]
+
     setup_stlats(season, day, team_ids)
     with open(os.path.join('..', 'season_sim', "ballparks.json"), 'r', encoding='utf8') as json_file:
         ballparks = json.load(json_file)
     results = {}
     output = ""
+    count = 1
     for game in games_json:
+        home_team = game["homeTeam"]
+        away_team = game["awayTeam"]
+        if home_team_in and away_team_in:
+            if home_team != home_team_in:
+                continue
         home_team_name = game["homeTeamName"]
         away_team_name = game["awayTeamName"]
         game_id = game["id"]
         day = int(game["day"])
         home_pitcher = game["homePitcher"]
         away_pitcher = game["awayPitcher"]
-        home_team = game["homeTeam"]
-        away_team = game["awayTeam"]
+
         home_odds = game["homeOdds"]
         away_odds = game["awayOdds"]
-
         weather = Weather(game["weather"])
 
         if day == 99:
@@ -280,8 +305,9 @@ def run_daily_sim(iterations=250):
         away_wins = away_team_state.game_stats[TEAM_ID].get(Stats.TEAM_WINS, 0)
         home_odds_str = round(home_odds * 1000) / 10
         away_odds_str = round(away_odds * 1000) / 10
-        print(f"{home_team_name}: {home_wins} ({home_wins / iterations}) - {home_odds_str}% "
+        print(f"{count}. {home_team_name}: {home_wins} ({home_wins / iterations}) - {home_odds_str}% "
               f"{away_team_name}: {away_wins} ({away_wins / iterations}) - {away_odds_str}%")
+        count += 1
 
         output += f"{home_team_name}: {home_wins} ({home_wins / iterations}) - {home_odds_str}% " \
                   f"{away_team_name}: {away_wins} ({away_wins / iterations}) - {away_odds_str}%\n"
@@ -316,30 +342,42 @@ def run_daily_sim(iterations=250):
         home_xbig_scores = sum(1 for x in home_scores if x > 20) / iterations
         away_xbig_scores = sum(1 for x in away_scores if x > 20) / iterations
 
-        home_upset, away_upset = False, False
+        upset = False
         home_odds = game["homeOdds"]
         away_odds = game["awayOdds"]
         if home_odds > away_odds:
             if away_wins > home_wins:
-                away_upset = True
+                upset = True
         else:
             if home_wins > away_wins:
-                home_upset = True
+                upset = True
+
+        if .5 < home_odds < .51:
+            if away_wins > home_wins:
+                upset = True
+        if .5 < away_odds < .51:
+            if home_wins > away_wins:
+                upset = True
+
+
+        home_winner, away_winner = False, False
+        if game["gameComplete"] == True:
+            if game["homeScore"] > game["awayScore"]:
+                home_winner = True
+            else:
+                away_winner = True
 
         results[game["id"]] = {
+            "id": game["id"],
             "weather": game['weather'],
-            "teams": {
-                    game['homeTeam']: {
-                        "game_info": {
-                            "id": game["id"],
-                            "homeOdds": game["homeOdds"],
-                            "awayOdds": game["awayOdds"],
-                            "homeTeam": game["homeTeam"],
-                            "awayTeam": game["awayTeam"],
-                            "homeTeamName": game["homeTeamName"],
-                            "awayTeamName": game["awayTeamName"]
-                        },
-                        "upset": home_upset,
+            "upset": upset,
+            "win_percentage": max(home_win_per, away_win_per),
+            "odds": max(game["homeOdds"], game["awayOdds"]),
+            "home_team": {
+                        "odds": game["homeOdds"],
+                        "team_id": game["homeTeam"],
+                        "team_name": game["homeTeamName"],
+                        "win": home_winner,
                         "shutout_percentage": home_shutout_per,
                         "win_percentage": home_win_per,
                         "strikeout_avg": home_k_per,
@@ -353,17 +391,11 @@ def run_daily_sim(iterations=250):
                             "p_team_name": game["awayTeamName"]
                             }
                          },
-                    game['awayTeam']: {
-                        "game_info": {
-                            "id": game["id"],
-                            "homeOdds": game["homeOdds"],
-                            "awayOdds": game["awayOdds"],
-                            "homeTeam": game["homeTeam"],
-                            "awayTeam": game["awayTeam"],
-                            "homeTeamName": game["homeTeamName"],
-                            "awayTeamName": game["awayTeamName"]
-                        },
-                        "upset": away_upset,
+            "away_team": {
+                        "odds": game["awayOdds"],
+                        "team_id": game["awayTeam"],
+                        "team_name": game["awayTeamName"],
+                        "win": away_winner,
                         "shutout_percentage": away_shutout_per,
                         "win_percentage": away_win_per,
                         "strikeout_avg": away_k_per,
@@ -376,7 +408,6 @@ def run_daily_sim(iterations=250):
                             "p_team_name": game["homeTeamName"]
                         }
                     }
-            }
         }
     with open(os.path.join('..', 'season_sim', 'results', f'{round(time.time())}_output.txt'), 'w') as file:
         file.write(output)

@@ -17,8 +17,22 @@ def main():
 @app.route('/v{}/dailysim'.format(_VERSION), methods=["GET"])
 def dailysim():
     iterations = request.get_json()['iterations']
-    print(f"Running daily sim with {iterations} iterations")
-    return run_daily_sim(iterations)
+    try:
+        day = request.get_json()['day']
+        print(f"Running sim for day {day} with {iterations} iterations")
+    except KeyError:
+        day = None
+        print(f"Running sim for current day with {iterations} iterations")
+    try:
+        home_team = request.get_json()['home_team']
+    except KeyError:
+        home_team = None
+    try:
+        away_team = request.get_json()['away_team']
+    except KeyError:
+        away_team = None
+
+    return run_daily_sim(iterations, day, home_team, away_team)
 
 
 @app.errorhandler(500)
