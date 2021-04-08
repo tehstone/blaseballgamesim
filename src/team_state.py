@@ -262,6 +262,7 @@ class TeamState(object):
             "lineup": self.lineup,
             "rotation": self.rotation,
             "starting_pitcher": self.starting_pitcher,
+            "cur_pitcher_pos": self.cur_pitcher_pos,
             "stlats": TeamState.convert_dict(self.stlats),
             "buffs": TeamState.convert_buffs(self.player_buffs),
             "game_stats": TeamState.convert_dict(self.game_stats),
@@ -308,6 +309,7 @@ class TeamState(object):
         lineup: Dict[int, str] = TeamState.encode_lineup(team_state["lineup"])
         rotation: Dict[int, str] = TeamState.encode_lineup(team_state["rotation"])
         starting_pitcher: str = team_state["starting_pitcher"]
+        cur_pitcher_pos: int = team_state["cur_pitcher_pos"]
         stlats: Dict[str, Dict[FK, float]] = TeamState.encode_stlats(team_state["stlats"])
         buffs: Dict[str, Dict[PlayerBuff, int]] = TeamState.encode_buffs(team_state["buffs"])
         game_stats: Dict[str, Dict[Stats, float]] = TeamState.encode_game_stats(team_state["game_stats"])
@@ -330,6 +332,7 @@ class TeamState(object):
             lineup,
             rotation,
             starting_pitcher,
+            cur_pitcher_pos,
             stlats,
             buffs,
             game_stats,
@@ -455,7 +458,27 @@ class TeamState(object):
             self.cur_pitcher_pos = 1
         else:
             self.cur_pitcher_pos += 1
+        self.update_starting_pitcher()
         return self.cur_pitcher_pos
+
+    def update_starting_pitcher(self):
+        if PlayerBuff.SHELLED in self.player_buffs[self.starting_pitcher]:
+            # must find the next pitcher available and set them to be the starting pitcher but not update the pitcher_pos
+            test_idx = self.cur_pitcher_pos
+            count = 0
+            while True:
+                count += 1
+                if PlayerBuff.SHELLED not in self.player_buffs[self.rotation[test_idx]]:
+                    self.starting_pitcher = self.rotation[test_idx]
+                    break
+                if len(self.rotation) == test_idx:
+                    test_idx = 1
+                else:
+                    test_idx += 1
+                if count > 50:
+                    raise Exception("No valid pitchers to pitch")
+        else:
+            self.starting_pitcher = self.rotation[self.cur_pitcher_pos]
 
     def update_stat(self, player_id: str, stat_id: Stats, value: float, day: int) -> None:
         if player_id not in self.game_stats:

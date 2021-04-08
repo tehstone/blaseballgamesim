@@ -393,6 +393,19 @@ class GameState(object):
                 self.log_event(f'{self.cur_batting_team.get_player_name(self.cur_batting_team.cur_batter)} now at bat.')
             return
         if pitch_result == 4:
+            # Resolve flinch here.  If flinch and no strikes, add a strike and short circuit the out.
+            if PlayerBuff.FLINCH in self.cur_batting_team.player_buffs[self.cur_batting_team.cur_batter].keys() and \
+                    self.strikes == 0:
+                self.cur_pitching_team.update_stat(
+                    self.cur_pitching_team.starting_pitcher,
+                    Stats.PITCHER_STRIKES_THROWN,
+                    1.0,
+                    self.day
+                )
+                self.strikes += 1
+                self.log_event(f'{self.cur_batting_team.player_names[self.cur_batting_team.cur_batter]} flinches. '
+                               f'Strike {self.strikes}.')
+                return
             # Its an out
             # Official plate appearance
             self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
@@ -413,7 +426,18 @@ class GameState(object):
 
     def resolve_walk(self, num_bases_to_advance: int) -> None:
         self.log_event(f'Batter {self.cur_batting_team.get_player_name(self.cur_batting_team.cur_batter)} walks to base {num_bases_to_advance}.')
-        self.advance_all_runners(num_bases_to_advance)
+        # advance runners that are able
+        # Known bug here for 5th base walks and base instincts
+        if num_bases_to_advance == 4 or num_bases_to_advance == 3:
+            self.advance_all_runners(num_bases_to_advance)
+        elif num_bases_to_advance == 2:
+            self.advance_all_forced_runners()
+            self.cur_base_runners[1] = self.cur_batting_team.cur_batter
+            self.advance_all_forced_runners()
+        elif num_bases_to_advance == 1:
+            self.advance_all_forced_runners()
+        else:
+            return
         self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher, Stats.PITCHER_WALKS, 1.0, self.day)
         self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter, Stats.BATTER_WALKS, 1.0, self.day)
         self.cur_base_runners[num_bases_to_advance] = self.cur_batting_team.cur_batter
@@ -802,6 +826,20 @@ class GameState(object):
     def advance_all_runners(self, num_bases_to_advance: int) -> None:
         for base in reversed(sorted(self.cur_base_runners.keys())):
             self.update_base_runner(base, Stats.GENERIC_ADVANCEMENT, num_bases_to_advance)
+
+    def advance_all_forced_runners(self) -> None:
+        for base in reversed(sorted(self.cur_base_runners.keys())):
+            if base == 4:
+                if 3 in self.cur_base_runners.keys() and 2 in self.cur_base_runners.keys() and 1 in self.cur_base_runners.keys():
+                    self.update_base_runner(base, Stats.GENERIC_ADVANCEMENT, 1)
+            if base == 3:
+                if 2 in self.cur_base_runners.keys() and 1 in self.cur_base_runners.keys():
+                    self.update_base_runner(base, Stats.GENERIC_ADVANCEMENT, 1)
+            if base == 2:
+                if 1 in self.cur_base_runners.keys():
+                    self.update_base_runner(base, Stats.GENERIC_ADVANCEMENT, 1)
+            if base == 1:
+                self.update_base_runner(base, Stats.GENERIC_ADVANCEMENT, 1)
 
     def update_base_runner(self, base: int, action: Stats, num_bases_to_advance: int = 1) -> None:
         if action == Stats.CAUGHT_STEALINGS:

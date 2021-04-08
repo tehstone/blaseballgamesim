@@ -3,18 +3,18 @@ import unittest
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
-from src.game_state import (
+from game_state import (
     BASE_INSTINCT_PRIORS,
     GameState,
     InningHalf,
 )
-import src.game_state
-from src.team_state import TeamState, TEAM_ID, PlayerBuff
-from src.common import BlaseballStatistics as Stats
-from src.common import ForbiddenKnowledge as FK
-from src.common import MachineLearnedModel as Ml
-from src.common import BloodType, Team, Weather
-from src.stadium import Stadium
+import game_state
+from team_state import TeamState, TEAM_ID, PlayerBuff
+from common import BlaseballStatistics as Stats
+from common import ForbiddenKnowledge as FK
+from common import MachineLearnedModel as Ml
+from common import BloodType, Team, Weather
+from stadium import Stadium
 
 DEFAULT_FKS = {
     FK.BASE_THIRST: 0.0,
@@ -336,6 +336,86 @@ class TestBaseAdvancement(TestGameState):
         self.assertEqual(self.game_state.away_score, 3)
 
 
+class TestForcedBaseAdvancement(TestGameState):
+    def test_no_runners(self):
+        self.assertEqual(self.game_state.cur_base_runners, {})
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.advance_all_forced_runners()
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.assertEqual(self.game_state.cur_base_runners, {})
+
+    def test_one_runner(self):
+        self.game_state.cur_base_runners[1] = "p11"
+        self.assertEqual(len(self.game_state.cur_base_runners), 1)
+        self.assertEqual(self.game_state.cur_base_runners[1], "p11")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.advance_all_forced_runners()
+        self.assertEqual(self.game_state.cur_base_runners[2], "p11")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.advance_all_forced_runners()
+        self.assertEqual(self.game_state.cur_base_runners[2], "p11")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+
+    def test_two_runners_consec(self):
+        self.game_state.cur_base_runners[1] = "p11"
+        self.game_state.cur_base_runners[2] = "p12"
+        self.assertEqual(len(self.game_state.cur_base_runners), 2)
+        self.assertEqual(self.game_state.cur_base_runners[1], "p11")
+        self.assertEqual(self.game_state.cur_base_runners[2], "p12")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.advance_all_forced_runners()
+        self.assertEqual(self.game_state.cur_base_runners[2], "p11")
+        self.assertEqual(self.game_state.cur_base_runners[3], "p12")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.cur_base_runners[1] = "p13"
+        self.game_state.advance_all_forced_runners()
+        self.assertEqual(self.game_state.cur_base_runners[2], "p13")
+        self.assertEqual(self.game_state.cur_base_runners[3], "p11")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 1)
+
+    def test_two_runners_split(self):
+        self.game_state.cur_base_runners[1] = "p11"
+        self.game_state.cur_base_runners[3] = "p12"
+        self.assertEqual(len(self.game_state.cur_base_runners), 2)
+        self.assertEqual(self.game_state.cur_base_runners[1], "p11")
+        self.assertEqual(self.game_state.cur_base_runners[3], "p12")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.advance_all_forced_runners()
+        self.assertEqual(self.game_state.cur_base_runners[2], "p11")
+        self.assertEqual(self.game_state.cur_base_runners[3], "p12")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+
+    def test_three_runners(self):
+        self.game_state.cur_base_runners[1] = "p11"
+        self.game_state.cur_base_runners[2] = "p12"
+        self.game_state.cur_base_runners[3] = "p13"
+        self.assertEqual(len(self.game_state.cur_base_runners), 3)
+        self.assertEqual(self.game_state.cur_base_runners[1], "p11")
+        self.assertEqual(self.game_state.cur_base_runners[2], "p12")
+        self.assertEqual(self.game_state.cur_base_runners[3], "p13")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.advance_all_forced_runners()
+        self.assertEqual(self.game_state.cur_base_runners[2], "p11")
+        self.assertEqual(self.game_state.cur_base_runners[3], "p12")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 1)
+        self.game_state.advance_all_forced_runners()
+        self.assertEqual(self.game_state.cur_base_runners[2], "p11")
+        self.assertEqual(self.game_state.cur_base_runners[3], "p12")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 1)
+
 class TestInningAdvancement(TestGameState):
     def testTopToBottom(self):
         self.game_state.strikes = 2
@@ -619,7 +699,7 @@ class TestPrePitchEvents(TestGameState):
         self.assertFalse(self.game_state.resolve_team_pre_pitch_event())
 
     def testCharmPitcher(self):
-        src.game_state.CHARM_TRIGGER_PERCENTAGE = 1.0
+        game_state.CHARM_TRIGGER_PERCENTAGE = 1.0
         self.game_state.cur_pitching_team.team_enum = Team.LOVERS
         self.game_state.cur_pitching_team.blood["p4"] = BloodType.LOVE
         self.game_state.strikes = 0
@@ -642,7 +722,7 @@ class TestPrePitchEvents(TestGameState):
         self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p13")
 
     def testCharmBatter(self):
-        src.game_state.CHARM_TRIGGER_PERCENTAGE = 1.0
+        game_state.CHARM_TRIGGER_PERCENTAGE = 1.0
         self.game_state.cur_batting_team.team_enum = Team.LOVERS
         self.game_state.cur_pitching_team.team_enum = Team.SUNBEAMS
         self.game_state.cur_batting_team.blood["p11"] = BloodType.LOVE
@@ -668,7 +748,7 @@ class TestPrePitchEvents(TestGameState):
         self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p13")
 
     def testZapBatter(self):
-        src.game_state.ZAP_TRIGGER_PERCENTAGE = 1.0
+        game_state.ZAP_TRIGGER_PERCENTAGE = 1.0
         self.game_state.cur_batting_team.team_enum = Team.DALE
         self.game_state.cur_pitching_team.team_enum = Team.SUNBEAMS
         self.game_state.cur_batting_team.blood["p11"] = BloodType.ELECTRIC
@@ -694,7 +774,7 @@ class TestPrePitchEvents(TestGameState):
         self.assertTrue(self.game_state.resolve_team_pre_pitch_event())
 
     def testFloodingNotTriggering(self):
-        src.game_state.FLOODING_TRIGGER_PERCENTAGE = 1.0
+        game_state.FLOODING_TRIGGER_PERCENTAGE = 1.0
         self.game_state.weather = Weather.SUN2
         self.game_state.cur_base_runners[1] = "p11"
         self.game_state.cur_base_runners[2] = "p12"
@@ -706,7 +786,7 @@ class TestPrePitchEvents(TestGameState):
         self.assertFalse(self.game_state.resolve_team_pre_pitch_event())
 
     def testFloodingWipesEveryoneAway(self):
-        src.game_state.FLOODING_TRIGGER_PERCENTAGE = 1.0
+        game_state.FLOODING_TRIGGER_PERCENTAGE = 1.0
         self.game_state.weather = Weather.FLOODING
         self.game_state.cur_base_runners[1] = "p11"
         self.game_state.cur_base_runners[2] = "p12"
@@ -725,7 +805,7 @@ class TestPrePitchEvents(TestGameState):
         self.assertEqual(self.game_state.away_score, 0)
 
     def testFloodingScores1(self):
-        src.game_state.FLOODING_TRIGGER_PERCENTAGE = 1.0
+        game_state.FLOODING_TRIGGER_PERCENTAGE = 1.0
         self.game_state.weather = Weather.FLOODING
         self.game_state.cur_batting_team.player_buffs["p11"] = {PlayerBuff.SWIM_BLADDER: 1}
         self.game_state.cur_base_runners[1] = "p11"
@@ -745,7 +825,7 @@ class TestPrePitchEvents(TestGameState):
         self.assertEqual(self.game_state.away_score, 1)
 
     def testFloodingScores1Leaves1(self):
-        src.game_state.FLOODING_TRIGGER_PERCENTAGE = 1.0
+        game_state.FLOODING_TRIGGER_PERCENTAGE = 1.0
         self.game_state.weather = Weather.FLOODING
         self.game_state.cur_batting_team.player_buffs["p11"] = {PlayerBuff.SWIM_BLADDER: 1}
         self.game_state.cur_batting_team.player_buffs["p12"] = {PlayerBuff.EGO1: 1}
@@ -1287,7 +1367,7 @@ class TestPitchSim(TestGameState):
 
     def testFlinchStrike(self):
         global PITCH_PRIORS
-        PITCH_PRIORS = [0.0, 0.0, 0.0, 1.0]
+        PITCH_PRIORS = [0.0, 0.0, 0.0, 1.0, 0.0]
         self.game_state.cur_batting_team.player_buffs["p11"] = {PlayerBuff.FLINCH: 1}
         self.game_state.cur_batting_team.team_enum = Team.SUNBEAMS
         self.game_state.cur_pitching_team.team_enum = Team.TIGERS
@@ -1305,6 +1385,18 @@ class TestPitchSim(TestGameState):
         self.assertEqual(self.game_state.balls, 0)
         self.assertEqual(self.game_state.strikes, 1)
 
+        PITCH_PRIORS = [0.0, 0.0, 0.0, 0.0, 1.0]
+        self.game_state.strikes = 0
+        self.assertEqual(self.game_state.strikes, 0)
+        self.game_state.pitch_sim()
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.assertEqual(self.game_state.outs, 0)
+        self.assertEqual(self.game_state.balls, 0)
+        self.assertEqual(self.game_state.strikes, 1)
+
+        PITCH_PRIORS = [0.0, 0.0, 0.0, 1.0, 0.0]
         global HIT_PRIORS
         # test single
         HIT_PRIORS = [1.0, 0.0, 0.0, 0.0]

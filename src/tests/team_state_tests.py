@@ -1,11 +1,11 @@
 import os
 import unittest
 
-from src.team_state import TeamState
-from src.common import BlaseballStatistics as Stats
-from src.common import ForbiddenKnowledge as FK
-from src.common import AdditiveTypes, BloodType, PlayerBuff, Team, Weather
-from src.stadium import Stadium
+from team_state import TeamState
+from common import BlaseballStatistics as Stats
+from common import ForbiddenKnowledge as FK
+from common import AdditiveTypes, BloodType, PlayerBuff, Team, Weather
+from stadium import Stadium
 
 default_stadium = Stadium(
     "team_id",
@@ -34,7 +34,7 @@ class TestTeamState(unittest.TestCase):
             strikes_for_out=3,
             outs_for_inning=3,
             lineup={1: "p1", 2: "p2", 3: "p3"},
-            rotation={1: "p4"},
+            rotation={1: "p4", 2: "p1"},
             starting_pitcher="p4",
             cur_pitcher_pos=1,
             stlats={
@@ -303,14 +303,14 @@ class TestTeamBuffs(TestTeamState):
         self.team_state.team_enum = Team.FRIDAYS
         self.team_state.season = 14
         self.team_state.calc_additives()
-        self.assertEqual(0.1, self.team_state.batting_addition)
-        self.assertEqual(0.1, self.team_state.pitching_addition)
-        self.assertEqual(0.1, self.team_state.defense_addition)
-        self.assertEqual(0.1, self.team_state.base_running_addition)
+        self.assertEqual(0.09, self.team_state.batting_addition)
+        self.assertEqual(0.09, self.team_state.pitching_addition)
+        self.assertEqual(0.09, self.team_state.defense_addition)
+        self.assertEqual(0.09, self.team_state.base_running_addition)
         new_p1 = self.team_state.get_batter_feature_vector("p1")
-        self.assertEqual(1.9, new_p1[5])
-        self.assertEqual(0.1, new_p1[6])
-        self.assertEqual(3.1, new_p1[8])
+        self.assertEqual(1.91, new_p1[5])
+        self.assertEqual(0.09, new_p1[6])
+        self.assertEqual(3.09, new_p1[8])
         new_p1 = self.team_state.get_batter_feature_vector("p4")
         self.assertEqual(0.001, new_p1[5])
 
@@ -465,4 +465,31 @@ class TestPreloadModifiers(TestTeamState):
         self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.PITCHING])
         self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.DEFENSE])
         self.assertEqual(2, self.team_state.player_buffs["p1"][PlayerBuff.UNDER_OVER])
+
+
+class TestUpdatePitcher(TestTeamState):
+    def test_update_pitcher(self):
+        self.assertEqual(1, self.team_state.cur_pitcher_pos)
+        self.assertEqual("p4", self.team_state.starting_pitcher)
+        self.team_state.update_starting_pitcher()
+        self.assertEqual(1, self.team_state.cur_pitcher_pos)
+        self.assertEqual("p4", self.team_state.starting_pitcher)
+        self.team_state.player_buffs["p4"][PlayerBuff.SHELLED] = 1
+        self.team_state.update_starting_pitcher()
+        self.assertEqual(1, self.team_state.cur_pitcher_pos)
+        self.assertEqual("p1", self.team_state.starting_pitcher)
+
+    def test_looping_update_pitcher(self):
+        self.team_state.starting_pitcher = "p1"
+        self.team_state.cur_pitcher_pos = 2
+        self.assertEqual(2, self.team_state.cur_pitcher_pos)
+        self.assertEqual("p1", self.team_state.starting_pitcher)
+        self.team_state.update_starting_pitcher()
+        self.assertEqual(2, self.team_state.cur_pitcher_pos)
+        self.assertEqual("p1", self.team_state.starting_pitcher)
+        self.team_state.player_buffs["p1"][PlayerBuff.SHELLED] = 1
+        self.team_state.update_starting_pitcher()
+        self.assertEqual(2, self.team_state.cur_pitcher_pos)
+        self.assertEqual("p4", self.team_state.starting_pitcher)
+
 
