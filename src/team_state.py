@@ -573,7 +573,7 @@ class TeamState(object):
         return self.get_batter_feature_vector(self.cur_batter)
 
     def get_player_name(self, player_id: str) -> str:
-        if player_id in self.player_names:
+        if player_id in self.player_names.keys():
             return self.player_names[player_id]
         else:
             return "Unknown Player (" + player_id + ")"

@@ -16,6 +16,7 @@ from game_state import GameState, InningHalf
 from stadium import Stadium
 
 lineups_by_team: Dict[str, Dict[int, str]] = {}
+rotations_by_team: Dict[str, Dict[int, str]] = {}
 stlats_by_team: Dict[str, Dict[str, Dict[FK, float]]] = {}
 buffs_by_team: Dict[str, Dict[str, Dict[PlayerBuff, int]]] = {}
 game_stats_by_team: Dict[str, Dict[str, Dict[Stats, float]]] = {}
@@ -136,6 +137,10 @@ def setup_stlats(season: int, day: int, team_ids: List):
             else:
                 if team_id not in starting_pitchers:
                     starting_pitchers[team_id] = player_id
+                if team_id not in rotations_by_team:
+                    rotations_by_team[team_id] = {}
+                rotations_by_team[team_id][pos] = player_id
+
         else:
             if player["position_type"] == "BATTER":
                 if team_id not in lineups_by_team:
@@ -144,6 +149,9 @@ def setup_stlats(season: int, day: int, team_ids: List):
             else:
                 if team_id not in starting_pitchers:
                     starting_pitchers[team_id] = player_id
+                if team_id not in rotations_by_team:
+                    rotations_by_team[team_id] = {}
+                rotations_by_team[team_id][pos] = player_id
 
         if team_id not in stlats_by_team:
             stlats_by_team[team_id] = {}
@@ -214,9 +222,9 @@ def make_team_state(team, pitcher, ballparks, season, day):
         strikes_for_out=3,
         outs_for_inning=3,
         lineup=lineups_by_team[team],
-        rotation={1: "starting_pitcher"},
+        rotation=rotations_by_team[team],
         starting_pitcher=pitcher,
-        cur_pitcher_pos=0,
+        cur_pitcher_pos=1,
         stlats=stlats_by_team[team],
         buffs=buffs_by_team[team],
         game_stats=game_stats_by_team[team],
@@ -277,6 +285,8 @@ def run_daily_sim(iterations=250, day=None, home_team_in=None, away_team_in=None
         away_team_state = make_team_state(away_team, away_pitcher, ballparks, season, day)
         home_team_state.reset_team_state(game_stat_reset=True)
         away_team_state.reset_team_state(game_stat_reset=True)
+        home_team_state.update_starting_pitcher()
+        away_team_state.update_starting_pitcher()
 
         game_sim = GameState(
             game_id=game_id,

@@ -483,6 +483,17 @@ stat_key: Dict[BlaseballStatistics, str] = {
 }
 
 
+def get_ballparks():
+    resp = requests.get("https://api.sibr.dev/chronicler/v1/stadiums")
+    ballparks = {}
+    if resp:
+        park_data = resp.json()
+        for park in park_data["data"]:
+            ballparks[park["id"]] = park
+    with open(os.path.join('..', 'season_sim', "ballparks.json"), 'w') as file:
+        json.dump(ballparks, file)
+
+
 async def save_daily_stlats(season, day, session):
     url = f"https://api.blaseball-reference.com/v1/allPlayersForGameday?season={season}&day={day}"
     response = await session.request(method='GET', url=url)
@@ -497,8 +508,14 @@ async def run_program(season, day, session):
 
 def write_to_file(stlats_json, season, day):
     filename = os.path.join('..', 'season_sim', "stlats", f"s{season}_d{day}_stlats.json")
+    new_stlats = {}
+    for player_stlats in stlats_json:
+        player_stlats["id"] = player_stlats["player_id"]
+        player_stlats["baseThirst"] = player_stlats["base_thirst"]
+        player_stlats["groundFriction"] = player_stlats["ground_friction"]
+        new_stlats[player_stlats["id"]] = player_stlats
     with open(filename, 'w', encoding='utf8',) as json_file:
-        json.dump(stlats_json, json_file)
+        json.dump(new_stlats, json_file)
 
 
 async def stlats_runner(season):

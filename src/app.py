@@ -46,13 +46,20 @@ def not_found_error(error):
 
 if not app.debug:
     file_handler = FileHandler('error.log')
+    o_file_handler = FileHandler('gunicorn')
+    o_file_handler.setFormatter(
+        Formatter('%(asctime)s %(levelname)s: \
+            %(message)s [in %(pathname)s:%(lineno)d]')
+    )
     file_handler.setFormatter(
         Formatter('%(asctime)s %(levelname)s: \
             %(message)s [in %(pathname)s:%(lineno)d]')
     )
     app.logger.setLevel(logging.INFO)
     file_handler.setLevel(logging.INFO)
+    o_file_handler.setLevel(logging.INFO)
     app.logger.addHandler(file_handler)
+    app.logger.addHandler(o_file_handler)
 
 
 if __name__ == '__main__':
