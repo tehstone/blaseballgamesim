@@ -472,7 +472,8 @@ class TeamState(object):
                     self.starting_pitcher = self.rotation[test_idx]
                     break
                 if len(self.rotation) == test_idx:
-                    test_idx = 1
+                    # set this to zero so that it gets incremented to 1 at the next iteration
+                    test_idx = 0
                 else:
                     test_idx += 1
                 if count > 50:
