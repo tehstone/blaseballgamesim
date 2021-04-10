@@ -64,6 +64,7 @@ class GameState(object):
         strikes: int,
         balls: int,
         weather: Weather,
+        old_models: bool=None
     ) -> None:
         """ A container class that holds the team state for a given game """
         self.game_id = game_id
@@ -95,19 +96,32 @@ class GameState(object):
         self.is_game_over = False
         self.clf: Dict[Ml, Any] = {}
         self.game_log: List[str] = ["Play ball."]
-        self._load_ml_models()
+        self._load_ml_models(old_models)
         self.refresh_game_status()
 
-    def _load_ml_models(self):
-        self.clf = {
-            Ml.PITCH: load(os.path.join("..", "season_sim", "models", "pitch_v3.joblib")),
-            Ml.HIT_TYPE: load(os.path.join("..", "season_sim", "models", "hit_type_v2.joblib")),
-            Ml.RUNNER_ADV_OUT: load(os.path.join("..", "season_sim", "models", "runner_advanced_on_out_v2.joblib")),
-            Ml.RUNNER_ADV_HIT: load(os.path.join("..", "season_sim", "models", "extra_base_on_hit_v2.joblib")),
-            Ml.SB_ATTEMPT: load(os.path.join("..", "season_sim", "models", "sba_v2.joblib")),
-            Ml.SB_SUCCESS: load(os.path.join("..", "season_sim", "models", "sb_success_v2.joblib")),
-            Ml.OUT_TYPE: load(os.path.join("..", "season_sim", "models", "out_type_v2.joblib")),
-        }
+    def _load_ml_models(self, old_models):
+        if old_models == True:
+            self.clf = {
+                Ml.PITCH: load(os.path.join("..", "season_sim", "models", "s_14_backup", "pitch_v3.joblib")),
+                Ml.HIT_TYPE: load(os.path.join("..", "season_sim", "models", "s_14_backup", "hit_type_v2.joblib")),
+                Ml.RUNNER_ADV_OUT: load(
+                    os.path.join("..", "season_sim", "models", "s_14_backup", "runner_advanced_on_out_v2.joblib")),
+                Ml.RUNNER_ADV_HIT: load(
+                    os.path.join("..", "season_sim", "models", "s_14_backup", "extra_base_on_hit_v2.joblib")),
+                Ml.SB_ATTEMPT: load(os.path.join("..", "season_sim", "models", "s_14_backup", "sba_v2.joblib")),
+                Ml.SB_SUCCESS: load(os.path.join("..", "season_sim", "models", "s_14_backup", "sb_success_v2.joblib")),
+                Ml.OUT_TYPE: load(os.path.join("..", "season_sim", "models", "s_14_backup", "out_type_v2.joblib")),
+            }
+        else:
+            self.clf = {
+                Ml.PITCH: load(os.path.join("..", "season_sim", "models", "pitch_v4.joblib")),
+                Ml.HIT_TYPE: load(os.path.join("..", "season_sim", "models", "hit_type_v3.joblib")),
+                Ml.RUNNER_ADV_OUT: load(os.path.join("..", "season_sim", "models", "runner_advanced_on_out_v3.joblib")),
+                Ml.RUNNER_ADV_HIT: load(os.path.join("..", "season_sim", "models", "extra_base_on_hit_v3.joblib")),
+                Ml.SB_ATTEMPT: load(os.path.join("..", "season_sim", "models", "sba_v3.joblib")),
+                Ml.SB_SUCCESS: load(os.path.join("..", "season_sim", "models", "sb_success_v3.joblib")),
+                Ml.OUT_TYPE: load(os.path.join("..", "season_sim", "models", "out_type_v3.joblib")),
+            }
 
     def log_event(self, event: str) -> None:
         self.game_log.append(event)

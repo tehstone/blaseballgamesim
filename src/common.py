@@ -544,6 +544,22 @@ def get_stlats_for_season(season):
     loop.run_until_complete(stlats_runner(season))
 
 
+def get_stlats_for_day(season, day):
+    filename = os.path.join('..', 'season_sim', "stlats", f"s{season}_d{day}_stlats.json")
+    url = f"https://api.blaseball-reference.com/v1/allPlayersForGameday?season={season}&day={day}"
+    response = requests.get(url)
+    stlats_json = response.json()
+    new_stlats = {}
+    for player_stlats in stlats_json:
+        player_stlats["id"] = player_stlats["player_id"]
+        player_stlats["baseThirst"] = player_stlats["base_thirst"]
+        player_stlats["groundFriction"] = player_stlats["ground_friction"]
+        new_stlats[player_stlats["id"]] = player_stlats
+    with open(filename, 'w', encoding='utf8', ) as json_file:
+        json.dump(new_stlats, json_file)
+    return new_stlats
+
+
 def get_player_stlats(season, day):
     filename = os.path.join('..', 'season_sim', "stlats", f"s{season}_d{day}_stlats.json")
     try:

@@ -298,7 +298,8 @@ def run_iters(results, home_team, away_team, half, pitchers, all_weathers):
             outs=0,
             strikes=0,
             balls=0,
-            weather=weather
+            weather=weather,
+            old_models=True,
         )
         game_sim.simulate_game()
         if game_sim.home_score > game_sim.away_score:
@@ -362,8 +363,6 @@ def run_sim(iterations):
     for team in matchups:
         team_id = team["team_id"]
         team_name = team["team_name"]
-        if team_id != "57ec08cc-0411-4643-b304-0e80dbc15ac7":
-            continue
         all_pitchers[team_id] = []
         results[team_name] = {}
         for o_team in team["matches"]:
@@ -375,7 +374,7 @@ def run_sim(iterations):
             already_run = False
             results[team_name][o_team_name] = {}
             if o_team_name in results:
-                if team_id in results[o_team_name]:
+                if team_name in results[o_team_name]:
                     already_run = True
                     results[team_name][o_team_name] = results[o_team_name][team_name]
             if already_run:
@@ -437,4 +436,4 @@ t1 = round(time.time())
 load_all_state(15)
 t2 = round(time.time())
 print(f"State set up complete in {t2 - t1}")
-run_sim(48)
+run_sim(500)

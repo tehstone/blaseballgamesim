@@ -7,7 +7,7 @@ from typing import Dict, Any, List
 import requests
 from requests import Timeout
 
-from common import enabled_player_buffs
+from common import enabled_player_buffs, get_stlats_for_day
 from common import BlaseballStatistics as Stats, blood_name_map
 from common import ForbiddenKnowledge as FK
 from common import BloodType, Team, blood_id_map, fk_key, PlayerBuff, Weather
@@ -66,11 +66,21 @@ def get_stlat_dict(player: Dict[str, Any]) -> Dict[FK, float]:
 
 def get_current_player_stlats(season, day, team_ids, save_stlats):
     filename = os.path.join('..', 'season_sim', "stlats", f"s{season}_d{day}_stlats.json")
+    found_stlats = False
     try:
         with open(filename, 'r', encoding='utf8', ) as json_file:
             stlats_json = json.load(json_file)
-        return stlats_json
+        if len(stlats_json) > 1:
+            found_stlats = True
     except FileNotFoundError:
+        found_stlats = False
+
+    if not found_stlats:
+        stlats_json = get_stlats_for_day(season, day)
+        if len(stlats_json) > 1:
+            found_stlats = True
+
+    if not found_stlats:
         stlats_json = {}
         pitchers = {}
         batters = {}
@@ -115,7 +125,7 @@ def get_current_player_stlats(season, day, team_ids, save_stlats):
         if save_stlats:
             with open(filename, 'w', encoding='utf8') as json_file:
                 json.dump(stlats_json, json_file)
-        return stlats_json
+    return stlats_json
 
 
 def setup_stlats(season: int, day: int, team_ids: List, save_stlats: bool):
@@ -207,6 +217,7 @@ def make_team_state(team, pitcher, ballparks, season, day):
         stadium = Stadium.from_ballpark_json(park)
     else:
         stadium = default_stadium
+    pos = list(rotations_by_team[team].keys())[list(rotations_by_team[team].values()).index(pitcher)]
     return TeamState(
         team_id=team,
         season=season,
@@ -221,7 +232,7 @@ def make_team_state(team, pitcher, ballparks, season, day):
         lineup=lineups_by_team[team],
         rotation=rotations_by_team[team],
         starting_pitcher=pitcher,
-        cur_pitcher_pos=1,
+        cur_pitcher_pos=pos,
         stlats=stlats_by_team[team],
         buffs=buffs_by_team[team],
         game_stats=game_stats_by_team[team],
@@ -261,9 +272,8 @@ def run_daily_sim(iterations=250, day=None, home_team_in=None, away_team_in=None
     for game in games_json:
         home_team = game["homeTeam"]
         away_team = game["awayTeam"]
-        if home_team_in and away_team_in:
-            if home_team != home_team_in:
-                continue
+        if home_team not in team_ids or away_team not in team_ids:
+            continue
         home_team_name = game["homeTeamName"]
         away_team_name = game["awayTeamName"]
         game_id = game["id"]
