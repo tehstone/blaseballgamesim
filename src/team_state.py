@@ -224,6 +224,10 @@ class TeamState(object):
             self.reset_game_stats()
         self.cur_batter_pos = 1
         self.cur_batter = self.lineup[self.cur_batter_pos]
+        # we have to reset the state of the starting pitcher back to the pitcher pos and call update to
+        # reapply the shelled bugging
+        self.starting_pitcher = self.rotation[self.cur_pitcher_pos]
+        self.update_starting_pitcher()
         if lineup_changed:
             self.player_additives = self.pre_load_additives()
             self.calc_additives()
@@ -473,7 +477,7 @@ class TeamState(object):
                     break
                 if len(self.rotation) == test_idx:
                     # set this to zero so that it gets incremented to 1 at the next iteration
-                    test_idx = 0
+                    test_idx = 1
                 else:
                     test_idx += 1
                 if count > 50:

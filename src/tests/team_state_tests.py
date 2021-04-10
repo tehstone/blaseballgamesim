@@ -484,10 +484,16 @@ class TestUpdatePitcher(TestTeamState):
         self.team_state.cur_pitcher_pos = 2
         self.assertEqual(2, self.team_state.cur_pitcher_pos)
         self.assertEqual("p1", self.team_state.starting_pitcher)
+        self.team_state.starting_pitcher = self.team_state.rotation[self.team_state.cur_pitcher_pos]
         self.team_state.update_starting_pitcher()
         self.assertEqual(2, self.team_state.cur_pitcher_pos)
         self.assertEqual("p1", self.team_state.starting_pitcher)
         self.team_state.player_buffs["p1"][PlayerBuff.SHELLED] = 1
+        self.team_state.starting_pitcher = self.team_state.rotation[self.team_state.cur_pitcher_pos]
+        self.team_state.update_starting_pitcher()
+        self.assertEqual(2, self.team_state.cur_pitcher_pos)
+        self.assertEqual("p4", self.team_state.starting_pitcher)
+        self.team_state.starting_pitcher = self.team_state.rotation[self.team_state.cur_pitcher_pos]
         self.team_state.update_starting_pitcher()
         self.assertEqual(2, self.team_state.cur_pitcher_pos)
         self.assertEqual("p4", self.team_state.starting_pitcher)
