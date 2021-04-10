@@ -19,10 +19,8 @@ def dailysim():
     iterations = request.get_json()['iterations']
     try:
         day = request.get_json()['day']
-        print(f"Running sim for day {day} with {iterations} iterations")
     except KeyError:
         day = None
-        print(f"Running sim for current day with {iterations} iterations")
     try:
         home_team = request.get_json()['home_team']
     except KeyError:
@@ -31,8 +29,15 @@ def dailysim():
         away_team = request.get_json()['away_team']
     except KeyError:
         away_team = None
+    try:
+        save_stlats_str = request.get_json()['save_stlats']
+        save_stlats = True
+        if save_stlats_str == "false":
+            save_stlats = False
+    except KeyError:
+        save_stlats = True
 
-    return run_daily_sim(iterations, day, home_team, away_team)
+    return run_daily_sim(iterations, day, home_team, away_team, save_stlats)
 
 
 @app.errorhandler(500)

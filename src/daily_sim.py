@@ -64,7 +64,7 @@ def get_stlat_dict(player: Dict[str, Any]) -> Dict[FK, float]:
     return ret_val
 
 
-def get_current_player_stlats(season, day, team_ids):
+def get_current_player_stlats(season, day, team_ids, save_stlats):
     filename = os.path.join('..', 'season_sim', "stlats", f"s{season}_d{day}_stlats.json")
     try:
         with open(filename, 'r', encoding='utf8', ) as json_file:
@@ -112,13 +112,14 @@ def get_current_player_stlats(season, day, team_ids):
                 batter["position_id"] = batters[batter["id"]]["position_id"]
                 batter["position_type"] = batters[batter["id"]]["position_type"]
                 stlats_json[batter["id"]] = batter
-        with open(filename, 'w', encoding='utf8') as json_file:
-            json.dump(stlats_json, json_file)
+        if save_stlats:
+            with open(filename, 'w', encoding='utf8') as json_file:
+                json.dump(stlats_json, json_file)
         return stlats_json
 
 
-def setup_stlats(season: int, day: int, team_ids: List):
-    player_stlats_list = get_current_player_stlats(season, day, team_ids)
+def setup_stlats(season: int, day: int, team_ids: List, save_stlats: bool):
+    player_stlats_list = get_current_player_stlats(season, day, team_ids, save_stlats)
     for player_id, player in player_stlats_list.items():
         plus_pos = False
         if "leagueTeamId" in player:
@@ -180,10 +181,6 @@ def setup_stlats(season: int, day: int, team_ids: List):
             game_stats_by_team[team_id][TEAM_ID] = {}
         game_stats_by_team[team_id][player_id] = {}
 
-        if team_id not in buffs_by_team:
-            buffs_by_team[team_id] = {}
-        buffs_by_team[team_id][player_id] = {}
-
         if team_id not in segmented_stats_by_team:
             segmented_stats_by_team[team_id] = {}
 
@@ -235,7 +232,7 @@ def make_team_state(team, pitcher, ballparks, season, day):
     )
 
 
-def run_daily_sim(iterations=250, day=None, home_team_in=None, away_team_in=None):
+def run_daily_sim(iterations=250, day=None, home_team_in=None, away_team_in=None, save_stlats=True):
     t1 = time.time()
     html_response = retry_request("https://www.blaseball.com/database/simulationdata")
     if not html_response:
@@ -245,7 +242,7 @@ def run_daily_sim(iterations=250, day=None, home_team_in=None, away_team_in=None
     season = sim_data['season']
     if day is None:
         day = sim_data['day'] + 1
-
+    print(f"Running sim for day {day} with {iterations} iterations")
     games = retry_request(f"https://www.blaseball.com/database/games?day={day}&season={season}")
     games_json = games.json()
     if home_team_in is None or away_team_in is None:
@@ -255,7 +252,7 @@ def run_daily_sim(iterations=250, day=None, home_team_in=None, away_team_in=None
     else:
         team_ids = [home_team_in, away_team_in]
 
-    setup_stlats(season, day, team_ids)
+    setup_stlats(season, day, team_ids, save_stlats)
     with open(os.path.join('..', 'season_sim', "ballparks.json"), 'r', encoding='utf8') as json_file:
         ballparks = json.load(json_file)
     results = {}

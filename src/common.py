@@ -217,6 +217,22 @@ class Weather(Enum):
     bbb = 21
     ccc = 22
 
+blaseball_weather_pretty_print_map: Dict[Weather, str] = {
+    Weather.SUN2: "Sun2",
+    Weather.ECLIPSE: "Eclipse",
+    Weather.BLOODDRAIN: "Blooddrain",
+    Weather.PEANUTS: "Peanuts",
+    Weather.BIRD: "Bird",
+    Weather.FEEDBACK: "Feedback",
+    Weather.REVERB: "Reverb",
+    Weather.BLACKHOLE: "Blackhole",
+    Weather.COFFEE: "Coffee",
+    Weather.COFFEE2: "Coffee2",
+    Weather.COFFEE3: "Coffee3",
+    Weather.FLOODING: "Flooding",
+    Weather.SALMON: "Salmon",
+}
+
 
 class PlayerBuff(Enum):
     BLASERUNNING = 1
