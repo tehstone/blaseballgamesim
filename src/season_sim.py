@@ -611,10 +611,7 @@ def run_season_sim(season: int, iterations: int = 250,  stats_segment_size: int 
 # print(f"new_upset_only: {new_upset_only}")
 # print(f"both_upset: {both_upset}")
 
-iterations = 10
-season = 13
-stats_segment_size = 3
-#print_info()
-load_all_state(season)
-setup_season(season, stats_segment_size)
-print_leaders()
+
+
+
+#run_season_sim(14, 6, 3, True)

@@ -3,6 +3,7 @@ import logging
 from logging import Formatter, FileHandler
 from flask import Flask, request, render_template
 
+from power_rankings import run_power_ranking_sim
 from season_sim import run_season_sim
 
 app = Flask(__name__)
@@ -14,6 +15,14 @@ _VERSION = 1  # API version
 @app.route('/')
 def main():
     return render_template('index.html')
+
+
+@app.route('/v{}/powerrankings'.format(_VERSION), methods=["GET"])
+def powerrankings():
+    iterations = int(request.get_json()['iterations'])
+    season = int(request.get_json()['season'])
+
+    return run_power_ranking_sim(season, iterations)
 
 
 @app.route('/v{}/seasonsim'.format(_VERSION), methods=["GET"])
