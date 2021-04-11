@@ -163,6 +163,8 @@ class PitchEventTeamBuff(Enum):
     O_NO = 3
     ZAP = 4
     GROWTH = 5
+    O = 6
+    H2O = 7
 
 
 class GameEventTeamBuff(Enum):
@@ -419,7 +421,11 @@ blood_name_map: Dict[str, BloodType] = {
     "Grass": BloodType.GRASS,
 }
 
-# TODO(kjc9): determine how to use this properly in the sim code
+pitch_reroll_event_map: Dict[Team, Tuple[PitchEventTeamBuff, int, Optional[int], Optional[BloodType]]] = {
+    Team.CRABS: (PitchEventTeamBuff.O, 15, None, BloodType.O),
+    Team.MOIST_TALKERS: (PitchEventTeamBuff.H2O, 15, None, BloodType.H2O)
+}
+
 team_pitch_event_map: Dict[Team, Tuple[PitchEventTeamBuff, int, Optional[int], Optional[BloodType]]] = {
     # team: Tuple[Team buff, season start, season end]
     Team.MAGIC: (PitchEventTeamBuff.O_NO, 11, None, BloodType.O_NO),

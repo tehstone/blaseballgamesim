@@ -47,7 +47,7 @@ DEFAULT_FKS = {
 
 SBA_PRIORS = [0.5, 0.5]
 SB_PRIORS = [0.5, 0.5]
-PITCH_PRIORS = [0.25, 0.25, 0.25, 0.25]
+PITCH_PRIORS = [0.2, 0.2, 0.2, 0.2, 0.2]
 IS_HIT_PRIORS = [0.33, 0.33, 0.34]
 HIT_PRIORS = [0.25, 0.25, 0.25, 0.25]
 ADVANCE_HIT_PRIORS = [0.5, 0.5]
@@ -1279,7 +1279,7 @@ class TestPitchSim(TestGameState):
 
     def testBall(self):
         global PITCH_PRIORS
-        PITCH_PRIORS = [1.0, 0.0, 0.0, 0.0]
+        PITCH_PRIORS = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
         #turn off base instincts
         new_priors = {3: 0.0, 2: 0.0}
@@ -1368,9 +1368,48 @@ class TestPitchSim(TestGameState):
         self.assertEqual(self.game_state.cur_base_runners[3], "p11")
         self.assertEqual(self.game_state.away_score, 3)
 
-    def testStrike(self):
+    def testStrikeSwinging(self):
         global PITCH_PRIORS
-        PITCH_PRIORS = [0.0, 1.0, 0.0, 0.0]
+        PITCH_PRIORS = [0.0, 1.0, 0.0, 0.0, 0.0, 0.0]
+
+        # test outs advance on strike
+        self.game_state.cur_batting_team.team_enum = Team.SUNBEAMS
+        self.game_state.cur_pitching_team.team_enum = Team.TIGERS
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.assertEqual(self.game_state.outs, 0)
+        self.assertEqual(self.game_state.balls, 0)
+        self.assertEqual(self.game_state.strikes, 0)
+        self.game_state.pitch_sim()
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.assertEqual(self.game_state.outs, 0)
+        self.assertEqual(self.game_state.balls, 0)
+        self.assertEqual(self.game_state.strikes, 1)
+        self.game_state.pitch_sim()
+        self.assertEqual(self.game_state.strikes, 2)
+        self.game_state.pitch_sim()
+        self.assertEqual(self.game_state.strikes, 0)
+        self.assertEqual(self.game_state.outs, 1)
+
+        # test oh no wont trigger an out
+        self.game_state.reset_game_state()
+        self.game_state.cur_batting_team.team_enum = Team.MAGIC
+        self.game_state.cur_batting_team.blood["p11"] = BloodType.O_NO
+        self.game_state.strikes = 2
+        self.assertEqual(self.game_state.outs, 0)
+        self.game_state.pitch_sim()
+        self.assertEqual(self.game_state.strikes, 2)
+        self.assertEqual(self.game_state.outs, 0)
+        self.game_state.pitch_sim()
+        self.assertEqual(self.game_state.strikes, 2)
+        self.assertEqual(self.game_state.outs, 0)
+
+    def testStrikeLooking(self):
+        global PITCH_PRIORS
+        PITCH_PRIORS = [0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
 
         # test outs advance on strike
         self.game_state.cur_batting_team.team_enum = Team.SUNBEAMS
@@ -1409,7 +1448,7 @@ class TestPitchSim(TestGameState):
 
     def testFoul(self):
         global PITCH_PRIORS
-        PITCH_PRIORS = [0.0, 0.0, 1.0, 0.0]
+        PITCH_PRIORS = [0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
 
         # test strike increase on foul
         self.game_state.cur_batting_team.team_enum = Team.SUNBEAMS
@@ -1433,7 +1472,7 @@ class TestPitchSim(TestGameState):
 
     def testFlinchStrike(self):
         global PITCH_PRIORS
-        PITCH_PRIORS = [0.0, 0.0, 0.0, 1.0, 0.0]
+        PITCH_PRIORS = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
         self.game_state.cur_batting_team.player_buffs["p11"] = {PlayerBuff.FLINCH: 1}
         self.game_state.cur_batting_team.team_enum = Team.SUNBEAMS
         self.game_state.cur_pitching_team.team_enum = Team.TIGERS
@@ -1451,7 +1490,7 @@ class TestPitchSim(TestGameState):
         self.assertEqual(self.game_state.balls, 0)
         self.assertEqual(self.game_state.strikes, 1)
 
-        PITCH_PRIORS = [0.0, 0.0, 0.0, 0.0, 1.0]
+        PITCH_PRIORS = [0.0, 0.0, 0.0, 0.0, 1.0, 0.0]
         self.game_state.strikes = 0
         self.assertEqual(self.game_state.strikes, 0)
         self.game_state.pitch_sim()
@@ -1462,7 +1501,7 @@ class TestPitchSim(TestGameState):
         self.assertEqual(self.game_state.balls, 0)
         self.assertEqual(self.game_state.strikes, 1)
 
-        PITCH_PRIORS = [0.0, 0.0, 0.0, 1.0, 0.0]
+        PITCH_PRIORS = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
         global HIT_PRIORS
         # test single
         HIT_PRIORS = [1.0, 0.0, 0.0, 0.0]

@@ -16,7 +16,7 @@ import random
 from team_state import DEF_ID, TEAM_ID, TeamState
 from common import BlaseballStatistics as Stats
 from common import MachineLearnedModel as Ml
-from common import BloodType, PitchEventTeamBuff, PlayerBuff, team_pitch_event_map, Weather
+from common import BloodType, PitchEventTeamBuff, PlayerBuff, pitch_reroll_event_map, team_pitch_event_map, Weather
 from stadium import Stadium
 
 
@@ -40,6 +40,7 @@ BASE_INSTINCT_PRIORS = {
         4: 0.005,
     }
 }
+REROLL_PITCH_RESULT_BUFFS = [PitchEventTeamBuff.O, PitchEventTeamBuff.H2O]
 
 
 class InningHalf(Enum):
@@ -114,7 +115,7 @@ class GameState(object):
             }
         else:
             self.clf = {
-                Ml.PITCH: load(os.path.join("..", "season_sim", "models", "pitch_v4.joblib")),
+                Ml.PITCH: load(os.path.join("..", "season_sim", "models", "pitch_v4.1.joblib")),
                 Ml.HIT_TYPE: load(os.path.join("..", "season_sim", "models", "hit_type_v3.joblib")),
                 Ml.RUNNER_ADV_OUT: load(os.path.join("..", "season_sim", "models", "runner_advanced_on_out_v3.joblib")),
                 Ml.RUNNER_ADV_HIT: load(os.path.join("..", "season_sim", "models", "extra_base_on_hit_v3.joblib")),
@@ -337,7 +338,33 @@ class GameState(object):
             self.stadium.get_stadium_fv(),
         )
         pitch_result = self.generic_model_roll(Ml.PITCH, pitch_fv)
-        # 0 = ball, 1 = strike, 2 = foul, 3 = in_play_hit, 4 = in_play_out
+
+        # Check to see if we need to deal with a batter reroll on team
+        if self.cur_batting_team.team_enum in pitch_reroll_event_map:
+            # Possible event, let's validate
+            event, start_season, end_season, req_blood = pitch_reroll_event_map[self.cur_batting_team.team_enum]
+            # Deal with O
+            if event == PitchEventTeamBuff.O and self.check_valid_season(start_season, end_season):
+                if self.is_start_of_at_bat() and self.check_blood_requirement(self.cur_batting_team.cur_batter, req_blood) and pitch_result == 5:
+                    retry_count = 0
+                    while pitch_result == 5:
+                        self.log_event(f'O Blood triggered a pitch redo!.')
+                        retry_count += 1
+                        pitch_result = self.generic_model_roll(Ml.PITCH, pitch_fv)
+                        if retry_count > 20:
+                            raise Exception("Error: Unable to reroll pitch for O Blood.")
+            # Deal with H2O
+            if event == PitchEventTeamBuff.H2O and self.check_valid_season(start_season, end_season):
+                if self.outs == 2 and self.check_blood_requirement(self.cur_batting_team.cur_batter, req_blood) and pitch_result == 5:
+                    retry_count = 0
+                    while pitch_result == 5:
+                        retry_count += 1
+                        self.log_event(f'H2O Blood triggered a pitch redo!.')
+                        pitch_result = self.generic_model_roll(Ml.PITCH, pitch_fv)
+                        if retry_count > 20:
+                            raise Exception("Error: Unable to reroll pitch for H2O Blood.")
+                        
+        # 0 = ball, 1 = strike_swinging, 2 = foul, 3 = in_play_hit, 4 = in_play_out, 5 = strike_looking
         if pitch_result == 0:
             self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher,
                                                Stats.PITCHER_BALLS_THROWN, 1.0, self.day)
@@ -359,7 +386,23 @@ class GameState(object):
                     self.day
                 )
                 self.strikes += 1
-                self.log_event(f'Strike {self.strikes}.')
+                self.log_event(f'Strike swinging. Strike {self.strikes}.')
+                if self.strikes == self.strikes_for_out:
+                    self.resolve_strikeout()
+                return
+        if pitch_result == 5:
+            if self.resolve_o_no():
+                self.log_event(f'Oh No triggered!.')
+                pitch_result = 2
+            else:
+                self.cur_pitching_team.update_stat(
+                    self.cur_pitching_team.starting_pitcher,
+                    Stats.PITCHER_STRIKES_THROWN,
+                    1.0,
+                    self.day
+                )
+                self.strikes += 1
+                self.log_event(f'Strike looking. Strike {self.strikes}.')
                 if self.strikes == self.strikes_for_out:
                     self.resolve_strikeout()
                 return
