@@ -65,6 +65,7 @@ default_stadium = Stadium(
     0.5,
     0.5,
     0.5,
+    [],
 )
 
 def new_generic_model_roll(self, model: Ml, feature_vector: List[float]) -> int:
@@ -241,6 +242,9 @@ class TestGameState(unittest.TestCase):
             balls=0,
             weather=Weather.SUN2,
         )
+        # FORCE RANDOMNESS OFF UNTIL WE TEST IT
+        game_state.BIG_BUCKET_PERCENTAGE = 0.0
+        game_state.FRIEND_OF_CROWS_PERCENTAGE = 0.0
         self.game_state.reset_game_state()
 
 
@@ -697,6 +701,26 @@ class TestStolenBase(TestGameState):
 class TestPrePitchEvents(TestGameState):
     def testNonPrePitchTeam(self):
         self.assertFalse(self.game_state.resolve_team_pre_pitch_event())
+
+    def testFriendOfCrows(self):
+        game_state.FRIEND_OF_CROWS_PERCENTAGE = 1.0
+        self.assertFalse(self.game_state.resolve_team_pre_pitch_event())
+        self.game_state.weather = Weather.BIRD
+        self.assertFalse(self.game_state.resolve_team_pre_pitch_event())
+        self.game_state.cur_pitching_team.player_buffs[self.game_state.cur_pitching_team.starting_pitcher][PlayerBuff.FRIEND_OF_CROWS] = 1
+        self.game_state.weather = Weather.SUN2
+        self.assertFalse(self.game_state.resolve_team_pre_pitch_event())
+        self.game_state.weather = Weather.BIRD
+        self.game_state.strikes = 0
+        self.game_state.balls = 0
+        self.game_state.outs = 0
+        self.assertTrue(self.game_state.resolve_team_pre_pitch_event())
+        self.assertEqual(self.game_state.outs, 1)
+        self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p12")
+        game_state.FRIEND_OF_CROWS_PERCENTAGE = 0.0
+        self.assertFalse(self.game_state.resolve_team_pre_pitch_event())
+        self.assertEqual(self.game_state.outs, 1)
+        self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p12")
 
     def testCharmPitcher(self):
         game_state.CHARM_TRIGGER_PERCENTAGE = 1.0
@@ -1174,6 +1198,48 @@ class TestHitSim(TestGameState):
         self.assertEqual(len(self.game_state.cur_base_runners), 0)
         self.assertEqual(self.game_state.home_score, 0)
         self.assertEqual(self.game_state.away_score, 3)
+
+
+class TestBigBuckets(TestGameState):
+
+    def testBigBuckets(self):
+        global HIT_PRIORS
+        # test hr
+        self.game_state.reset_game_state()
+        HIT_PRIORS = [0.0, 0.0, 0.0, 1.0]
+        self.game_state.stadium.has_big_buckets = True
+        game_state.BIG_BUCKET_PERCENTAGE = 0.0
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.hit_sim([])
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 1)
+        game_state.BIG_BUCKET_PERCENTAGE = 1.0
+        self.game_state.hit_sim([])
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 3)
+        self.game_state.stadium.has_big_buckets = False
+        self.game_state.hit_sim([])
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 4)
+        self.game_state.stadium.has_big_buckets = True
+        self.game_state.weather = Weather.COFFEE
+        self.game_state.cur_batting_team.player_buffs[self.game_state.cur_batting_team.cur_batter][PlayerBuff.WIRED] = 1
+        self.game_state.hit_sim([])
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 7)
+        del self.game_state.cur_batting_team.player_buffs[self.game_state.cur_batting_team.cur_batter][PlayerBuff.WIRED]
+        self.game_state.cur_batting_team.player_buffs[self.game_state.cur_batting_team.cur_batter][PlayerBuff.TIRED] = 1
+        self.game_state.hit_sim([])
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 8.0)
+        game_state.BIG_BUCKET_PERCENTAGE = 0.0
 
 
 class TestInPlaySim(TestGameState):

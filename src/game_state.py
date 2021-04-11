@@ -27,6 +27,7 @@ COFFEE_PRIME_BEAN_PERCENTAGE = 0.05
 COFFEE_2_PERCENTAGE = 0.04
 REMOVE_COFFEE_3_PERCENTAGE = 0.33
 FRIEND_OF_CROWS_PERCENTAGE = 0.02
+BIG_BUCKET_PERCENTAGE = 0.02
 BASE_INSTINCT_PRIORS = {
     # num bases: map of priors for base to walk to
     4: {
@@ -40,7 +41,6 @@ BASE_INSTINCT_PRIORS = {
     }
 }
 
-#getcontext().prec = 2
 
 class InningHalf(Enum):
     TOP = 1
@@ -282,8 +282,8 @@ class GameState(object):
             else:
                 self.cur_batting_team.runners_aboard = False
             self.attempt_to_advance_inning()
-            self.cur_batting_team.validate_game_state_additives(self.get_batting_team_score())
-            self.cur_pitching_team.validate_game_state_additives(self.get_pitching_team_score())
+            self.cur_batting_team.validate_game_state_additives(self.get_batting_team_score(), self.stadium)
+            self.cur_pitching_team.validate_game_state_additives(self.get_pitching_team_score(), self.stadium)
             if self.inning == 4 and self.half == InningHalf.TOP and len(self.cur_base_runners) == 0 and \
                 self.outs == 0 and self.strikes == 0 and self.balls == 0:
                 if PlayerBuff.TRIPLE_THREAT in self.cur_batting_team.player_buffs[self.cur_batting_team.starting_pitcher]:
@@ -579,6 +579,10 @@ class GameState(object):
                 if self.outs > 0:
                     self.outs -= 1
                     del self.cur_batting_team.player_buffs[self.cur_batting_team.cur_batter][PlayerBuff.COFFEE_RALLY]
+            if self.stadium.has_big_buckets:
+                if self._random_roll() < BIG_BUCKET_PERCENTAGE:
+                    self.log_event('The home run lands in the big bucket, letting the batter score twice.')
+                    run_val = run_val * Decimal("2.0")
             self.increase_batting_team_runs(run_val)
             self.log_event(
                 f'Batter {self.cur_batting_team.get_player_name(self.cur_batting_team.cur_batter)} scores.')
@@ -685,6 +689,34 @@ class GameState(object):
                 self.log_event(f'{self.cur_batting_team.get_cur_batter_name()} is filled up.')
                 self.cur_batting_team.player_buffs[self.cur_batting_team.cur_batter][PlayerBuff.COFFEE_RALLY] = 1
                 return True
+
+        # Deal with Friend of Crows
+        if self.weather == Weather.BIRD and \
+            PlayerBuff.FRIEND_OF_CROWS in self.cur_pitching_team.player_buffs[self.cur_pitching_team.starting_pitcher]:
+            if self._random_roll() < FRIEND_OF_CROWS_PERCENTAGE:
+                self.log_event(f'{self.cur_batting_team.get_cur_batter_name()} is chased away by crows.  Out.')
+                self.cur_batting_team.update_stat(
+                    self.cur_batting_team.cur_batter,
+                    Stats.BATTER_PLATE_APPEARANCES,
+                    1.0,
+                    self.day
+                )
+                self.cur_pitching_team.update_stat(
+                    self.cur_pitching_team.starting_pitcher,
+                    Stats.PITCHER_BATTERS_FACED,
+                    1.0,
+                    self.day
+                )
+                self.cur_batting_team.reset_hit_buffs(self.cur_batting_team.cur_batter)
+                self.outs += 1
+                self.reset_pitch_count()
+                self.cur_batting_team.next_batter()
+                if self.outs < self.outs_for_inning:
+                    self.log_event(
+                        f'{self.cur_batting_team.get_player_name(self.cur_batting_team.cur_batter)} now at bat.'
+                    )
+                return True
+
 
         valid_pre_pitch_pitching_events = [PitchEventTeamBuff.CHARM]
         valid_pre_pitch_batting_events = [PitchEventTeamBuff.ZAP, PitchEventTeamBuff.CHARM]

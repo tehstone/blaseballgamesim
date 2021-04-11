@@ -254,6 +254,11 @@ class PlayerBuff(Enum):
     TRIPLE_THREAT = 17
     UNDER_OVER = 18
     WIRED = 19
+    EGO3 = 20
+    OVER_PERFORMING = 21
+    UNDER_PERFORMING = 22
+    PRESSURE = 23
+    SUPER_YUMMY = 24
 
 
 class AdditiveTypes(Enum):

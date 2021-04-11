@@ -1,6 +1,7 @@
 import os
 import unittest
 
+from decimal import Decimal
 from team_state import TeamState
 from common import BlaseballStatistics as Stats
 from common import ForbiddenKnowledge as FK
@@ -18,6 +19,7 @@ default_stadium = Stadium(
     0.5,
     0.5,
     0.5,
+    [],
 )
 
 class TestTeamState(unittest.TestCase):
@@ -465,6 +467,183 @@ class TestPreloadModifiers(TestTeamState):
         self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.PITCHING])
         self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.DEFENSE])
         self.assertEqual(2, self.team_state.player_buffs["p1"][PlayerBuff.UNDER_OVER])
+
+    def test_over_performing(self):
+        self.team_state.player_buffs["p1"][PlayerBuff.OVER_PERFORMING] = 1
+        self.team_state.reset_preload_additives()
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.BASE_RUNNING])
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.PITCHING])
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.DEFENSE])
+        self.assertEqual(2, self.team_state.player_buffs["p1"][PlayerBuff.OVER_PERFORMING])
+
+    def test_under_performing(self):
+        self.team_state.player_buffs["p1"][PlayerBuff.UNDER_PERFORMING] = 1
+        self.team_state.reset_preload_additives()
+        self.assertEqual(-0.2, self.team_state.player_additives["p1"][AdditiveTypes.BASE_RUNNING])
+        self.assertEqual(-0.2, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.assertEqual(-0.2, self.team_state.player_additives["p1"][AdditiveTypes.PITCHING])
+        self.assertEqual(-0.2, self.team_state.player_additives["p1"][AdditiveTypes.DEFENSE])
+        self.assertEqual(2, self.team_state.player_buffs["p1"][PlayerBuff.UNDER_PERFORMING])
+
+
+class TestValidateModifiers(TestTeamState):
+    def test_under_over(self):
+        self.team_state.player_buffs["p1"][PlayerBuff.UNDER_OVER] = 1
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.BASE_RUNNING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.PITCHING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.DEFENSE])
+        self.assertEqual(1, self.team_state.player_buffs["p1"][PlayerBuff.UNDER_OVER])
+        self.team_state.validate_game_state_additives(Decimal(4.0), default_stadium)
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.BASE_RUNNING])
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.PITCHING])
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.DEFENSE])
+        self.assertEqual(2, self.team_state.player_buffs["p1"][PlayerBuff.UNDER_OVER])
+        self.team_state.validate_game_state_additives(Decimal(5.0), default_stadium)
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.BASE_RUNNING])
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.PITCHING])
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.DEFENSE])
+        self.assertEqual(2, self.team_state.player_buffs["p1"][PlayerBuff.UNDER_OVER])
+        self.team_state.validate_game_state_additives(Decimal(5.1), default_stadium)
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.BASE_RUNNING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.PITCHING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.DEFENSE])
+        self.assertEqual(1, self.team_state.player_buffs["p1"][PlayerBuff.UNDER_OVER])
+
+    def test_over_under(self):
+        self.team_state.player_buffs["p1"][PlayerBuff.OVER_UNDER] = 1
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.BASE_RUNNING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.PITCHING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.DEFENSE])
+        self.assertEqual(1, self.team_state.player_buffs["p1"][PlayerBuff.OVER_UNDER])
+        self.team_state.validate_game_state_additives(Decimal(4.0), default_stadium)
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.BASE_RUNNING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.PITCHING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.DEFENSE])
+        self.assertEqual(1, self.team_state.player_buffs["p1"][PlayerBuff.OVER_UNDER])
+        self.team_state.validate_game_state_additives(Decimal(6.0), default_stadium)
+        self.assertEqual(-0.2, self.team_state.player_additives["p1"][AdditiveTypes.BASE_RUNNING])
+        self.assertEqual(-0.2, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.assertEqual(-0.2, self.team_state.player_additives["p1"][AdditiveTypes.PITCHING])
+        self.assertEqual(-0.2, self.team_state.player_additives["p1"][AdditiveTypes.DEFENSE])
+        self.assertEqual(2, self.team_state.player_buffs["p1"][PlayerBuff.OVER_UNDER])
+        self.team_state.validate_game_state_additives(Decimal(5.0), default_stadium)
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.BASE_RUNNING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.PITCHING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.DEFENSE])
+        self.assertEqual(1, self.team_state.player_buffs["p1"][PlayerBuff.OVER_UNDER])
+
+    def test_team_flooding(self):
+        self.team_state.team_enum = Team.TIGERS
+        self.team_state.season = 15
+        self.team_state.weather = Weather.SUN2
+        self.team_state.runners_aboard = False
+        self.team_state.validate_game_state_additives(Decimal(4.0), default_stadium)
+        self.assertEqual(0.0, self.team_state.batting_addition)
+        self.assertEqual(0.0, self.team_state.pitching_addition)
+        self.assertEqual(0.0, self.team_state.base_running_addition)
+        self.assertEqual(0.0, self.team_state.defense_addition)
+        self.team_state.weather = Weather.FLOODING
+        self.team_state.validate_game_state_additives(Decimal(4.0), default_stadium)
+        self.assertEqual(0.0, self.team_state.batting_addition)
+        self.assertEqual(0.0, self.team_state.pitching_addition)
+        self.assertEqual(0.0, self.team_state.base_running_addition)
+        self.assertEqual(0.0, self.team_state.defense_addition)
+        self.team_state.team_enum = Team.MOIST_TALKERS
+        self.team_state.validate_game_state_additives(Decimal(4.0), default_stadium)
+        self.assertEqual(0.0, self.team_state.batting_addition)
+        self.assertEqual(0.0, self.team_state.pitching_addition)
+        self.assertEqual(0.0, self.team_state.base_running_addition)
+        self.assertEqual(0.0, self.team_state.defense_addition)
+        self.team_state.runners_aboard = True
+        self.team_state.validate_game_state_additives(Decimal(4.0), default_stadium)
+        self.assertEqual(0.25, self.team_state.batting_addition)
+        self.assertEqual(0.25, self.team_state.pitching_addition)
+        self.assertEqual(0.25, self.team_state.base_running_addition)
+        self.assertEqual(0.25, self.team_state.defense_addition)
+        self.team_state.runners_aboard = False
+        self.team_state.validate_game_state_additives(Decimal(4.0), default_stadium)
+        self.assertEqual(0.0, self.team_state.batting_addition)
+        self.assertEqual(0.0, self.team_state.pitching_addition)
+        self.assertEqual(0.0, self.team_state.base_running_addition)
+        self.assertEqual(0.0, self.team_state.defense_addition)
+
+    def test_player_pressure(self):
+        self.team_state.player_buffs["p1"][PlayerBuff.PRESSURE] = 1
+        self.team_state.weather = Weather.SUN2
+        self.team_state.runners_aboard = True
+        self.team_state.validate_game_state_additives(Decimal(4.0), default_stadium)
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.BASE_RUNNING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.PITCHING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.DEFENSE])
+        self.assertEqual(1, self.team_state.player_buffs["p1"][PlayerBuff.PRESSURE])
+
+        self.team_state.weather = Weather.FLOODING
+        self.team_state.runners_aboard = False
+        self.team_state.validate_game_state_additives(Decimal(4.0), default_stadium)
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.BASE_RUNNING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.PITCHING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.DEFENSE])
+        self.assertEqual(1, self.team_state.player_buffs["p1"][PlayerBuff.PRESSURE])
+
+        self.team_state.runners_aboard = True
+        self.team_state.validate_game_state_additives(Decimal(4.0), default_stadium)
+        self.assertEqual(0.25, self.team_state.player_additives["p1"][AdditiveTypes.BASE_RUNNING])
+        self.assertEqual(0.25, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.assertEqual(0.25, self.team_state.player_additives["p1"][AdditiveTypes.PITCHING])
+        self.assertEqual(0.25, self.team_state.player_additives["p1"][AdditiveTypes.DEFENSE])
+        self.assertEqual(2, self.team_state.player_buffs["p1"][PlayerBuff.PRESSURE])
+
+        self.team_state.runners_aboard = False
+        self.team_state.validate_game_state_additives(Decimal(4.0), default_stadium)
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.BASE_RUNNING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.PITCHING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.DEFENSE])
+        self.assertEqual(1, self.team_state.player_buffs["p1"][PlayerBuff.PRESSURE])
+
+    def test_player_superyummy(self):
+        self.team_state.player_buffs["p1"][PlayerBuff.SUPER_YUMMY] = 1
+        self.team_state.weather = Weather.SUN2
+        self.team_state.validate_game_state_additives(Decimal(4.0), default_stadium)
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.BASE_RUNNING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.PITCHING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.DEFENSE])
+        self.assertEqual(1, self.team_state.player_buffs["p1"][PlayerBuff.SUPER_YUMMY])
+
+        default_stadium.has_peanut_mister = True
+        self.team_state.validate_game_state_additives(Decimal(4.0), default_stadium)
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.BASE_RUNNING])
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.PITCHING])
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.DEFENSE])
+        self.assertEqual(2, self.team_state.player_buffs["p1"][PlayerBuff.SUPER_YUMMY])
+
+        default_stadium.has_peanut_mister = False
+        self.team_state.validate_game_state_additives(Decimal(4.0), default_stadium)
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.BASE_RUNNING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.PITCHING])
+        self.assertEqual(0.0, self.team_state.player_additives["p1"][AdditiveTypes.DEFENSE])
+        self.assertEqual(1, self.team_state.player_buffs["p1"][PlayerBuff.SUPER_YUMMY])
+
+        self.team_state.weather = Weather.PEANUTS
+        self.team_state.validate_game_state_additives(Decimal(4.0), default_stadium)
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.BASE_RUNNING])
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.BATTING])
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.PITCHING])
+        self.assertEqual(0.2, self.team_state.player_additives["p1"][AdditiveTypes.DEFENSE])
+        self.assertEqual(2, self.team_state.player_buffs["p1"][PlayerBuff.SUPER_YUMMY])
 
 
 class TestUpdatePitcher(TestTeamState):

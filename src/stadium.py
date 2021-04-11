@@ -18,6 +18,7 @@ class Stadium(object):
             forwardness: float,
             grandiosity: float,
             ominousness: float,
+            mods: List[str],
     ):
         self.team_id = team_id
         self.stadium_id = stadium_id
@@ -31,6 +32,9 @@ class Stadium(object):
             StadiumStats.GRANDIOSITY: grandiosity,
             StadiumStats.OMINOUSNESS: ominousness,
         }
+        self.mods = mods
+        self.has_peanut_mister = "PEANUT_MISTER" in mods
+        self.has_big_buckets = "BIG_BUCKET" in mods
 
     def get_stadium_fv(self) -> List[float]:
         ret_val: List[float] = [
@@ -51,6 +55,7 @@ class Stadium(object):
             "stadium_id": self.stadium_id,
             "name": self.name,
             "stats": Stadium.convert_stats(self.stats),
+            "mods": self.mods,
         }
         return serialization_dict
 
@@ -74,6 +79,7 @@ class Stadium(object):
         stadium_id: str = raw["stadium_id"]
         name: str = raw["name"]
         stats: Dict[StadiumStats, float] = Stadium.encode_stats(raw["stats"])
+        mods: List[str] = raw["mods"]
         return cls(
             team_id,
             stadium_id,
@@ -85,6 +91,7 @@ class Stadium(object):
             stats[StadiumStats.FORWARDNESS],
             stats[StadiumStats.GRANDIOSITY],
             stats[StadiumStats.OMINOUSNESS],
+            mods,
         )
 
     @classmethod
@@ -99,5 +106,6 @@ class Stadium(object):
             raw["obtuseness"],
             raw["forwardness"],
             raw["grandiosity"],
-            raw["ominousness"]
+            raw["ominousness"],
+            raw["mods"],
         )

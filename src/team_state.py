@@ -75,7 +75,7 @@ class TeamState(object):
         self.calc_additives()
         self._calculate_defense()
 
-    def validate_game_state_additives(self, cur_runs: Decimal):
+    def validate_game_state_additives(self, cur_runs: Decimal, stadium: Stadium):
         if self.team_enum in team_game_event_map:
             buff, start_season, end_season, req_weather = team_game_event_map[self.team_enum]
             if buff == GameEventTeamBuff.PRESSURE and \
@@ -105,6 +105,7 @@ class TeamState(object):
                     self.player_additives[player_id][AdditiveTypes.PITCHING] -= 0.2
                     self.player_additives[player_id][AdditiveTypes.DEFENSE] -= 0.2
                     self.player_additives[player_id][AdditiveTypes.BASE_RUNNING] -= 0.2
+                    continue
                 if cur_mod == PlayerBuff.UNDER_OVER and cur_buffs[cur_mod] == 1 and cur_runs < 5:
                     # turn on the buff
                     self.player_buffs[player_id][cur_mod] = 2
@@ -112,6 +113,7 @@ class TeamState(object):
                     self.player_additives[player_id][AdditiveTypes.PITCHING] += 0.2
                     self.player_additives[player_id][AdditiveTypes.DEFENSE] += 0.2
                     self.player_additives[player_id][AdditiveTypes.BASE_RUNNING] += 0.2
+                    continue
                 if cur_mod == PlayerBuff.OVER_UNDER and cur_buffs[cur_mod] == 1 and cur_runs > 5:
                     # turn on the debuff
                     self.player_buffs[player_id][cur_mod] = 2
@@ -119,6 +121,7 @@ class TeamState(object):
                     self.player_additives[player_id][AdditiveTypes.PITCHING] -= 0.2
                     self.player_additives[player_id][AdditiveTypes.DEFENSE] -= 0.2
                     self.player_additives[player_id][AdditiveTypes.BASE_RUNNING] -= 0.2
+                    continue
                 if cur_mod == PlayerBuff.OVER_UNDER and cur_buffs[cur_mod] == 2 and cur_runs <= 5:
                     # turn off the debuff
                     self.player_buffs[player_id][cur_mod] = 1
@@ -126,6 +129,50 @@ class TeamState(object):
                     self.player_additives[player_id][AdditiveTypes.PITCHING] += 0.2
                     self.player_additives[player_id][AdditiveTypes.DEFENSE] += 0.2
                     self.player_additives[player_id][AdditiveTypes.BASE_RUNNING] += 0.2
+                    continue
+                if cur_mod == PlayerBuff.SUPER_YUMMY and \
+                        cur_buffs[cur_mod] == 1 and \
+                        (stadium.has_peanut_mister or self.weather == Weather.PEANUTS):
+                    # turn on the buff
+                    self.player_buffs[player_id][cur_mod] = 2
+                    self.player_additives[player_id][AdditiveTypes.BATTING] += 0.2
+                    self.player_additives[player_id][AdditiveTypes.PITCHING] += 0.2
+                    self.player_additives[player_id][AdditiveTypes.DEFENSE] += 0.2
+                    self.player_additives[player_id][AdditiveTypes.BASE_RUNNING] += 0.2
+                    continue
+                if cur_mod == PlayerBuff.SUPER_YUMMY and \
+                        cur_buffs[cur_mod] == 2 and \
+                        (not stadium.has_peanut_mister or self.weather != Weather.PEANUTS):
+                    # turn on the buff
+                    self.player_buffs[player_id][cur_mod] = 1
+                    self.player_additives[player_id][AdditiveTypes.BATTING] -= 0.2
+                    self.player_additives[player_id][AdditiveTypes.PITCHING] -= 0.2
+                    self.player_additives[player_id][AdditiveTypes.DEFENSE] -= 0.2
+                    self.player_additives[player_id][AdditiveTypes.BASE_RUNNING] -= 0.2
+                    continue
+                if cur_mod == PlayerBuff.PRESSURE and \
+                        self.weather == Weather.FLOODING and \
+                        self.runners_aboard and \
+                        self.player_buffs[player_id][cur_mod] == 1:
+                    # turn on the buff
+                    self.player_buffs[player_id][cur_mod] = 2
+                    self.player_additives[player_id][AdditiveTypes.BATTING] += 0.25
+                    self.player_additives[player_id][AdditiveTypes.PITCHING] += 0.25
+                    self.player_additives[player_id][AdditiveTypes.DEFENSE] += 0.25
+                    self.player_additives[player_id][AdditiveTypes.BASE_RUNNING] += 0.25
+                    continue
+                if cur_mod == PlayerBuff.PRESSURE and \
+                        self.weather == Weather.FLOODING and \
+                        not self.runners_aboard and \
+                        self.player_buffs[player_id][cur_mod] == 2:
+                    # turn off the buff
+                    self.player_buffs[player_id][cur_mod] = 1
+                    self.player_additives[player_id][AdditiveTypes.BATTING] -= 0.25
+                    self.player_additives[player_id][AdditiveTypes.PITCHING] -= 0.25
+                    self.player_additives[player_id][AdditiveTypes.DEFENSE] -= 0.25
+                    self.player_additives[player_id][AdditiveTypes.BASE_RUNNING] -= 0.25
+                    continue
+
 
     def apply_hit_to_buffs(self, player_id: str):
         if PlayerBuff.SPICY in self.player_buffs[player_id]:
@@ -157,6 +204,7 @@ class TeamState(object):
                 if cur_mod == PlayerBuff.SMOOTH and self.weather == Weather.PEANUTS:
                     cur_additives[AdditiveTypes.BASE_RUNNING] += 1.0
                 if cur_mod == PlayerBuff.UNDER_OVER or \
+                        cur_mod == PlayerBuff.OVER_PERFORMING or \
                         (cur_mod == PlayerBuff.HOMEBODY and self.is_home) or \
                         (cur_mod == PlayerBuff.PERK and
                          self.weather in [Weather.COFFEE, Weather.COFFEE2, Weather.COFFEE3]):
@@ -166,6 +214,12 @@ class TeamState(object):
                     cur_additives[AdditiveTypes.PITCHING] += 0.2
                     cur_additives[AdditiveTypes.DEFENSE] += 0.2
                     cur_additives[AdditiveTypes.BASE_RUNNING] += 0.2
+                if cur_mod == PlayerBuff.UNDER_PERFORMING:
+                    self.player_buffs[player_id][cur_mod] = 2
+                    cur_additives[AdditiveTypes.BATTING] -= 0.2
+                    cur_additives[AdditiveTypes.PITCHING] -= 0.2
+                    cur_additives[AdditiveTypes.DEFENSE] -= 0.2
+                    cur_additives[AdditiveTypes.BASE_RUNNING] -= 0.2
                 if cur_mod == PlayerBuff.HOMEBODY and not self.is_home:
                     self.player_buffs[player_id][cur_mod] = 1
                     cur_additives[AdditiveTypes.BATTING] -= 0.2
