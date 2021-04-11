@@ -1,6 +1,4 @@
-from typing import Any, Dict, List, Optional
-import logging
-import os
+from typing import Any, Dict, List
 
 from common import StadiumStats
 
@@ -97,15 +95,15 @@ class Stadium(object):
     @classmethod
     def from_ballpark_json(cls, raw: Dict[str, Any]):
         return cls(
-            raw["teamId"],
-            raw["id"],
-            raw["name"],
-            raw["mysticism"],
-            raw["viscosity"],
-            raw["elongation"],
-            raw["obtuseness"],
-            raw["forwardness"],
-            raw["grandiosity"],
-            raw["ominousness"],
-            raw["mods"],
+            raw["data"]["teamId"],
+            raw["data"]["id"],
+            raw["data"]["name"],
+            raw["data"]["mysticism"],
+            raw["data"]["viscosity"],
+            raw["data"]["elongation"],
+            raw["data"]["obtuseness"],
+            raw["data"]["forwardness"],
+            raw["data"]["grandiosity"],
+            raw["data"]["ominousness"],
+            raw["data"]["mods"],
         )

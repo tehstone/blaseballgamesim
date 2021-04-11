@@ -166,6 +166,8 @@ def setup_stlats(season: int, day: int, team_ids: List):
         if mods:
             for mod in mods:
                 if mod in enabled_player_buffs:
+                    if PlayerBuff[mod] == PlayerBuff.ELSEWHERE:
+                        continue
                     cur_mod_dict[PlayerBuff[mod]] = 1
             if player_id == "4b3e8e9b-6de1-4840-8751-b1fb45dc5605":
                 cur_mod_dict[PlayerBuff.BLASERUNNING] = 1
@@ -205,8 +207,9 @@ def load_all_state(season: int):
     with open(os.path.join('..', 'season_sim', "ballparks.json"), 'r', encoding='utf8') as json_file:
         ballparks = json.load(json_file)
     for team in ballparks.keys():
+        team_id = ballparks[team]["data"]["teamId"]
         stadium = Stadium.from_ballpark_json(ballparks[team])
-        stadiums[team] = stadium
+        stadiums[team_id] = stadium
 
     for team in team_ids:
         pitcher = rotations_by_team[team][1]
@@ -256,8 +259,8 @@ def run_single_bprm(team_id, o_team, iterations, all_weathers):
 
     home_team_state = team_states[team_id]
     away_team_state = team_states[o_team]
-    home_team_state.cur_pitcher_pos = 0
-    away_team_state.cur_pitcher_pos = 0
+    home_team_state.cur_pitcher_pos = 1
+    away_team_state.cur_pitcher_pos = 1
     run_iters(results, home_team_state, away_team_state, half, pitchers, all_weathers)
 
     away_team_state = team_states[team_id]
@@ -283,7 +286,7 @@ def run_iters(results, home_team, away_team, half, pitchers, all_weathers):
         pitchers[home_team.team_id].append(home_team.player_names[home_team.starting_pitcher])
         pitchers[away_team.team_id].append(away_team.player_names[away_team.starting_pitcher])
 
-        weather = pick_weather()
+        weather = Weather.ECLIPSE# pick_weather()
         all_weathers[weather] += 1
         game_sim = GameState(
             game_id='',
@@ -433,8 +436,49 @@ def convert_keys(obj, convert=str):
     return ret_dict
 
 
-t1 = round(time.time())
-load_all_state(15)
-t2 = round(time.time())
-print(f"State set up complete in {t2 - t1}")
-run_sim(500)
+def run_power_ranking_sim(season, iterations):
+    print(f"running power rank sim with {iterations} iterations.")
+    t1 = round(time.time())
+    load_all_state(season)
+    t2 = round(time.time())
+    print(f"State set up complete in {t2 - t1}")
+    run_sim(iterations)
+    team_id_name_map: Dict[str, str] = {
+            "lovers": "b72f3061-f573-40d7-832a-5ad475bd7909",
+            "tacos": "878c1bf6-0d21-4659-bfee-916c8314d69c",
+            "steaks": "b024e975-1c4a-4575-8936-a3754a08806a",
+            "breath mints": "adc5b394-8f76-416d-9ce9-813706877b84",
+            "firefighters": "ca3f1c8c-c025-4d8e-8eef-5be6accbeb16",
+            "shoe thieves": "bfd38797-8404-4b38-8b82-341da28b1f83",
+            "flowers": "3f8bbb15-61c0-4e3f-8e4a-907a5fb1565e",
+            "fridays": "979aee4a-6d80-4863-bf1c-ee1a78e06024",
+            "magic": "7966eb04-efcc-499b-8f03-d13916330531",
+            "millennials": "36569151-a2fb-43c1-9df7-2df512424c82",
+            "crabs": "8d87c468-699a-47a8-b40d-cfb73a5660ad",
+            "spies": "9debc64f-74b7-4ae1-a4d6-fce0144b6ea5",
+            "pies": "23e4cbc1-e9cd-47fa-a35b-bfa06f726cb7",
+            "sunbeams": "f02aeae2-5e6a-4098-9842-02d2273f25c7",
+            "wild wings": "57ec08cc-0411-4643-b304-0e80dbc15ac7",
+            "tigers": "747b8e4a-7e50-4638-a973-ea7950a3e739",
+            "moist talkers": "eb67ae5e-c4bf-46ca-bbbc-425cd34182ff",
+            "dale": "b63be8c2-576a-4d6e-8daf-814f8bcea96f",
+            "garages": "105bc3ff-1320-4e37-8ef0-8d595cb95dd0",
+            "jazz hands": "a37f9158-7f82-46bc-908c-c9e2dda7c33b",
+            "lift": "c73b705c-40ad-4633-a6ed-d357ee2e2bcf",
+            "georgias": "d9f89a8a-c563-493e-9d64-78e4f9a55d4a",
+            "mechanics": "46358869-dce9-4a01-bfba-ac24fc56f57e",
+            "worms": "bb4a9de5-c924-4923-a0cb-9d1445f1ee5d",
+        }
+    with open(os.path.join('..', 'season_sim', 'bprm', f'{500}_iter_results.json'), 'r') as file:
+        results = json.load(file)
+    output = ""
+    for team in results:
+        team_id = team_id_name_map[team]
+        team_wins = 0
+        for opp in results[team].values():
+            team_wins += opp[team_id]["wins"]
+
+        output += f"{team}\t{team_wins}\n"
+    return {"output": output}
+
+#run_power_ranking_sim(15, 2)
