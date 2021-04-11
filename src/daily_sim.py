@@ -272,6 +272,7 @@ def run_daily_sim(iterations=250, day=None, home_team_in=None, away_team_in=None
     for game in games_json:
         home_team = game["homeTeam"]
         away_team = game["awayTeam"]
+
         if home_team not in team_ids or away_team not in team_ids:
             continue
         home_team_name = game["homeTeamName"]

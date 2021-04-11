@@ -3,6 +3,8 @@ import logging
 from logging import Formatter, FileHandler
 from flask import Flask, request, render_template
 
+from season_sim import run_season_sim
+
 app = Flask(__name__)
 from daily_sim import run_daily_sim
 
@@ -13,6 +15,17 @@ _VERSION = 1  # API version
 def main():
     return render_template('index.html')
 
+
+@app.route('/v{}/seasonsim'.format(_VERSION), methods=["GET"])
+def seasonsim():
+    iterations = request.get_json()['iterations']
+    season = request.get_json()['season']
+    try:
+        seg_size = request.get_json()['seg_size']
+    except KeyError:
+        seg_size = None
+
+    return run_season_sim(season, iterations, seg_size, True)
 
 @app.route('/v{}/dailysim'.format(_VERSION), methods=["GET"])
 def dailysim():
