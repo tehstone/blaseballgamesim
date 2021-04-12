@@ -440,6 +440,7 @@ team_game_event_map: Dict[Team, Tuple[GameEventTeamBuff, int, Optional[int], Opt
     Team.MOIST_TALKERS: (GameEventTeamBuff.PRESSURE, 13, None, Weather.FLOODING),
     Team.SHOE_THIEVES: (GameEventTeamBuff.TRAVELLING, 11, None, None),
     Team.FRIDAYS: (GameEventTeamBuff.SINKING_SHIP, 13, None, None),
+    Team.STEAKS: (GameEventTeamBuff.PRESSURE, 15, 15, Weather.FLOODING),
 }
 
 fk_key: Dict[ForbiddenKnowledge, str] = {
