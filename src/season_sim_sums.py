@@ -1,12 +1,8 @@
 import json
 import os
 
-import numpy as np
 
-
-def process_file(cur_file: str, agg_team):
-
-    print(cur_file)
+def process_tr_file(cur_file: str, agg_team):
     if not os.path.exists(cur_file):
         return False
     with open(cur_file) as json_file:
@@ -22,14 +18,36 @@ def process_file(cur_file: str, agg_team):
     return True
 
 
+def process_ps_file(cur_file: str, agg_stats):
+    if not os.path.exists(cur_file):
+        return False
+    with open(cur_file) as json_file:
+        raw_data = json.load(json_file)
+
+    for pid, p_data in raw_data.items():
+        if pid in ["DEFENSE", "TEAM"]:
+            continue
+        if pid not in agg_stats:
+            agg_stats[pid] = {}
+        for stat in p_data:
+            if stat not in agg_stats[pid]:
+                agg_stats[pid][stat] = 0
+            agg_stats[pid][stat] += p_data[stat]
+
+
 def sum_season_files(file_id: str):
+    agg_stats = {}
     agg_team = {}
     failed = []
-    file_path = os.path.join('..', 'season_sim', 'results', f'{file_id}_season_sim_stats', 'team_records')
+    tr_file_path = os.path.join('..', 'season_sim', 'results', f'{file_id}_season_sim_stats', 'team_records')
+    ps_file_path = os.path.join('..', 'season_sim', 'results', f'{file_id}_season_sim_stats', 'player_stats')
     for day in range(0, 99):
-        filename = os.path.join(file_path, f'day{day}.json')
-        success = process_file(filename, agg_team)
+        tr_filename = os.path.join(tr_file_path, f'day{day}.json')
+        ps_filename = os.path.join(ps_file_path, f'day{day}.json')
+        success = process_tr_file(tr_filename, agg_team)
         if not success:
             failed.append(str(day))
+            continue
+        process_ps_file(ps_filename, agg_stats)
 
-    return {"output": agg_team, "failed": failed}
+    return {"output": agg_team, "failed": failed, "stats": agg_stats}

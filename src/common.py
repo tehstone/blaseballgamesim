@@ -204,6 +204,7 @@ class Team(Enum):
 class Weather(Enum):
     SUN2 = 1
     ECLIPSE = 7
+    GLITTER = 8
     BLOODDRAIN = 9
     PEANUTS = 10
     BIRD = 11
