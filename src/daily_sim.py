@@ -36,6 +36,7 @@ default_stadium: Stadium = Stadium(
     0.5,
     0.5,
     0.5,
+    [],
 )
 
 
@@ -291,11 +292,13 @@ def run_daily_sim(iterations=250, day=None, home_team_in=None, away_team_in=None
 
         home_team_state = make_team_state(home_team, home_pitcher, ballparks, season, day)
         away_team_state = make_team_state(away_team, away_pitcher, ballparks, season, day)
+        print(home_team_state.player_names[home_pitcher])
+        print(away_team_state.player_names[away_pitcher])
         home_team_state.reset_team_state(game_stat_reset=True)
         away_team_state.reset_team_state(game_stat_reset=True)
-        home_team_state.update_starting_pitcher()
-        away_team_state.update_starting_pitcher()
-
+        print(home_team_state.player_names[home_team_state.starting_pitcher])
+        print(away_team_state.player_names[away_team_state.starting_pitcher])
+        print(weather)
         game_sim = GameState(
             game_id=game_id,
             season=season,
@@ -315,6 +318,12 @@ def run_daily_sim(iterations=250, day=None, home_team_in=None, away_team_in=None
         home_scores, away_scores = [], []
         for x in range(0, iterations):
             home_score, away_score = game_sim.simulate_game()
+            # if home_team == '8d87c468-699a-47a8-b40d-cfb73a5660ad':
+            #     if away_score > home_score:
+            #         filename = os.path.join('..', 'season_sim', 'game_logs', f"{round(time.time())}_c_g_log.txt")
+            #         with open(filename, 'w') as file:
+            #             for item in game_sim.game_log:
+            #                 file.write(f"{item}\n")
             home_scores.append(home_score)
             away_scores.append(away_score)
             game_sim.reset_game_state()
@@ -370,13 +379,10 @@ def run_daily_sim(iterations=250, day=None, home_team_in=None, away_team_in=None
             if home_wins > away_wins:
                 upset = True
 
-        if .5 < home_odds < .51:
-            if away_wins > home_wins:
-                upset = True
-        if .5 < away_odds < .51:
-            if home_wins > away_wins:
-                upset = True
-
+        # if home_team == "c73b705c-40ad-4633-a6ed-d357ee2e2bcf" or away_team == "c73b705c-40ad-4633-a6ed-d357ee2e2bcf":
+        #     print(f"home_odds: {home_odds}. away_odds: {away_odds} - {.5 < away_odds < .51}")
+        if .495 < home_odds < .515:
+            upset = True
 
         home_winner, away_winner = False, False
         if game["gameComplete"] == True:
