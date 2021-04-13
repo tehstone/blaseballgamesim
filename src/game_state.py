@@ -363,7 +363,7 @@ class GameState(object):
                         pitch_result = self.generic_model_roll(Ml.PITCH, pitch_fv)
                         if retry_count > 20:
                             raise Exception("Error: Unable to reroll pitch for H2O Blood.")
-                        
+
         # 0 = ball, 1 = strike_swinging, 2 = foul, 3 = in_play_hit, 4 = in_play_out, 5 = strike_looking
         if pitch_result == 0:
             self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher,
