@@ -588,15 +588,10 @@ class TestONO(TestGameState):
 class TestBaseInstinct(TestGameState):
 
     def testNonBITeam(self):
-        self.assertEqual(self.game_state.resolve_base_instincts(), 1)
-        self.game_state.cur_batting_team.team_enum = Team.MAGIC
-        self.assertEqual(self.game_state.resolve_base_instincts(), 1)
-
-    def testBITeamNonBlood(self):
         new_priors = {3: 1.0, 2: 0.0}
         BASE_INSTINCT_PRIORS[4] = new_priors
-        self.game_state.cur_batting_team.team_enum = Team.SUNBEAMS
-        self.game_state.cur_batting_team.blood["p11"] = BloodType.GRASS
+        self.assertEqual(self.game_state.resolve_base_instincts(), 3)
+        self.game_state.cur_batting_team.team_enum = Team.MAGIC
         self.assertEqual(self.game_state.resolve_base_instincts(), 1)
 
     def testBITrigger(self):
@@ -733,7 +728,7 @@ class TestPrePitchEvents(TestGameState):
         self.assertEqual(self.game_state.outs, 1)
         self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p12")
         self.game_state.cur_pitching_team.blood["p4"] = BloodType.GRASS
-        self.assertFalse(self.game_state.resolve_team_pre_pitch_event())
+        self.assertTrue(self.game_state.resolve_team_pre_pitch_event())
         self.game_state.cur_pitching_team.blood["p4"] = BloodType.LOVE
         self.game_state.season = 1
         self.assertFalse(self.game_state.resolve_team_pre_pitch_event())
@@ -742,8 +737,8 @@ class TestPrePitchEvents(TestGameState):
         self.assertFalse(self.game_state.resolve_team_pre_pitch_event())
         self.game_state.strikes = 0
         self.assertTrue(self.game_state.resolve_team_pre_pitch_event())
-        self.assertEqual(self.game_state.outs, 2)
-        self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p13")
+        self.assertEqual(self.game_state.outs, 3)
+        self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p11")
 
     def testCharmBatter(self):
         game_state.CHARM_TRIGGER_PERCENTAGE = 1.0
@@ -759,7 +754,7 @@ class TestPrePitchEvents(TestGameState):
         self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p12")
         self.assertEqual(len(self.game_state.cur_base_runners), 1)
         self.game_state.cur_batting_team.blood["p12"] = BloodType.GRASS
-        self.assertFalse(self.game_state.resolve_team_pre_pitch_event())
+        self.assertTrue(self.game_state.resolve_team_pre_pitch_event())
         self.game_state.cur_batting_team.blood["p12"] = BloodType.LOVE
         self.game_state.season = 1
         self.assertFalse(self.game_state.resolve_team_pre_pitch_event())
@@ -768,8 +763,8 @@ class TestPrePitchEvents(TestGameState):
         self.assertFalse(self.game_state.resolve_team_pre_pitch_event())
         self.game_state.strikes = 0
         self.assertTrue(self.game_state.resolve_team_pre_pitch_event())
-        self.assertEqual(len(self.game_state.cur_base_runners), 2)
-        self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p13")
+        self.assertEqual(len(self.game_state.cur_base_runners), 3)
+        self.assertEqual(self.game_state.cur_batting_team.cur_batter, "p11")
 
     def testZapBatter(self):
         game_state.ZAP_TRIGGER_PERCENTAGE = 1.0

@@ -847,11 +847,8 @@ class GameState(object):
         return 1
 
     def check_blood_requirement(self, player_id: str, blood: BloodType) -> bool:
-        if player_id in self.cur_batting_team.blood.keys():
-            return self.cur_batting_team.blood[player_id] == blood
-        if player_id in self.cur_pitching_team.blood.keys():
-            return self.cur_pitching_team.blood[player_id] == blood
-        return False
+        # After grand siesta, all blood requirement checks pass
+        return True
 
     def check_valid_season(self, start: int, end: Optional[int]) -> bool:
         if self.season >= start:
