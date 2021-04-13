@@ -5,6 +5,7 @@ from flask import Flask, request, render_template
 
 from power_rankings import run_power_ranking_sim
 from season_sim import run_season_sim
+from season_sim_sums import sum_season_files
 
 app = Flask(__name__)
 from daily_sim import run_daily_sim
@@ -29,12 +30,20 @@ def powerrankings():
 def seasonsim():
     iterations = request.get_json()['iterations']
     season = request.get_json()['season']
+    day = request.get_json()['day']
+    file_id = request.get_json()['file_id']
     try:
         seg_size = request.get_json()['seg_size']
     except KeyError:
         seg_size = None
 
-    return run_season_sim(season, iterations, seg_size, True)
+    return run_season_sim(int(season), int(day), file_id, int(iterations), int(seg_size), True)
+
+@app.route('/v{}/sumseason'.format(_VERSION), methods=["GET"])
+def sumseason():
+    file_id = request.get_json()['file_id']
+
+    return sum_season_files(file_id)
 
 @app.route('/v{}/dailysim'.format(_VERSION), methods=["GET"])
 def dailysim():

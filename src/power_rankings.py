@@ -215,7 +215,6 @@ def load_all_state(season: int):
         pitcher = rotations_by_team[team][1]
         team_state = make_team_state(team, pitcher, stadiums[team], season, 0)
         team_state.reset_team_state(game_stat_reset=True)
-        team_state.update_starting_pitcher()
         team_states[team] = team_state
 
 
@@ -249,18 +248,20 @@ def pick_weather():
         return Weather.COFFEE3
 
 
-def run_single_bprm(team_id, o_team, iterations, all_weathers):
+def run_single_bprm(team_id, o_team, iterations, all_weathers, count):
     pitchers = {team_id: [], o_team: []}
     results = {team_id: {"wins": 0, "losses": 0}, o_team: {"wins": 0, "losses": 0}}
     half = round(iterations / 2)
 
     t1 = round(time.time())
-    print(f"Running {iterations} sims of {team_id} vs {o_team}. st: {t1}")
+    print(f"{count} Running {iterations} sims of {team_id} vs {o_team}. st: {t1}")
 
     home_team_state = team_states[team_id]
     away_team_state = team_states[o_team]
     home_team_state.cur_pitcher_pos = 1
     away_team_state.cur_pitcher_pos = 1
+    home_team_state.reset_team_state()
+    away_team_state.reset_team_state()
     run_iters(results, home_team_state, away_team_state, half, pitchers, all_weathers)
 
     away_team_state = team_states[team_id]
@@ -275,13 +276,8 @@ def run_single_bprm(team_id, o_team, iterations, all_weathers):
 def run_iters(results, home_team, away_team, half, pitchers, all_weathers):
     for day in range(half):
         day = day % 99
-        home_team.reset_team_state()
-        home_team.next_pitcher()
-        home_team.update_starting_pitcher()
+
         home_team.day = day
-        away_team.reset_team_state()
-        away_team.next_pitcher()
-        away_team.update_starting_pitcher()
         away_team.day = day
         pitchers[home_team.team_id].append(home_team.player_names[home_team.starting_pitcher])
         pitchers[away_team.team_id].append(away_team.player_names[away_team.starting_pitcher])
@@ -303,7 +299,7 @@ def run_iters(results, home_team, away_team, half, pitchers, all_weathers):
             strikes=0,
             balls=0,
             weather=weather,
-            old_models=True,
+            old_models=False,
         )
         game_sim.simulate_game()
         if game_sim.home_score > game_sim.away_score:
@@ -312,6 +308,10 @@ def run_iters(results, home_team, away_team, half, pitchers, all_weathers):
         else:
             results[away_team.team_id]["wins"] += 1
             results[home_team.team_id]["losses"] += 1
+        home_team.next_pitcher()
+        home_team.reset_team_state()
+        away_team.next_pitcher()
+        away_team.reset_team_state()
 
 
 team_name_map: Dict[str, str] = {
@@ -384,7 +384,7 @@ def run_sim(iterations):
             if already_run:
                 continue
             count += 1
-            result, pitchers = run_single_bprm(team_id, o_team, iterations, all_weathers)
+            result, pitchers = run_single_bprm(team_id, o_team, iterations, all_weathers, count)
             all_pitchers[team_id].append(pitchers[team_id])
             all_pitchers[o_team].append(pitchers[o_team])
             results[team_name][o_team_name] = result
@@ -469,7 +469,7 @@ def run_power_ranking_sim(season, iterations):
             "mechanics": "46358869-dce9-4a01-bfba-ac24fc56f57e",
             "worms": "bb4a9de5-c924-4923-a0cb-9d1445f1ee5d",
         }
-    with open(os.path.join('..', 'season_sim', 'bprm', f'{500}_iter_results.json'), 'r') as file:
+    with open(os.path.join('..', 'season_sim', 'bprm', f'{iterations}_iter_results.json'), 'r') as file:
         results = json.load(file)
     output = ""
     for team in results:
@@ -481,4 +481,4 @@ def run_power_ranking_sim(season, iterations):
         output += f"{team}\t{team_wins}\n"
     return {"output": output}
 
-#run_power_ranking_sim(15, 2)
+#run_power_ranking_sim(15, 12)
