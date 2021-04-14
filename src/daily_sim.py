@@ -347,11 +347,22 @@ def run_daily_sim(iterations=250, day=None, home_team_in=None, away_team_in=None
             if Stats.BATTER_STRIKEOUTS in stats:
                 home_ks += stats[Stats.BATTER_STRIKEOUTS]
         away_ks = 0
-        for player_id, stats in away_team_state.game_stats.items():
+        for player_id, stats in home_team_state.game_stats.items():
             if Stats.BATTER_STRIKEOUTS in stats:
                 away_ks += stats[Stats.BATTER_STRIKEOUTS]
         home_k_per = round((home_ks / iterations) * 100) / 100
         away_k_per = round((away_ks / iterations) * 100) / 100
+
+        home_dingers = 0
+        for player_id, stats in away_team_state.game_stats.items():
+            if Stats.BATTER_HRS in stats:
+                home_dingers += stats[Stats.BATTER_HRS]
+        away_dingers = 0
+        for player_id, stats in away_team_state.game_stats.items():
+            if Stats.BATTER_HRS in stats:
+                away_dingers += stats[Stats.BATTER_HRS]
+        home_dingers_per = round((home_dingers / iterations) * 100) / 100
+        away_dingers_per = round((away_dingers / iterations) * 100) / 100
 
         away_shutouts = 0
         for player_id, stats in home_team_state.game_stats.items():
@@ -379,9 +390,7 @@ def run_daily_sim(iterations=250, day=None, home_team_in=None, away_team_in=None
             if home_wins > away_wins:
                 upset = True
 
-        # if home_team == "c73b705c-40ad-4633-a6ed-d357ee2e2bcf" or away_team == "c73b705c-40ad-4633-a6ed-d357ee2e2bcf":
-        #     print(f"home_odds: {home_odds}. away_odds: {away_odds} - {.5 < away_odds < .51}")
-        if .495 < home_odds < .515:
+        if .495 < home_odds < .505:
             upset = True
 
         home_winner, away_winner = False, False
@@ -405,6 +414,7 @@ def run_daily_sim(iterations=250, day=None, home_team_in=None, away_team_in=None
                         "shutout_percentage": home_shutout_per,
                         "win_percentage": home_win_per,
                         "strikeout_avg": home_k_per,
+                        "dinger_avg": home_dingers_per,
                         "over_ten": home_big_scores,
                         "over_twenty": home_xbig_scores,
 
@@ -423,6 +433,7 @@ def run_daily_sim(iterations=250, day=None, home_team_in=None, away_team_in=None
                         "shutout_percentage": away_shutout_per,
                         "win_percentage": away_win_per,
                         "strikeout_avg": away_k_per,
+                        "dinger_avg": away_dingers_per,
                         "over_ten": away_big_scores,
                         "over_twenty": away_xbig_scores,
                         "opp_pitcher": {
