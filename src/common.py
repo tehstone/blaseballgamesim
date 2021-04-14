@@ -429,7 +429,7 @@ blood_name_map: Dict[str, BloodType] = {
 }
 
 time_based_event_map: Dict[Team, Tuple[TimeEventTeamBuff, int, int, int, int]] = {
-    Team.SPIES: (TimeEventTeamBuff.MIDDLING, 16, 16, 27, 72),
+    Team.SPIES: (TimeEventTeamBuff.MIDDLING, 15, 15, 27, 72),
 }
 
 pitch_reroll_event_map: Dict[Team, Tuple[PitchEventTeamBuff, int, Optional[int], Optional[BloodType]]] = {
