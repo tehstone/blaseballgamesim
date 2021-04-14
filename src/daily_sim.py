@@ -341,14 +341,14 @@ def run_daily_sim(iterations=250, day=None, home_team_in=None, away_team_in=None
             if Stats.BATTER_STRIKEOUTS in stats:
                 home_ks += stats[Stats.BATTER_STRIKEOUTS]
         away_ks = 0
-        for player_id, stats in home_team_state.game_stats.items():
+        for player_id, stats in away_team_state.game_stats.items():
             if Stats.BATTER_STRIKEOUTS in stats:
                 away_ks += stats[Stats.BATTER_STRIKEOUTS]
         home_k_per = round((home_ks / iterations) * 100) / 100
         away_k_per = round((away_ks / iterations) * 100) / 100
 
         home_dingers = 0
-        for player_id, stats in away_team_state.game_stats.items():
+        for player_id, stats in home_team_state.game_stats.items():
             if Stats.BATTER_HRS in stats:
                 home_dingers += stats[Stats.BATTER_HRS]
         away_dingers = 0
