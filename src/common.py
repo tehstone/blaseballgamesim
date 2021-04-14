@@ -157,6 +157,12 @@ class BloodType(Enum):
     PSYCHIC = 14
 
 
+class TimeEventTeamBuff(Enum):
+    EARLBIRDS = 1
+    MIDDLING = 2
+    LATE_TO_THE_PARTY = 3
+
+
 class PitchEventTeamBuff(Enum):
     BASE_INSTINCTS = 1
     CHARM = 2
@@ -420,6 +426,10 @@ blood_name_map: Dict[str, BloodType] = {
     "Fire": BloodType.FIRE,
     "Psychic": BloodType.PSYCHIC,
     "Grass": BloodType.GRASS,
+}
+
+time_based_event_map: Dict[Team, Tuple[TimeEventTeamBuff, int, int, int, int]] = {
+    Team.SPIES: (TimeEventTeamBuff.MIDDLING, 16, 16, 27, 72),
 }
 
 pitch_reroll_event_map: Dict[Team, Tuple[PitchEventTeamBuff, int, Optional[int], Optional[BloodType]]] = {

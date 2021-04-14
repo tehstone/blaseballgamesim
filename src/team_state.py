@@ -8,7 +8,7 @@ import statistics
 from common import BlaseballStatistics as Stats
 from common import ForbiddenKnowledge as FK
 from common import AdditiveTypes, BloodType, calc_vibes, GameEventTeamBuff, PlayerBuff, \
-    Team, team_game_event_map, team_id_map, Weather
+    Team, team_game_event_map, time_based_event_map, TimeEventTeamBuff, team_id_map, Weather
 from stadium import Stadium
 
 DEF_ID = "DEFENSE"
@@ -645,6 +645,13 @@ class TeamState(object):
 
     def calc_additives(self):
         self.reset_team_additives()
+        if self.team_enum in time_based_event_map:
+            buff, start_season, end_season, start_day, end_day = time_based_event_map[self.team_enum]
+            if start_season <= self.season <= end_season and start_day <= self.day <= end_day:
+                self.batting_addition = 0.2
+                self.pitching_addition = 0.2
+                self.defense_addition = 0.2
+                self.base_running_addition = 0.2
         if self.team_enum in team_game_event_map:
             buff, start_season, end_season, req_weather = team_game_event_map[self.team_enum]
             if buff == GameEventTeamBuff.CROWS and self.season >= start_season and req_weather == self.weather:
