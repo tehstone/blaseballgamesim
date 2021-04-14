@@ -68,14 +68,6 @@ def get_stlat_dict(player: Dict[str, Any]) -> Dict[FK, float]:
 def get_current_player_stlats(season, day, team_ids, save_stlats):
     filename = os.path.join('..', 'season_sim', "stlats", f"s{season}_d{day}_stlats.json")
     found_stlats = False
-    try:
-        with open(filename, 'r', encoding='utf8', ) as json_file:
-            stlats_json = json.load(json_file)
-        if len(stlats_json) > 1:
-            found_stlats = True
-    except FileNotFoundError:
-        found_stlats = False
-
     if not found_stlats:
         stlats_json = get_stlats_for_day(season, day)
         if len(stlats_json) > 1:
@@ -341,6 +333,8 @@ def run_daily_sim(iterations=250, day=None, home_team_in=None, away_team_in=None
 
         home_win_per = round((home_wins / iterations) * 1000) / 10
         away_win_per = round((away_wins / iterations) * 1000) / 10
+        home_win_per_raw = home_wins / iterations
+        away_win_per_raw = away_wins / iterations
 
         home_ks = 0
         for player_id, stats in home_team_state.game_stats.items():
@@ -413,6 +407,7 @@ def run_daily_sim(iterations=250, day=None, home_team_in=None, away_team_in=None
                         "win": home_winner,
                         "shutout_percentage": home_shutout_per,
                         "win_percentage": home_win_per,
+                        "win_per_raw": home_win_per_raw,
                         "strikeout_avg": home_k_per,
                         "dinger_avg": home_dingers_per,
                         "over_ten": home_big_scores,
@@ -432,6 +427,7 @@ def run_daily_sim(iterations=250, day=None, home_team_in=None, away_team_in=None
                         "win": away_winner,
                         "shutout_percentage": away_shutout_per,
                         "win_percentage": away_win_per,
+                        "win_per_raw": away_win_per_raw,
                         "strikeout_avg": away_k_per,
                         "dinger_avg": away_dingers_per,
                         "over_ten": away_big_scores,
