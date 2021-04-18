@@ -585,6 +585,17 @@ class TestONO(TestGameState):
         self.assertTrue(self.game_state.resolve_o_no())
 
 
+class TestFiery(TestGameState):
+    def testNonFieryTeam(self):
+        game_state.FIERY_TRIGGER_PERCENTAGE = 1.0
+        self.game_state.cur_batting_team.team_enum = Team.MAGIC
+        self.assertEquals(1, self.game_state.resolve_fiery())
+
+    def testFieryTrigger(self):
+        self.game_state.cur_batting_team.team_enum = Team.TIGERS
+        game_state.FIERY_TRIGGER_PERCENTAGE = 1.0
+        self.assertEquals(2, self.game_state.resolve_fiery())
+
 class TestBaseInstinct(TestGameState):
 
     def testNonBITeam(self):

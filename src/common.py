@@ -171,6 +171,9 @@ class PitchEventTeamBuff(Enum):
     GROWTH = 5
     O = 6
     H2O = 7
+    FIERY = 8
+    PSYCHIC = 9
+    AAA = 10
 
 
 class GameEventTeamBuff(Enum):
@@ -269,6 +272,7 @@ class PlayerBuff(Enum):
     UNDER_PERFORMING = 22
     PRESSURE = 23
     SUPER_YUMMY = 24
+    EGO4 = 25
 
 
 class AdditiveTypes(Enum):
@@ -445,6 +449,9 @@ team_pitch_event_map: Dict[Team, Tuple[PitchEventTeamBuff, int, Optional[int], O
     Team.LOVERS: (PitchEventTeamBuff.CHARM, 10, None, BloodType.LOVE),
     Team.DALE: (PitchEventTeamBuff.ZAP, 8, None, BloodType.ELECTRIC),
     Team.SUNBEAMS: (PitchEventTeamBuff.BASE_INSTINCTS, 9, None, BloodType.BASE),
+    Team.TIGERS: (PitchEventTeamBuff.FIERY, 16, None, BloodType.FIRE),
+    Team.SPIES: (PitchEventTeamBuff.PSYCHIC, 16, None, BloodType.PSYCHIC),
+    Team.STEAKS: (PitchEventTeamBuff.AAA, 16, None, BloodType.AAA),
 }
 
 team_game_event_map: Dict[Team, Tuple[GameEventTeamBuff, int, Optional[int], Optional[Weather]]] = {
