@@ -7,7 +7,7 @@ from typing import Dict, Any, List
 import requests
 from requests import Timeout
 
-from common import enabled_player_buffs, get_stlats_for_day
+from common import enabled_player_buffs, get_stlats_for_day, get_ballparks, team_name_map, team_id_map, convert_keys
 from common import BlaseballStatistics as Stats, blood_name_map
 from common import ForbiddenKnowledge as FK
 from common import BloodType, Team, blood_id_map, fk_key, PlayerBuff, Weather
@@ -260,6 +260,7 @@ def run_daily_sim(iterations=250, day=None, home_team_in=None, away_team_in=None
     with open(os.path.join('..', 'season_sim', "ballparks.json"), 'r', encoding='utf8') as json_file:
         ballparks = json.load(json_file)
     results = {}
+    all_stats = {}
     output = ""
     count = 1
     for game in games_json:
@@ -284,6 +285,9 @@ def run_daily_sim(iterations=250, day=None, home_team_in=None, away_team_in=None
 
         home_team_state = make_team_state(home_team, home_pitcher, ballparks, season, day)
         away_team_state = make_team_state(away_team, away_pitcher, ballparks, season, day)
+        team_states[home_team] = home_team_state
+        team_states[away_team] = away_team_state
+
         print(home_team_state.player_names[home_pitcher])
         print(away_team_state.player_names[away_pitcher])
         home_team_state.reset_team_state(game_stat_reset=True)
@@ -440,8 +444,17 @@ def run_daily_sim(iterations=250, day=None, home_team_in=None, away_team_in=None
                         }
                     }
         }
+
+    for cur_team in team_states.keys():
+        for player in team_states[cur_team].game_stats.keys():
+            all_stats[player] = {}
+            for stat in team_states[cur_team].game_stats[player]:
+                all_stats[player][stat] = team_states[cur_team].game_stats[player][stat] / float(iterations)
+
+    seg_stats_pretty = convert_keys(all_stats)
+
     with open(os.path.join('..', 'season_sim', 'results', f'{round(time.time())}_output.txt'), 'w') as file:
         file.write(output)
     t2 = time.time()
     time_elapsed = round(t2-t1)
-    return {"data": results, "day": day, "output": output, "time_elapsed": time_elapsed}
+    return {"data": results, "day": day, "output": output, "time_elapsed": time_elapsed, "stats": seg_stats_pretty}
