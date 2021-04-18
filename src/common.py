@@ -240,6 +240,7 @@ blaseball_weather_pretty_print_map: Dict[Weather, str] = {
     Weather.COFFEE3: "Coffee3",
     Weather.FLOODING: "Flooding",
     Weather.SALMON: "Salmon",
+    Weather.GLITTER: "Glitter",
 }
 
 

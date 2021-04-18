@@ -69,7 +69,7 @@ def get_stlat_dict(player: Dict[str, Any]) -> Dict[FK, float]:
 
 
 def get_current_player_stlats(season, day, team_ids):
-    filename = os.path.join('..', 'season_sim', "stlats", f"bprm_stlats.json")
+    filename = os.path.join('..', 'season_sim', "stlats", f"bprm_s{season}_stlats.json")
     stlats_json = {}
     pitchers = {}
     batters = {}
@@ -220,32 +220,34 @@ def load_all_state(season: int):
 
 def pick_weather():
     pick = random.randint(1, 1188)
-    if pick <= 35:
-        return Weather.COFFEE
-    if pick <= 457:
-        return Weather.FLOODING
-    if pick <= 554:
-        return Weather.FEEDBACK
-    if pick <= 639:
-        return Weather.PEANUTS
-    if pick <= 713:
-        return Weather.SUN2
-    if pick <= 750:
-        return Weather.BIRD
-    if pick <= 984:
+    if pick <= 226:
         return Weather.SALMON
-    if pick <= 1002:
+    if pick <= 338:
         return Weather.ECLIPSE
-    if pick <= 1050:
-        return Weather.REVERB
-    if pick <= 1091:
+    if pick <= 439:
         return Weather.BLACKHOLE
-    if pick <= 1130:
-        return Weather.COFFEE2
-    if pick <= 1154:
-        return Weather.BLOODDRAIN
-    if pick <= 1188:
+    if pick <= 724:
+        return Weather.FLOODING
+    if pick <= 831:
+        return Weather.SUN2
+    if pick <= 861:
+        return Weather.BIRD
+    if pick <= 884:
         return Weather.COFFEE3
+    if pick <= 900:
+        return Weather.COFFEE2
+    if pick <= 960:
+        return Weather.PEANUTS
+    if pick <= 1033:
+        return Weather.REVERB
+    if pick <= 1069:
+        return Weather.BLOODDRAIN
+    if pick <= 1105:
+        return Weather.COFFEE
+    if pick <= 1167:
+        return Weather.FEEDBACK
+    if pick <= 1188:
+        return Weather.GLITTER
 
 
 def run_single_bprm(team_id, o_team, iterations, all_weathers, count):
@@ -282,8 +284,12 @@ def run_iters(results, home_team, away_team, half, pitchers, all_weathers):
         pitchers[home_team.team_id].append(home_team.player_names[home_team.starting_pitcher])
         pitchers[away_team.team_id].append(away_team.player_names[away_team.starting_pitcher])
 
-        weather = Weather.ECLIPSE# pick_weather()
-        all_weathers[weather] += 1
+        weather = pick_weather()
+        if weather:
+            all_weathers[weather] += 1
+        else:
+            print("wtf no weather")
+            weather = Weather.ECLIPSE
         game_sim = GameState(
             game_id='',
             season=15,
@@ -342,7 +348,7 @@ team_name_map: Dict[str, str] = {
 }
 
 
-def run_sim(iterations):
+def run_sim(season, iterations):
     t1 = round(time.time())
     with open(os.path.join('..', 'season_sim', 'bprm', 'matches.json'), 'r') as file:
         matchups = json.load(file)
@@ -362,6 +368,7 @@ def run_sim(iterations):
         Weather.COFFEE3: 0,
         Weather.FLOODING: 0,
         Weather.SALMON: 0,
+        Weather.GLITTER: 0,
     }
     results = {}
     for team in matchups:
@@ -389,9 +396,9 @@ def run_sim(iterations):
             all_pitchers[o_team].append(pitchers[o_team])
             results[team_name][o_team_name] = result
             results[o_team_name][team_name] = result
-    with open(os.path.join('..', 'season_sim', 'bprm', f'{iterations}_iter_results.json'), 'w') as file:
+    with open(os.path.join('..', 'season_sim', 'bprm', f'{season}_{iterations}_iter_results.json'), 'w') as file:
         json.dump(results, file)
-    with open(os.path.join('..', 'season_sim', 'bprm', f'{iterations}_iter_all_pitchers.json'), 'w') as file:
+    with open(os.path.join('..', 'season_sim', 'bprm', f'{season}_{iterations}_iter_all_pitchers.json'), 'w') as file:
         json.dump(all_pitchers, file)
     with open(os.path.join('..', 'season_sim', 'bprm', 'weathers.json'), 'w') as file:
         json.dump(convert_keys(all_weathers), file)
@@ -442,7 +449,7 @@ def run_power_ranking_sim(season, iterations):
     load_all_state(season)
     t2 = round(time.time())
     print(f"State set up complete in {t2 - t1}")
-    run_sim(iterations)
+    run_sim(season, iterations)
     team_id_name_map: Dict[str, str] = {
             "lovers": "b72f3061-f573-40d7-832a-5ad475bd7909",
             "tacos": "878c1bf6-0d21-4659-bfee-916c8314d69c",
@@ -469,7 +476,7 @@ def run_power_ranking_sim(season, iterations):
             "mechanics": "46358869-dce9-4a01-bfba-ac24fc56f57e",
             "worms": "bb4a9de5-c924-4923-a0cb-9d1445f1ee5d",
         }
-    with open(os.path.join('..', 'season_sim', 'bprm', f'{iterations}_iter_results.json'), 'r') as file:
+    with open(os.path.join('..', 'season_sim', 'bprm', f'{season}_{iterations}_iter_results.json'), 'r') as file:
         results = json.load(file)
     output = ""
     for team in results:
