@@ -22,6 +22,9 @@ from stadium import Stadium
 
 CHARM_TRIGGER_PERCENTAGE = 0.02
 ZAP_TRIGGER_PERCENTAGE = 0.02
+FIERY_TRIGGER_PERCENTAGE = 0.02
+PSYCHIC_TRIGGER_PERCENTAGE = 0.02
+AAA_TRIGGER_PERCENTAGE = 0.02
 FLOODING_TRIGGER_PERCENTAGE = 0.01
 COFFEE_PRIME_BEAN_PERCENTAGE = 0.05
 COFFEE_2_PERCENTAGE = 0.04
@@ -379,15 +382,18 @@ class GameState(object):
                 self.log_event(f'Oh No triggered!.')
                 pitch_result = 2
             else:
+                num_strikes = self.resolve_fiery()
                 self.cur_pitching_team.update_stat(
                     self.cur_pitching_team.starting_pitcher,
                     Stats.PITCHER_STRIKES_THROWN,
-                    1.0,
+                    float(num_strikes),
                     self.day
                 )
-                self.strikes += 1
+                self.strikes += num_strikes
+                if num_strikes > 1:
+                    self.log_event(f'FIERY STRIKE!')
                 self.log_event(f'Strike swinging. Strike {self.strikes}.')
-                if self.strikes == self.strikes_for_out:
+                if self.strikes >= self.strikes_for_out:
                     self.resolve_strikeout()
                 return
         if pitch_result == 5:
@@ -395,15 +401,18 @@ class GameState(object):
                 self.log_event(f'Oh No triggered!.')
                 pitch_result = 2
             else:
+                num_strikes = self.resolve_fiery()
                 self.cur_pitching_team.update_stat(
                     self.cur_pitching_team.starting_pitcher,
                     Stats.PITCHER_STRIKES_THROWN,
-                    1.0,
+                    float(num_strikes),
                     self.day
                 )
-                self.strikes += 1
+                self.strikes += num_strikes
+                if num_strikes > 1:
+                    self.log_event(f'FIERY STRIKE!')
                 self.log_event(f'Strike looking. Strike {self.strikes}.')
-                if self.strikes == self.strikes_for_out:
+                if self.strikes >= self.strikes_for_out:
                     self.resolve_strikeout()
                 return
         if pitch_result == 2:
@@ -699,7 +708,10 @@ class GameState(object):
                             self.increase_batting_team_runs(Decimal("1.0"))
                             to_clear.append(base)
                         else:
-                            if PlayerBuff.EGO1 in cur_buff or PlayerBuff.EGO2 in cur_buff:
+                            if PlayerBuff.EGO1 in cur_buff or \
+                                    PlayerBuff.EGO2 in cur_buff or \
+                                    PlayerBuff.EGO3 in cur_buff or \
+                                    PlayerBuff.EGO4 in cur_buff:
                                 self.log_event(f'{self.cur_batting_team.get_player_name(self.cur_base_runners[base])}'
                                                f'\'s EGO keeps them on base.')
                             else:
@@ -816,6 +828,15 @@ class GameState(object):
 
         # Required checks failed, no event triggers
         return False
+
+    def resolve_fiery(self) -> int:
+        if self.cur_pitching_team.team_enum in team_pitch_event_map:
+            event, start_season, end_season, req_blood = team_pitch_event_map[self.cur_batting_team.team_enum]
+            if event == PitchEventTeamBuff.FIERY:
+                roll = self._random_roll()
+                if roll < FIERY_TRIGGER_PERCENTAGE:
+                    return 2
+        return 1
 
     def resolve_o_no(self) -> bool:
         if self.cur_batting_team.team_enum in team_pitch_event_map:
