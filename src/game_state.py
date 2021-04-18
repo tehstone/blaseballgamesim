@@ -831,7 +831,7 @@ class GameState(object):
 
     def resolve_fiery(self) -> int:
         if self.cur_pitching_team.team_enum in team_pitch_event_map:
-            event, start_season, end_season, req_blood = team_pitch_event_map[self.cur_batting_team.team_enum]
+            event, start_season, end_season, req_blood = team_pitch_event_map[self.cur_pitching_team.team_enum]
             if event == PitchEventTeamBuff.FIERY:
                 roll = self._random_roll()
                 if roll < FIERY_TRIGGER_PERCENTAGE:
