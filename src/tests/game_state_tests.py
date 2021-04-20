@@ -621,6 +621,7 @@ class TestAAA(TestGameState):
     def testAAATrigger(self):
         global HIT_PRIORS
         # test triple
+        game_state.AAA_TRIGGER_PERCENTAGE = 1.0
         self.game_state.cur_batting_team.team_enum = Team.STEAKS
         self.game_state.season = 16
         self.game_state.reset_game_state()
@@ -635,6 +636,41 @@ class TestAAA(TestGameState):
         self.assertEqual(self.game_state.home_score, 0)
         self.assertEqual(self.game_state.away_score, 0)
         self.assertTrue(PlayerBuff.OVER_PERFORMING in self.game_state.cur_batting_team.player_buffs["p11"])
+
+    def testNoAAATrigger(self):
+        global HIT_PRIORS
+        # test triple
+        game_state.AAA_TRIGGER_PERCENTAGE = 1.0
+        self.game_state.cur_batting_team.team_enum = Team.WORMS
+        self.game_state.season = 16
+        self.game_state.reset_game_state()
+        self.assertFalse(PlayerBuff.OVER_PERFORMING in self.game_state.cur_batting_team.player_buffs["p11"])
+        HIT_PRIORS = [0.0, 0.0, 1.0, 0.0]
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.hit_sim([])
+        self.assertEqual(len(self.game_state.cur_base_runners), 1)
+        self.assertEqual(self.game_state.cur_base_runners[3], "p11")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.assertFalse(PlayerBuff.OVER_PERFORMING in self.game_state.cur_batting_team.player_buffs["p11"])
+
+        game_state.AAA_TRIGGER_PERCENTAGE = 0.0
+        self.game_state.cur_batting_team.team_enum = Team.SPIES
+        self.game_state.season = 16
+        self.game_state.reset_game_state()
+        self.assertFalse(PlayerBuff.OVER_PERFORMING in self.game_state.cur_batting_team.player_buffs["p11"])
+        HIT_PRIORS = [0.0, 0.0, 1.0, 0.0]
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.hit_sim([])
+        self.assertEqual(len(self.game_state.cur_base_runners), 1)
+        self.assertEqual(self.game_state.cur_base_runners[3], "p11")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.assertFalse(PlayerBuff.OVER_PERFORMING in self.game_state.cur_batting_team.player_buffs["p11"])
 
 
 class TestBaseInstinct(TestGameState):

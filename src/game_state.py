@@ -24,7 +24,7 @@ CHARM_TRIGGER_PERCENTAGE = 0.02
 ZAP_TRIGGER_PERCENTAGE = 0.02
 FIERY_TRIGGER_PERCENTAGE = 0.02
 PSYCHIC_TRIGGER_PERCENTAGE = 0.02
-AAA_TRIGGER_PERCENTAGE = 0.02
+AAA_TRIGGER_PERCENTAGE = 0.5
 FLOODING_TRIGGER_PERCENTAGE = 0.01
 COFFEE_PRIME_BEAN_PERCENTAGE = 0.05
 COFFEE_2_PERCENTAGE = 0.04
@@ -625,8 +625,10 @@ class GameState(object):
                 event, start_season, end_season, req_blood = team_pitch_event_map[self.cur_batting_team.team_enum]
                 # Deal with AAA
                 if event == PitchEventTeamBuff.AAA and self.check_valid_season(start_season, end_season):
+                    roll = self._random_roll()
                     batter_id = self.cur_batting_team.cur_batter
-                    if PlayerBuff.OVER_PERFORMING not in self.cur_batting_team.player_buffs[batter_id]:
+                    if PlayerBuff.OVER_PERFORMING not in self.cur_batting_team.player_buffs[batter_id] and \
+                            roll <= AAA_TRIGGER_PERCENTAGE:
                         self.log_event(f'AAA triggers and turning on over perform.')
                         self.cur_batting_team.player_buffs[batter_id][PlayerBuff.OVER_PERFORMING] = 1
             self.advance_all_runners(3)
