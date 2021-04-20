@@ -342,6 +342,11 @@ class GameState(object):
         )
         pitch_result = self.generic_model_roll(Ml.PITCH, pitch_fv)
 
+        # check for fiery pitch
+        num_strikes = self.resolve_fiery()
+        psychic_batter_check = self.resolve_psychic_batter()
+        psychic_pitcher_check = self.resolve_psychic_pitcher()
+
         # Check to see if we need to deal with a batter reroll on team
         if self.cur_batting_team.team_enum in pitch_reroll_event_map:
             # Possible event, let's validate
@@ -374,15 +379,19 @@ class GameState(object):
             self.balls += 1
             self.log_event(f'Ball {self.balls}.')
             if self.balls == self.balls_for_walk:
-                num_bases_to_advance: int = self.resolve_base_instincts()
-                self.resolve_walk(num_bases_to_advance)
+                if psychic_pitcher_check:
+                    self.log_event(f'Psychic triggered!  Transforming a walk into a strikeout.')
+                    self.strikes = self.strikes_for_out
+                    self.resolve_strikeout()
+                else:
+                    num_bases_to_advance: int = self.resolve_base_instincts()
+                    self.resolve_walk(num_bases_to_advance)
             return
         if pitch_result == 1:
             if self.resolve_o_no():
                 self.log_event(f'Oh No triggered!.')
                 pitch_result = 2
             else:
-                num_strikes = self.resolve_fiery()
                 self.cur_pitching_team.update_stat(
                     self.cur_pitching_team.starting_pitcher,
                     Stats.PITCHER_STRIKES_THROWN,
@@ -394,14 +403,19 @@ class GameState(object):
                     self.log_event(f'FIERY STRIKE!')
                 self.log_event(f'Strike swinging. Strike {self.strikes}.')
                 if self.strikes >= self.strikes_for_out:
-                    self.resolve_strikeout()
+                    if psychic_batter_check:
+                        self.log_event(f'Psychic triggered!  Transforming a strikeout into a walk.')
+                        self.strikes -= self.strikes_for_out
+                        self.balls = self.balls_for_walk
+                        self.resolve_walk(num_bases_to_advance=1)
+                    else:
+                        self.resolve_strikeout()
                 return
         if pitch_result == 5:
             if self.resolve_o_no():
                 self.log_event(f'Oh No triggered!.')
                 pitch_result = 2
             else:
-                num_strikes = self.resolve_fiery()
                 self.cur_pitching_team.update_stat(
                     self.cur_pitching_team.starting_pitcher,
                     Stats.PITCHER_STRIKES_THROWN,
@@ -413,14 +427,26 @@ class GameState(object):
                     self.log_event(f'FIERY STRIKE!')
                 self.log_event(f'Strike looking. Strike {self.strikes}.')
                 if self.strikes >= self.strikes_for_out:
-                    self.resolve_strikeout()
+                    if psychic_batter_check:
+                        self.log_event(f'Psychic triggered!  Transforming a strikeout into a walk.')
+                        self.strikes -= self.strikes_for_out
+                        self.balls = self.balls_for_walk
+                        self.resolve_walk(num_bases_to_advance=1)
+                    else:
+                        self.resolve_strikeout()
                 return
         if pitch_result == 2:
             self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
                                               Stats.BATTER_FOUL_BALLS, 1.0, self.day)
             if self.strikes < self.strikes_for_out - 1:
-                self.strikes += 1
-                self.log_event(f'Foul ball.  Strike {self.strikes}.')
+                if num_strikes == 2 and self.strikes < self.strikes_for_out - 2:
+                    self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
+                                                      Stats.BATTER_FOUL_BALLS, 1.0, self.day)
+                    self.strikes += 2
+                    self.log_event(f'Fouled off 2 fiery strikes.  Strike {self.strikes}.')
+                else:
+                    self.strikes += 1
+                    self.log_event(f'Foul ball.  Strike {self.strikes}.')
             else:
                 self.log_event(f'Foul ball.')
             return
@@ -593,6 +619,16 @@ class GameState(object):
         if hit_type == 2:
             self.log_event(
                 f'Batter {self.cur_batting_team.get_player_name(self.cur_batting_team.cur_batter)} hits a triple.')
+            # Check to see if we need to turn on over performing for AAA after a triple was hit
+            if self.cur_batting_team.team_enum in team_pitch_event_map:
+                # Possible event, let's validate
+                event, start_season, end_season, req_blood = team_pitch_event_map[self.cur_batting_team.team_enum]
+                # Deal with AAA
+                if event == PitchEventTeamBuff.AAA and self.check_valid_season(start_season, end_season):
+                    batter_id = self.cur_batting_team.cur_batter
+                    if PlayerBuff.OVER_PERFORMING not in self.cur_batting_team.player_buffs[batter_id]:
+                        self.log_event(f'AAA triggers and turning on over perform.')
+                        self.cur_batting_team.player_buffs[batter_id][PlayerBuff.OVER_PERFORMING] = 1
             self.advance_all_runners(3)
             self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
                                               Stats.BATTER_TRIPLES, 1.0, self.day)
@@ -837,6 +873,24 @@ class GameState(object):
                 if roll < FIERY_TRIGGER_PERCENTAGE:
                     return 2
         return 1
+
+    def resolve_psychic_pitcher(self) -> bool:
+        if self.cur_pitching_team.team_enum in team_pitch_event_map:
+            event, start_season, end_season, req_blood = team_pitch_event_map[self.cur_pitching_team.team_enum]
+            if event == PitchEventTeamBuff.PSYCHIC:
+                roll = self._random_roll()
+                if roll < PSYCHIC_TRIGGER_PERCENTAGE:
+                    return True
+        return False
+
+    def resolve_psychic_batter(self) -> bool:
+        if self.cur_batting_team.team_enum in team_pitch_event_map:
+            event, start_season, end_season, req_blood = team_pitch_event_map[self.cur_batting_team.team_enum]
+            if event == PitchEventTeamBuff.PSYCHIC:
+                roll = self._random_roll()
+                if roll < PSYCHIC_TRIGGER_PERCENTAGE:
+                    return True
+        return False
 
     def resolve_o_no(self) -> bool:
         if self.cur_batting_team.team_enum in team_pitch_event_map:

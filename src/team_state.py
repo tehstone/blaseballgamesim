@@ -130,6 +130,15 @@ class TeamState(object):
                     self.player_additives[player_id][AdditiveTypes.DEFENSE] += 0.2
                     self.player_additives[player_id][AdditiveTypes.BASE_RUNNING] += 0.2
                     continue
+                if cur_mod == PlayerBuff.OVER_PERFORMING and \
+                        cur_buffs[cur_mod] == 1:
+                    # turn on OVER_PERFORMING FOR THE REST OF THE GAME
+                    self.player_buffs[player_id][cur_mod] = 2
+                    self.player_additives[player_id][AdditiveTypes.BATTING] += 0.2
+                    self.player_additives[player_id][AdditiveTypes.PITCHING] += 0.2
+                    self.player_additives[player_id][AdditiveTypes.DEFENSE] += 0.2
+                    self.player_additives[player_id][AdditiveTypes.BASE_RUNNING] += 0.2
+                    continue
                 if cur_mod == PlayerBuff.SUPER_YUMMY and \
                         cur_buffs[cur_mod] == 1 and \
                         (stadium.has_peanut_mister or self.weather == Weather.PEANUTS):

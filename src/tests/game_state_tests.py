@@ -588,13 +588,54 @@ class TestONO(TestGameState):
 class TestFiery(TestGameState):
     def testNonFieryTeam(self):
         game_state.FIERY_TRIGGER_PERCENTAGE = 1.0
-        self.game_state.cur_batting_team.team_enum = Team.MAGIC
+        self.game_state.cur_pitching_team.team_enum = Team.MAGIC
         self.assertEquals(1, self.game_state.resolve_fiery())
 
     def testFieryTrigger(self):
-        self.game_state.cur_batting_team.team_enum = Team.TIGERS
+        self.game_state.cur_pitching_team.team_enum = Team.TIGERS
         game_state.FIERY_TRIGGER_PERCENTAGE = 1.0
         self.assertEquals(2, self.game_state.resolve_fiery())
+
+
+class TestPsychic(TestGameState):
+    def testNonPsychicTeam(self):
+        game_state.PSYCHIC_TRIGGER_PERCENTAGE = 1.0
+        self.game_state.cur_batting_team.team_enum = Team.MAGIC
+        self.assertEquals(False, self.game_state.resolve_psychic_batter())
+        self.assertEquals(False, self.game_state.resolve_psychic_pitcher())
+
+    def testPsychicTrigger(self):
+        self.game_state.cur_batting_team.team_enum = Team.SPIES
+        self.game_state.season = 16
+        game_state.FIERY_TRIGGER_PERCENTAGE = 1.0
+        self.assertEquals(True, self.game_state.resolve_psychic_batter())
+        self.assertEquals(False, self.game_state.resolve_psychic_pitcher())
+        self.game_state.cur_batting_team.team_enum = Team.SUNBEAMS
+        self.game_state.cur_pitching_team.team_enum = Team.SPIES
+        self.assertEquals(False, self.game_state.resolve_psychic_batter())
+        self.assertEquals(True, self.game_state.resolve_psychic_pitcher())
+
+
+
+class TestAAA(TestGameState):
+    def testAAATrigger(self):
+        global HIT_PRIORS
+        # test triple
+        self.game_state.cur_batting_team.team_enum = Team.STEAKS
+        self.game_state.season = 16
+        self.game_state.reset_game_state()
+        self.assertFalse(PlayerBuff.OVER_PERFORMING in self.game_state.cur_batting_team.player_buffs["p11"])
+        HIT_PRIORS = [0.0, 0.0, 1.0, 0.0]
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.hit_sim([])
+        self.assertEqual(len(self.game_state.cur_base_runners), 1)
+        self.assertEqual(self.game_state.cur_base_runners[3], "p11")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.assertTrue(PlayerBuff.OVER_PERFORMING in self.game_state.cur_batting_team.player_buffs["p11"])
+
 
 class TestBaseInstinct(TestGameState):
 
@@ -1380,7 +1421,7 @@ class TestPitchSim(TestGameState):
 
         # test outs advance on strike
         self.game_state.cur_batting_team.team_enum = Team.SUNBEAMS
-        self.game_state.cur_pitching_team.team_enum = Team.TIGERS
+        self.game_state.cur_pitching_team.team_enum = Team.GEORGIAS
         self.assertEqual(len(self.game_state.cur_base_runners), 0)
         self.assertEqual(self.game_state.home_score, 0)
         self.assertEqual(self.game_state.away_score, 0)
@@ -1419,7 +1460,7 @@ class TestPitchSim(TestGameState):
 
         # test outs advance on strike
         self.game_state.cur_batting_team.team_enum = Team.SUNBEAMS
-        self.game_state.cur_pitching_team.team_enum = Team.TIGERS
+        self.game_state.cur_pitching_team.team_enum = Team.GEORGIAS
         self.assertEqual(len(self.game_state.cur_base_runners), 0)
         self.assertEqual(self.game_state.home_score, 0)
         self.assertEqual(self.game_state.away_score, 0)
@@ -1458,7 +1499,7 @@ class TestPitchSim(TestGameState):
 
         # test strike increase on foul
         self.game_state.cur_batting_team.team_enum = Team.SUNBEAMS
-        self.game_state.cur_pitching_team.team_enum = Team.TIGERS
+        self.game_state.cur_pitching_team.team_enum = Team.GEORGIAS
         self.assertEqual(self.game_state.outs, 0)
         self.assertEqual(self.game_state.balls, 0)
         self.assertEqual(self.game_state.strikes, 0)
@@ -1481,7 +1522,7 @@ class TestPitchSim(TestGameState):
         PITCH_PRIORS = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
         self.game_state.cur_batting_team.player_buffs["p11"] = {PlayerBuff.FLINCH: 1}
         self.game_state.cur_batting_team.team_enum = Team.SUNBEAMS
-        self.game_state.cur_pitching_team.team_enum = Team.TIGERS
+        self.game_state.cur_pitching_team.team_enum = Team.GEORGIAS
         self.assertEqual(len(self.game_state.cur_base_runners), 0)
         self.assertEqual(self.game_state.home_score, 0)
         self.assertEqual(self.game_state.away_score, 0)
