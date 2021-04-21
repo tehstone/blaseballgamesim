@@ -32,7 +32,11 @@ def process_ps_file(cur_file: str, agg_stats):
         for stat in p_data:
             if stat not in agg_stats[pid]:
                 agg_stats[pid][stat] = 0
-            agg_stats[pid][stat] += p_data[stat]
+            if stat == "Batter hits":
+                hits = p_data[stat] - p_data.get("Batter hrs", 0)
+                agg_stats[pid][stat] += hits
+            else:
+                agg_stats[pid][stat] += p_data[stat]
 
 
 def sum_season_files(file_id: str):

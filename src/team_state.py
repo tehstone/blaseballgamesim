@@ -520,13 +520,15 @@ class TeamState(object):
         return self.cur_pitcher_pos
 
     def update_starting_pitcher(self):
-        if PlayerBuff.SHELLED in self.player_buffs[self.starting_pitcher]:
+        if PlayerBuff.SHELLED in self.player_buffs[self.starting_pitcher] or \
+                PlayerBuff.ELSEWHERE in self.player_buffs[self.starting_pitcher]:
             # must find the next pitcher available and set them to be the starting pitcher but not update the pitcher_pos
             test_idx = self.cur_pitcher_pos
             count = 0
             while True:
                 count += 1
-                if PlayerBuff.SHELLED not in self.player_buffs[self.rotation[test_idx]]:
+                if PlayerBuff.SHELLED not in self.player_buffs[self.rotation[test_idx]]\
+                        and PlayerBuff.ELSEWHERE not in self.player_buffs[self.rotation[test_idx]]:
                     self.starting_pitcher = self.rotation[test_idx]
                     break
                 if len(self.rotation) == test_idx:
