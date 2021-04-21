@@ -236,6 +236,15 @@ def make_team_state(team, pitcher, ballparks, season, day):
     )
 
 
+def get_pitcher_for_day_and_team(day, team):
+    rot_index = day % len(rotations_by_team[team]) + 1
+    if team in ["46358869-dce9-4a01-bfba-ac24fc56f57e", "979aee4a-6d80-4863-bf1c-ee1a78e06024", "adc5b394-8f76-416d-9ce9-813706877b84"]:
+        rot_index += 1
+        if rot_index >= len(rotations_by_team[team]):
+            rot_index = 1
+    return rotations_by_team[team][rot_index]
+
+
 def run_daily_sim(iterations=250, day=None, home_team_in=None, away_team_in=None, save_stlats=True):
     t1 = time.time()
     html_response = retry_request("https://www.blaseball.com/database/simulationdata")
@@ -273,8 +282,9 @@ def run_daily_sim(iterations=250, day=None, home_team_in=None, away_team_in=None
         away_team_name = game["awayTeamName"]
         game_id = game["id"]
         day = int(game["day"])
-        home_pitcher = game["homePitcher"]
-        away_pitcher = game["awayPitcher"]
+
+        home_pitcher = get_pitcher_for_day_and_team(day, home_team)
+        away_pitcher = get_pitcher_for_day_and_team(day, away_team)
 
         home_odds = game["homeOdds"]
         away_odds = game["awayOdds"]
@@ -332,8 +342,10 @@ def run_daily_sim(iterations=250, day=None, home_team_in=None, away_team_in=None
               f"{away_team_name}: {away_wins} ({away_wins / iterations}) - {away_odds_str}%")
         count += 1
 
-        output += f"{home_team_name}: {home_wins} ({home_wins / iterations}) - {home_odds_str}% " \
-                  f"{away_team_name}: {away_wins} ({away_wins / iterations}) - {away_odds_str}%\n"
+        home_pitcher_name = home_team_state.player_names[home_pitcher]
+        away_pitcher_name = away_team_state.player_names[away_pitcher]
+        output += f"{home_team_name} ({home_pitcher_name}): {home_wins} ({home_wins / iterations}) - {home_odds_str}% " \
+                  f"{away_team_name} ({away_pitcher_name}): {away_wins} ({away_wins / iterations}) - {away_odds_str}%\n"
 
         home_win_per = round((home_wins / iterations) * 1000) / 10
         away_win_per = round((away_wins / iterations) * 1000) / 10
@@ -419,7 +431,7 @@ def run_daily_sim(iterations=250, day=None, home_team_in=None, away_team_in=None
 
                         "opp_pitcher": {
                             "pitcher_id": away_pitcher,
-                            "pitcher_name": game["awayPitcherName"],
+                            "pitcher_name": away_pitcher_name,
                             "p_team_id": away_team,
                             "p_team_name": game["awayTeamName"]
                             }
@@ -438,7 +450,7 @@ def run_daily_sim(iterations=250, day=None, home_team_in=None, away_team_in=None
                         "over_twenty": away_xbig_scores,
                         "opp_pitcher": {
                             "pitcher_id": home_pitcher,
-                            "pitcher_name": game["homePitcherName"],
+                            "pitcher_name": home_pitcher_name,
                             "p_team_id": home_team,
                             "p_team_name": game["homeTeamName"]
                         }
