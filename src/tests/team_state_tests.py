@@ -678,3 +678,24 @@ class TestUpdatePitcher(TestTeamState):
         self.assertEqual("p4", self.team_state.starting_pitcher)
 
 
+class Test(TestTeamState):
+    def test_fourth_strike_application(self):
+        self.team_state.team_enum = Team.FIREFIGHTERS
+        self.team_state.season = 15
+        self.team_state.apply_season_buffs()
+        self.assertEqual(3, self.team_state.strikes_for_out)
+        self.team_state.season = 16
+        self.team_state.apply_season_buffs()
+        self.assertEqual(4, self.team_state.strikes_for_out)
+
+    def test_walk_in_the_park_application(self):
+        self.team_state.team_enum = Team.SUNBEAMS
+        self.team_state.season = 10
+        self.team_state.apply_season_buffs()
+        self.assertEqual(4, self.team_state.balls_for_walk)
+        self.team_state.season = 11
+        self.team_state.apply_season_buffs()
+        self.assertEqual(3, self.team_state.balls_for_walk)
+
+
+

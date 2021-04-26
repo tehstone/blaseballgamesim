@@ -102,7 +102,7 @@ class TestGameState(unittest.TestCase):
     def setUp(self):
         self.home_team_state = TeamState(
             team_id="747b8e4a-7e50-4638-a973-ea7950a3e739",
-            season=11,
+            season=10,
             day=1,
             stadium=default_stadium,
             weather=Weather.SUN2,
@@ -158,7 +158,7 @@ class TestGameState(unittest.TestCase):
 
         self.away_team_state = TeamState(
             team_id="f02aeae2-5e6a-4098-9842-02d2273f25c7",
-            season=11,
+            season=10,
             day=1,
             stadium=default_stadium,
             weather=Weather.SUN2,
@@ -256,6 +256,19 @@ class TestInit(TestGameState):
         self.assertEqual(self.game_state.away_score, 0)
         self.assertEqual(self.game_state.half, InningHalf.TOP)
         self.assertEqual(self.game_state.home_team.team_enum, Team.TIGERS)
+        self.assertEqual(self.game_state.away_team.team_enum, Team.SUNBEAMS)
+
+
+    def test_season_buff_initial_state(self):
+        self.game_state.home_team.team_enum = Team.WORMS
+        self.game_state.season = 17
+        self.game_state.reset_game_state()
+        self.assertEqual(self.game_state.game_id, "1")
+        self.assertEqual(self.game_state.season, 17)
+        self.assertEqual(self.game_state.home_score, Decimal("1.0"))
+        self.assertEqual(self.game_state.away_score, Decimal("0.0"))
+        self.assertEqual(self.game_state.half, InningHalf.TOP)
+        self.assertEqual(self.game_state.home_team.team_enum, Team.WORMS)
         self.assertEqual(self.game_state.away_team.team_enum, Team.SUNBEAMS)
 
 
@@ -616,7 +629,6 @@ class TestPsychic(TestGameState):
         self.assertEquals(True, self.game_state.resolve_psychic_pitcher())
 
 
-
 class TestAAA(TestGameState):
     def testAAATrigger(self):
         global HIT_PRIORS
@@ -668,6 +680,62 @@ class TestAAA(TestGameState):
         self.game_state.hit_sim([])
         self.assertEqual(len(self.game_state.cur_base_runners), 1)
         self.assertEqual(self.game_state.cur_base_runners[3], "p11")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.assertFalse(PlayerBuff.OVER_PERFORMING in self.game_state.cur_batting_team.player_buffs["p11"])
+
+
+class TestAA(TestGameState):
+    def testAATrigger(self):
+        global HIT_PRIORS
+        # test double
+        game_state.AA_TRIGGER_PERCENTAGE = 1.0
+        self.game_state.cur_batting_team.team_enum = Team.PIES
+        self.game_state.season = 17
+        self.game_state.reset_game_state()
+        self.assertFalse(PlayerBuff.OVER_PERFORMING in self.game_state.cur_batting_team.player_buffs["p11"])
+        HIT_PRIORS = [0.0, 1.0, 0.0, 0.0]
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.hit_sim([])
+        self.assertEqual(len(self.game_state.cur_base_runners), 1)
+        self.assertEqual(self.game_state.cur_base_runners[2], "p11")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.assertTrue(PlayerBuff.OVER_PERFORMING in self.game_state.cur_batting_team.player_buffs["p11"])
+
+    def testNoAATrigger(self):
+        global HIT_PRIORS
+        # test double
+        game_state.AA_TRIGGER_PERCENTAGE = 1.0
+        self.game_state.cur_batting_team.team_enum = Team.WORMS
+        self.game_state.season = 17
+        self.game_state.reset_game_state()
+        self.assertFalse(PlayerBuff.OVER_PERFORMING in self.game_state.cur_batting_team.player_buffs["p11"])
+        HIT_PRIORS = [0.0, 1.0, 0.0, 0.0]
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.hit_sim([])
+        self.assertEqual(len(self.game_state.cur_base_runners), 1)
+        self.assertEqual(self.game_state.cur_base_runners[2], "p11")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.assertFalse(PlayerBuff.OVER_PERFORMING in self.game_state.cur_batting_team.player_buffs["p11"])
+
+        game_state.AA_TRIGGER_PERCENTAGE = 0.0
+        self.game_state.cur_batting_team.team_enum = Team.PIES
+        self.game_state.season = 17
+        self.game_state.reset_game_state()
+        self.assertFalse(PlayerBuff.OVER_PERFORMING in self.game_state.cur_batting_team.player_buffs["p11"])
+        HIT_PRIORS = [0.0, 1.0, 0.0, 0.0]
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.hit_sim([])
+        self.assertEqual(len(self.game_state.cur_base_runners), 1)
+        self.assertEqual(self.game_state.cur_base_runners[2], "p11")
         self.assertEqual(self.game_state.home_score, 0)
         self.assertEqual(self.game_state.away_score, 0)
         self.assertFalse(PlayerBuff.OVER_PERFORMING in self.game_state.cur_batting_team.player_buffs["p11"])
@@ -1010,6 +1078,19 @@ class TestRunnerAdvancementHit(TestGameState):
         self.assertEqual(self.game_state.away_score, 1)
         self.assertEqual(self.game_state.home_score, 0)
 
+    def testSuccessWithAcidic(self):
+        global ADVANCE_HIT_PRIORS
+        ADVANCE_HIT_PRIORS = [0.0, 1.0]
+        self.game_state.cur_base_runners[3] = "p11"
+        self.game_state.cur_base_runners[2] = "p12"
+        self.assertEqual(self.game_state.away_score, 0)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.game_state.attempt_to_advance_runners_on_hit(acidic_pitcher_check=True)
+        self.assertEqual(len(self.game_state.cur_base_runners), 1)
+        self.assertEqual(self.game_state.cur_base_runners[3], "p12")
+        self.assertEqual(self.game_state.away_score, Decimal("0.9"))
+        self.assertEqual(self.game_state.home_score, 0)
+
 
 class TestRunnerAdvancementOut(TestGameState):
 
@@ -1058,6 +1139,19 @@ class TestRunnerAdvancementOut(TestGameState):
         self.assertEqual(len(self.game_state.cur_base_runners), 1)
         self.assertEqual(self.game_state.cur_base_runners[3], "p12")
         self.assertEqual(self.game_state.away_score, 1)
+        self.assertEqual(self.game_state.home_score, 0)
+
+    def testSuccessWithAcidic(self):
+        global ADVANCE_OUT_PRIORS
+        ADVANCE_OUT_PRIORS = [0.0, 1.0]
+        self.game_state.cur_base_runners[3] = "p11"
+        self.game_state.cur_base_runners[2] = "p12"
+        self.assertEqual(self.game_state.away_score, 0)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.game_state.attempt_to_advance_runners_on_flyout(acidic_pitcher_check=True)
+        self.assertEqual(len(self.game_state.cur_base_runners), 1)
+        self.assertEqual(self.game_state.cur_base_runners[3], "p12")
+        self.assertEqual(self.game_state.away_score, Decimal("0.9"))
         self.assertEqual(self.game_state.home_score, 0)
 
 
@@ -1111,6 +1205,17 @@ class TestHitSim(TestGameState):
         self.assertEqual(self.game_state.home_score, 0)
         self.assertEqual(self.game_state.away_score, 1)
 
+        # test acidic hr
+        self.game_state.reset_game_state()
+        HIT_PRIORS = [0.0, 0.0, 0.0, 1.0]
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.hit_sim([], acidic_pitcher_check=True)
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, Decimal("0.9"))
+
     def testRunnerOnThird(self):
         global HIT_PRIORS
         # test single
@@ -1124,6 +1229,19 @@ class TestHitSim(TestGameState):
         self.assertEqual(self.game_state.cur_base_runners[1], "p11")
         self.assertEqual(self.game_state.home_score, 0)
         self.assertEqual(self.game_state.away_score, 1)
+
+        # test acidic single driving a run in
+        self.game_state.reset_game_state()
+        HIT_PRIORS = [1.0, 0.0, 0.0, 0.0]
+        self.game_state.cur_base_runners[3] = "p13"
+        self.assertEqual(len(self.game_state.cur_base_runners), 1)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.hit_sim([], acidic_pitcher_check=True)
+        self.assertEqual(len(self.game_state.cur_base_runners), 1)
+        self.assertEqual(self.game_state.cur_base_runners[1], "p11")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, Decimal("0.9"))
 
         # test double
         self.game_state.reset_game_state()
@@ -1162,6 +1280,18 @@ class TestHitSim(TestGameState):
         self.assertEqual(len(self.game_state.cur_base_runners), 0)
         self.assertEqual(self.game_state.home_score, 0)
         self.assertEqual(self.game_state.away_score, 2)
+
+        # test acidic hr
+        self.game_state.reset_game_state()
+        HIT_PRIORS = [0.0, 0.0, 0.0, 1.0]
+        self.game_state.cur_base_runners[3] = "p13"
+        self.assertEqual(len(self.game_state.cur_base_runners), 1)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.hit_sim([], acidic_pitcher_check=True)
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, Decimal("1.8"))
 
     def testRunnerOnFirstAndThirdNoAdvance(self):
         global HIT_PRIORS
@@ -1209,6 +1339,20 @@ class TestHitSim(TestGameState):
         self.assertEqual(self.game_state.cur_base_runners[3], "p11")
         self.assertEqual(self.game_state.home_score, 0)
         self.assertEqual(self.game_state.away_score, 2)
+
+        # test acidic triple
+        self.game_state.reset_game_state()
+        HIT_PRIORS = [0.0, 0.0, 1.0, 0.0]
+        self.game_state.cur_base_runners[3] = "p12"
+        self.game_state.cur_base_runners[1] = "p13"
+        self.assertEqual(len(self.game_state.cur_base_runners), 2)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.hit_sim([], acidic_pitcher_check=True)
+        self.assertEqual(len(self.game_state.cur_base_runners), 1)
+        self.assertEqual(self.game_state.cur_base_runners[3], "p11")
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, Decimal("1.8"))
 
         # test hr
         self.game_state.reset_game_state()
@@ -1324,6 +1468,45 @@ class TestBigBuckets(TestGameState):
         self.assertEqual(self.game_state.away_score, 8.0)
         game_state.BIG_BUCKET_PERCENTAGE = 0.0
 
+    def testAcidicBigBuckets(self):
+        global HIT_PRIORS
+        # test hr
+        self.game_state.reset_game_state()
+        HIT_PRIORS = [0.0, 0.0, 0.0, 1.0]
+        self.game_state.stadium.has_big_buckets = True
+        game_state.BIG_BUCKET_PERCENTAGE = 0.0
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.game_state.hit_sim([], acidic_pitcher_check=True)
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, Decimal("0.9"))
+        game_state.BIG_BUCKET_PERCENTAGE = 1.0
+        self.game_state.hit_sim([], acidic_pitcher_check=True)
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, Decimal("2.7"))
+        self.game_state.stadium.has_big_buckets = False
+        self.game_state.hit_sim([], acidic_pitcher_check=True)
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, Decimal("3.6"))
+        self.game_state.stadium.has_big_buckets = True
+        self.game_state.weather = Weather.COFFEE
+        self.game_state.cur_batting_team.player_buffs[self.game_state.cur_batting_team.cur_batter][PlayerBuff.WIRED] = 1
+        self.game_state.hit_sim([], acidic_pitcher_check=True)
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, Decimal("6.4"))
+        del self.game_state.cur_batting_team.player_buffs[self.game_state.cur_batting_team.cur_batter][PlayerBuff.WIRED]
+        self.game_state.cur_batting_team.player_buffs[self.game_state.cur_batting_team.cur_batter][PlayerBuff.TIRED] = 1
+        self.game_state.hit_sim([], acidic_pitcher_check=True)
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, Decimal("7.2"))
+        game_state.BIG_BUCKET_PERCENTAGE = 0.0
+
 
 class TestInPlaySim(TestGameState):
 
@@ -1428,11 +1611,37 @@ class TestPitchSim(TestGameState):
         self.assertEqual(self.game_state.cur_base_runners[3], "p12")
         self.assertEqual(self.game_state.away_score, 1)
 
+        # test runner scores on acidic walk
+        self.game_state.reset_game_state()
+        self.game_state.cur_pitching_team.team_enum = Team.TACOS
+        self.game_state.season = 17
+        game_state.ACIDIC_TRIGGER_PERCENTAGE = 1.0
+        self.game_state.cur_base_runners[1] = "p13"
+        self.game_state.cur_base_runners[2] = "p12"
+        self.game_state.cur_base_runners[3] = "p11"
+        self.assertEqual(len(self.game_state.cur_base_runners), 3)
+        self.assertEqual(self.game_state.home_score, 0)
+        self.assertEqual(self.game_state.away_score, 0)
+        self.assertEqual(self.game_state.outs, 0)
+        self.assertEqual(self.game_state.balls, 0)
+        self.game_state.pitch_sim()
+        self.game_state.pitch_sim()
+        self.game_state.pitch_sim()
+        self.game_state.pitch_sim()
+        self.assertEqual(len(self.game_state.cur_base_runners), 3)
+        self.assertEqual(self.game_state.balls, 0)
+        self.assertEqual(len(self.game_state.cur_base_runners), 3)
+        self.assertEqual(self.game_state.cur_base_runners[1], "p11")
+        self.assertEqual(self.game_state.cur_base_runners[2], "p13")
+        self.assertEqual(self.game_state.cur_base_runners[3], "p12")
+        self.assertEqual(self.game_state.away_score, Decimal("0.9"))
+
         #turn on base instincts
         new_priors = {3: 1.0, 2: 0.0}
         BASE_INSTINCT_PRIORS[4] = new_priors
         # test runner scores on walk
         self.game_state.reset_game_state()
+        self.game_state.cur_pitching_team.team_enum = Team.WORMS
         self.game_state.cur_base_runners[1] = "p13"
         self.game_state.cur_base_runners[2] = "p12"
         self.game_state.cur_base_runners[3] = "p11"
@@ -1715,6 +1924,17 @@ class TestCoffeePrimeScoring(TestGameState):
         self.assertEqual(len(self.game_state.cur_base_runners), 0)
         self.assertEqual(Decimal("1.5"), self.game_state.away_score)
 
+    def testAcidicGenericWiredAdvancement(self):
+        self.game_state.weather = Weather.COFFEE
+        self.game_state.cur_base_runners[3] = "p11"
+        self.game_state.cur_batting_team.player_buffs["p11"][PlayerBuff.WIRED] = 1
+        self.assertEqual(Decimal("0"), self.game_state.away_score)
+        self.assertEqual(len(self.game_state.cur_base_runners), 1)
+        self.game_state.advance_all_runners(1, acidic_pitcher_check=True)
+        self.assertEqual(self.game_state.outs, 0)
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(Decimal("1.4"), self.game_state.away_score)
+
     def testGenericTiredAdvancement(self):
         self.game_state.weather = Weather.COFFEE
         self.game_state.cur_base_runners[3] = "p11"
@@ -1725,6 +1945,17 @@ class TestCoffeePrimeScoring(TestGameState):
         self.assertEqual(self.game_state.outs, 0)
         self.assertEqual(len(self.game_state.cur_base_runners), 0)
         self.assertEqual(Decimal("0.5"), self.game_state.away_score)
+
+    def testAcidicGenericTiredAdvancement(self):
+        self.game_state.weather = Weather.COFFEE
+        self.game_state.cur_base_runners[3] = "p11"
+        self.game_state.cur_batting_team.player_buffs["p11"][PlayerBuff.TIRED] = 1
+        self.assertEqual(Decimal("0"), self.game_state.away_score)
+        self.assertEqual(len(self.game_state.cur_base_runners), 1)
+        self.game_state.advance_all_runners(1, acidic_pitcher_check=True)
+        self.assertEqual(self.game_state.outs, 0)
+        self.assertEqual(len(self.game_state.cur_base_runners), 0)
+        self.assertEqual(Decimal("0.4"), self.game_state.away_score)
 
     def testSBAttemptSuccessHome(self):
         global SBA_PRIORS
@@ -1775,4 +2006,127 @@ class TestCoffee2Out(TestGameState):
         self.assertEqual(len(self.game_state.cur_base_runners), 0)
         self.assertEqual(Decimal("1.0"), self.game_state.away_score)
         self.assertTrue(PlayerBuff.COFFEE_RALLY in self.game_state.cur_batting_team.player_buffs["p11"])
+
+class TestCoffee3Unruns(TestGameState):
+    def testConditionUnmet(self):
+        self.game_state.weather = Weather.COFFEE2
+        self.game_state.cur_base_runners[1] = "p11"
+        self.game_state.cur_pitching_team.player_buffs["p1"][PlayerBuff.TRIPLE_THREAT] = 1
+        self.game_state.outs = 0
+        self.assertEqual(self.game_state.outs, 0)
+        self.assertEqual(Decimal("0"), self.game_state.away_score)
+        self.game_state.resolve_strikeout(acidic_pitcher_check=False)
+        self.assertEqual(Decimal("0"), self.game_state.away_score)
+
+    def testGenericConditionMet(self):
+        self.game_state.weather = Weather.COFFEE2
+        self.game_state.cur_pitching_team.player_buffs["p4"][PlayerBuff.TRIPLE_THREAT] = 1
+        # strikeout with 3 balls
+        self.game_state.balls = 3
+        self.assertEqual(Decimal("0"), self.game_state.away_score)
+        self.game_state.resolve_strikeout(acidic_pitcher_check=False)
+        self.assertEqual(self.game_state.outs, 1)
+        self.assertEqual(Decimal("-0.3"), self.game_state.away_score)
+
+        # strikeout with person on 3rd
+        self.game_state.cur_base_runners[3] = "p11"
+        self.game_state.outs = 0
+        self.game_state.away_score = Decimal("0.0")
+        self.assertEqual(self.game_state.outs, 0)
+        self.assertEqual(Decimal("0"), self.game_state.away_score)
+        self.game_state.resolve_strikeout(acidic_pitcher_check=False)
+        self.assertEqual(self.game_state.outs, 1)
+        self.assertEqual(Decimal("-0.3"), self.game_state.away_score)
+
+        # strikeout with person on 3rd and 3 balls
+        self.game_state.cur_base_runners[3] = "p11"
+        self.game_state.outs = 0
+        self.game_state.balls = 3
+        self.game_state.away_score = Decimal("0.0")
+        self.assertEqual(self.game_state.outs, 0)
+        self.assertEqual(Decimal("0"), self.game_state.away_score)
+        self.game_state.resolve_strikeout(acidic_pitcher_check=False)
+        self.assertEqual(self.game_state.outs, 1)
+        self.assertEqual(Decimal("-0.6"), self.game_state.away_score)
+
+        # strikeout with bases loaded (by definition player on 3rd)
+        self.game_state.cur_base_runners[1] = "p11"
+        self.game_state.cur_base_runners[2] = "p11"
+        self.game_state.cur_base_runners[3] = "p11"
+        self.game_state.outs = 0
+        self.game_state.away_score = Decimal("0.0")
+        self.assertEqual(self.game_state.outs, 0)
+        self.assertEqual(Decimal("0"), self.game_state.away_score)
+        self.game_state.resolve_strikeout(acidic_pitcher_check=False)
+        self.assertEqual(self.game_state.outs, 1)
+        self.assertEqual(Decimal("-0.6"), self.game_state.away_score)
+
+        # strikeout with all 3
+        self.game_state.cur_base_runners[1] = "p11"
+        self.game_state.cur_base_runners[2] = "p11"
+        self.game_state.cur_base_runners[3] = "p11"
+        self.game_state.outs = 0
+        self.game_state.balls = 3
+        self.game_state.away_score = Decimal("0.0")
+        self.assertEqual(self.game_state.outs, 0)
+        self.assertEqual(Decimal("0"), self.game_state.away_score)
+        self.game_state.resolve_strikeout(acidic_pitcher_check=False)
+        self.assertEqual(self.game_state.outs, 1)
+        self.assertEqual(Decimal("-0.9"), self.game_state.away_score)
+
+    def testAcidicGenericConditionMet(self):
+        self.game_state.weather = Weather.COFFEE2
+        self.game_state.cur_pitching_team.player_buffs["p4"][PlayerBuff.TRIPLE_THREAT] = 1
+        # strikeout with 3 balls
+        self.game_state.balls = 3
+        self.assertEqual(Decimal("0"), self.game_state.away_score)
+        self.game_state.resolve_strikeout(acidic_pitcher_check=True)
+        self.assertEqual(self.game_state.outs, 1)
+        self.assertEqual(Decimal("-0.4"), self.game_state.away_score)
+
+        # strikeout with person on 3rd
+        self.game_state.cur_base_runners[3] = "p11"
+        self.game_state.outs = 0
+        self.game_state.away_score = Decimal("0.0")
+        self.assertEqual(self.game_state.outs, 0)
+        self.assertEqual(Decimal("0"), self.game_state.away_score)
+        self.game_state.resolve_strikeout(acidic_pitcher_check=True)
+        self.assertEqual(self.game_state.outs, 1)
+        self.assertEqual(Decimal("-0.4"), self.game_state.away_score)
+
+        # strikeout with person on 3rd and 3 balls
+        self.game_state.cur_base_runners[3] = "p11"
+        self.game_state.outs = 0
+        self.game_state.balls = 3
+        self.game_state.away_score = Decimal("0.0")
+        self.assertEqual(self.game_state.outs, 0)
+        self.assertEqual(Decimal("0"), self.game_state.away_score)
+        self.game_state.resolve_strikeout(acidic_pitcher_check=True)
+        self.assertEqual(self.game_state.outs, 1)
+        self.assertEqual(Decimal("-0.8"), self.game_state.away_score)
+
+        # strikeout with bases loaded (by definition player on 3rd)
+        self.game_state.cur_base_runners[1] = "p11"
+        self.game_state.cur_base_runners[2] = "p11"
+        self.game_state.cur_base_runners[3] = "p11"
+        self.game_state.outs = 0
+        self.game_state.away_score = Decimal("0.0")
+        self.assertEqual(self.game_state.outs, 0)
+        self.assertEqual(Decimal("0"), self.game_state.away_score)
+        self.game_state.resolve_strikeout(acidic_pitcher_check=True)
+        self.assertEqual(self.game_state.outs, 1)
+        self.assertEqual(Decimal("-0.8"), self.game_state.away_score)
+
+        # strikeout with all 3
+        self.game_state.cur_base_runners[1] = "p11"
+        self.game_state.cur_base_runners[2] = "p11"
+        self.game_state.cur_base_runners[3] = "p11"
+        self.game_state.outs = 0
+        self.game_state.balls = 3
+        self.game_state.away_score = Decimal("0.0")
+        self.assertEqual(self.game_state.outs, 0)
+        self.assertEqual(Decimal("0"), self.game_state.away_score)
+        self.game_state.resolve_strikeout(acidic_pitcher_check=True)
+        self.assertEqual(self.game_state.outs, 1)
+        self.assertEqual(Decimal("-1.2"), self.game_state.away_score)
 

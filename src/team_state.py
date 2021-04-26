@@ -3,17 +3,21 @@ from decimal import Decimal
 from typing import Any, Dict, List, Tuple
 import json
 import logging
+import random
 import statistics
 
 from common import BlaseballStatistics as Stats
 from common import ForbiddenKnowledge as FK
 from common import AdditiveTypes, BloodType, calc_vibes, GameEventTeamBuff, PlayerBuff, \
-    Team, team_game_event_map, time_based_event_map, TimeEventTeamBuff, team_id_map, Weather
+    season_based_event_map, SeasonEventTeamBuff, Team, team_game_event_map, time_based_event_map, \
+    TimeEventTeamBuff, team_id_map, Weather
 from stadium import Stadium
 
 DEF_ID = "DEFENSE"
 TEAM_ID = "TEAM"
+HAUNTED_ID = "HAUNTED"
 
+HAUNTED_TRIGGER_PERCENTAGE = 0.7
 
 class TeamState(object):
     def __init__(
@@ -51,6 +55,8 @@ class TeamState(object):
         self.is_home: bool = is_home
         self.runners_aboard: bool = False
         self.num_bases: int = num_bases
+        self.initial_balls_for_walk = balls_for_walk
+        self.initial_strikes_for_out = strikes_for_out
         self.balls_for_walk: int = balls_for_walk
         self.strikes_for_out: int = strikes_for_out
         self.outs_for_inning: int = outs_for_inning
@@ -59,6 +65,7 @@ class TeamState(object):
         self.starting_pitcher: str = starting_pitcher
         self.cur_pitcher_pos: int = cur_pitcher_pos
         self.stlats: Dict[str, Dict[FK, float]] = stlats
+        self.add_default_haunted_stats()
         self.player_buffs: Dict[str, Dict[PlayerBuff, int]] = buffs
         self.game_stats: Dict[str, Dict[Stats, float]] = game_stats
         self.segmented_stats: Dict[int, Dict[str, Dict[Stats, float]]] = segmented_stats
@@ -73,6 +80,7 @@ class TeamState(object):
         self.base_running_addition: float = 0.0
         self.player_additives = self.pre_load_additives()
         self.calc_additives()
+        self.apply_season_buffs()
         self._calculate_defense()
 
     def validate_game_state_additives(self, cur_runs: Decimal, stadium: Stadium):
@@ -285,6 +293,7 @@ class TeamState(object):
     def reset_team_state(self, game_stat_reset=False, lineup_changed=True) -> None:
         if game_stat_reset:
             self.reset_game_stats()
+        self.apply_season_buffs()
         self.cur_batter_pos = 1
         self.cur_batter = self.lineup[self.cur_batter_pos]
         # we have to reset the state of the starting pitcher back to the pitcher pos and call update to
@@ -580,6 +589,7 @@ class TeamState(object):
 
     def get_pitcher_feature_vector(self) -> List[float]:
         player_id = self.starting_pitcher
+        # TODO(kjc9): figure out how to haunt a pitcher appropriately
         player_pitching_additive = self.player_additives[player_id][AdditiveTypes.PITCHING]
         ret_val: List[float] = [
             self.stlats[player_id][FK.COLDNESS] + self.pitching_addition + player_pitching_additive,
@@ -597,11 +607,16 @@ class TeamState(object):
         return ret_val
 
     def get_batter_feature_vector(self, player_id: str) -> List[float]:
+        player_batting_additive = self.player_additives[player_id][AdditiveTypes.BATTING]
+        player_base_running_additive = self.player_additives[player_id][AdditiveTypes.BASE_RUNNING]
+        if PlayerBuff.HAUNTED in self.player_buffs[player_id]:
+            player_id = HAUNTED_ID
+            roll = self._random_roll()
+            if roll < HAUNTED_TRIGGER_PERCENTAGE:
+                player_id = HAUNTED_ID
         new_path = self.stlats[player_id][FK.PATHETICISM] - self.batting_addition
         if new_path < 0.001:
             new_path = 0.001
-        player_batting_additive = self.player_additives[player_id][AdditiveTypes.BATTING]
-        player_base_running_additive = self.player_additives[player_id][AdditiveTypes.BASE_RUNNING]
         ret_val: List[float] = [
             self.stlats[player_id][FK.BUOYANCY] + self.batting_addition + player_batting_additive,
             self.stlats[player_id][FK.DIVINITY] + self.batting_addition + player_batting_additive,
@@ -625,12 +640,17 @@ class TeamState(object):
         return ret_val
 
     def get_runner_feature_vector(self, player_id: str) -> List[float]:
+        player_base_running_additive = self.player_additives[player_id][AdditiveTypes.BASE_RUNNING]
+        if PlayerBuff.HAUNTED in self.player_buffs[player_id]:
+            roll = self._random_roll()
+            if roll < HAUNTED_TRIGGER_PERCENTAGE:
+                player_id = HAUNTED_ID
         ret_val: List[float] = [
-            self.stlats[player_id][FK.BASE_THIRST],
-            self.stlats[player_id][FK.CONTINUATION],
-            self.stlats[player_id][FK.GROUND_FRICTION],
-            self.stlats[player_id][FK.INDULGENCE],
-            self.stlats[player_id][FK.LASERLIKENESS],
+            self.stlats[player_id][FK.BASE_THIRST] + self.base_running_addition + player_base_running_additive,
+            self.stlats[player_id][FK.CONTINUATION] + self.base_running_addition + player_base_running_additive,
+            self.stlats[player_id][FK.GROUND_FRICTION] + self.base_running_addition + player_base_running_additive,
+            self.stlats[player_id][FK.INDULGENCE] + self.base_running_addition + player_base_running_additive,
+            self.stlats[player_id][FK.LASERLIKENESS] + self.base_running_addition + player_base_running_additive,
             calc_vibes(self.stlats[player_id][FK.PRESSURIZATION],
                        self.stlats[player_id][FK.CINNAMON],
                        self.stlats[player_id][FK.BUOYANCY],
@@ -653,6 +673,16 @@ class TeamState(object):
 
     def get_cur_pitcher_name(self) -> str:
         return self.get_player_name(self.starting_pitcher)
+
+    def apply_season_buffs(self):
+        self.balls_for_walk = self.initial_balls_for_walk
+        self.strikes_for_out = self.initial_strikes_for_out
+        if self.team_enum in season_based_event_map:
+            if self.season in season_based_event_map[self.team_enum]:
+                if SeasonEventTeamBuff.FOURTH_STRIKE in season_based_event_map[self.team_enum][self.season]:
+                    self.strikes_for_out = 4
+                if SeasonEventTeamBuff.WALK_IN_THE_PARK in season_based_event_map[self.team_enum][self.season]:
+                    self.balls_for_walk = 3
 
     def calc_additives(self):
         self.reset_team_additives()
@@ -694,3 +724,30 @@ class TeamState(object):
         self.pitching_addition = 0.0
         self.base_running_addition = 0.0
         self.defense_addition = 0.0
+
+    def add_default_haunted_stats(self):
+        self.stlats[HAUNTED_ID] = {}
+        self.stlats[HAUNTED_ID][FK.BUOYANCY] = 0.559787783987762
+        self.stlats[HAUNTED_ID][FK.DIVINITY] = 0.570097776382661
+        self.stlats[HAUNTED_ID][FK.MARTYRDOM] = 0.508264944828862
+        self.stlats[HAUNTED_ID][FK.MOXIE] = 0.577773191383754
+        self.stlats[HAUNTED_ID][FK.MUSCLITUDE] = 0.577806588381654
+        self.stlats[HAUNTED_ID][FK.PATHETICISM] = 0.452339544249637
+        self.stlats[HAUNTED_ID][FK.THWACKABILITY] = 0.530712895674562
+        self.stlats[HAUNTED_ID][FK.TRAGICNESS] = 0.122325342550838
+        self.stlats[HAUNTED_ID][FK.BASE_THIRST] = 0.508194992127536
+        self.stlats[HAUNTED_ID][FK.CONTINUATION] = 0.537462942049345
+        self.stlats[HAUNTED_ID][FK.GROUND_FRICTION] = 0.510335664849534
+        self.stlats[HAUNTED_ID][FK.INDULGENCE] = 0.525962074376915
+        self.stlats[HAUNTED_ID][FK.LASERLIKENESS] = 0.527553677977796
+        self.stlats[HAUNTED_ID][FK.PRESSURIZATION] = 0.508219154865181
+        self.stlats[HAUNTED_ID][FK.CINNAMON] = 0.5
+        self.stlats[HAUNTED_ID][FK.COLDNESS] = 0.532376289658451
+        self.stlats[HAUNTED_ID][FK.OVERPOWERMENT] = 0.493760180878268
+        self.stlats[HAUNTED_ID][FK.RUTHLESSNESS] = 0.470901690616592
+        self.stlats[HAUNTED_ID][FK.SHAKESPEARIANISM] = 0.519076849689088
+        self.stlats[HAUNTED_ID][FK.SUPPRESSION] = 0.495819480037563
+        self.stlats[HAUNTED_ID][FK.UNTHWACKABILITY] = 0.451664863064749
+
+    def _random_roll(self) -> float:
+        return random.random()

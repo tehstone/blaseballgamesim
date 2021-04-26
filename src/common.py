@@ -1,5 +1,5 @@
 import asyncio
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 from enum import Enum
 
 import json
@@ -157,6 +157,12 @@ class BloodType(Enum):
     PSYCHIC = 14
 
 
+class SeasonEventTeamBuff(Enum):
+    FOURTH_STRIKE = 1
+    WALK_IN_THE_PARK = 2
+    HOME_FIELD_ADVANTAGE = 3
+
+
 class TimeEventTeamBuff(Enum):
     EARLBIRDS = 1
     MIDDLING = 2
@@ -174,6 +180,8 @@ class PitchEventTeamBuff(Enum):
     FIERY = 8
     PSYCHIC = 9
     AAA = 10
+    AA = 11
+    ACID = 12
 
 
 class GameEventTeamBuff(Enum):
@@ -273,6 +281,11 @@ class PlayerBuff(Enum):
     PRESSURE = 23
     SUPER_YUMMY = 24
     EGO4 = 25
+    EARL_SEASON = 26
+    MIDDLING = 27
+    LATE_TO_THE_PARTY = 28
+    HAUNTED = 29
+    WALK_IN_THE_PARK = 30
 
 
 class AdditiveTypes(Enum):
@@ -433,6 +446,12 @@ blood_name_map: Dict[str, BloodType] = {
     "Grass": BloodType.GRASS,
 }
 
+season_based_event_map: Dict[Team, Dict[int, Set[SeasonEventTeamBuff]]] = {
+    Team.SUNBEAMS: {11: {SeasonEventTeamBuff.WALK_IN_THE_PARK}, },
+    Team.FIREFIGHTERS: {16: {SeasonEventTeamBuff.FOURTH_STRIKE}, },
+    Team.WORMS: {17: {SeasonEventTeamBuff.HOME_FIELD_ADVANTAGE}, },
+}
+
 time_based_event_map: Dict[Team, Tuple[TimeEventTeamBuff, int, int, int, int]] = {
     Team.SPIES: (TimeEventTeamBuff.MIDDLING, 15, 15, 27, 72),
 }
@@ -452,6 +471,8 @@ team_pitch_event_map: Dict[Team, Tuple[PitchEventTeamBuff, int, Optional[int], O
     Team.TIGERS: (PitchEventTeamBuff.FIERY, 16, None, BloodType.FIRE),
     Team.SPIES: (PitchEventTeamBuff.PSYCHIC, 16, None, BloodType.PSYCHIC),
     Team.STEAKS: (PitchEventTeamBuff.AAA, 16, None, BloodType.AAA),
+    Team.PIES: (PitchEventTeamBuff.AA, 17, None, BloodType.AA),
+    Team.TACOS: (PitchEventTeamBuff.ACID, 17, None, BloodType.ACID),
 }
 
 team_game_event_map: Dict[Team, Tuple[GameEventTeamBuff, int, Optional[int], Optional[Weather]]] = {

@@ -17,6 +17,7 @@ from team_state import DEF_ID, TEAM_ID, TeamState
 from common import BlaseballStatistics as Stats
 from common import MachineLearnedModel as Ml
 from common import BloodType, PitchEventTeamBuff, PlayerBuff, pitch_reroll_event_map, team_pitch_event_map, Weather
+from common import season_based_event_map, SeasonEventTeamBuff
 from stadium import Stadium
 
 
@@ -25,6 +26,8 @@ ZAP_TRIGGER_PERCENTAGE = 0.02
 FIERY_TRIGGER_PERCENTAGE = 0.02
 PSYCHIC_TRIGGER_PERCENTAGE = 0.1
 AAA_TRIGGER_PERCENTAGE = 0.5
+AA_TRIGGER_PERCENTAGE = 0.25
+ACIDIC_TRIGGER_PERCENTAGE = 0.02
 FLOODING_TRIGGER_PERCENTAGE = 0.01
 COFFEE_PRIME_BEAN_PERCENTAGE = 0.05
 COFFEE_2_PERCENTAGE = 0.04
@@ -92,6 +95,7 @@ class GameState(object):
             self.cur_batting_team = self.home_team
             self.cur_pitching_team = self.away_team
         # initialize per side variables
+        self.apply_season_buffs()
         self.num_bases = self.cur_batting_team.num_bases
         self.balls_for_walk = self.cur_batting_team.balls_for_walk
         self.strikes_for_out = self.cur_batting_team.strikes_for_out
@@ -118,13 +122,13 @@ class GameState(object):
             }
         else:
             self.clf = {
-                Ml.PITCH: load(os.path.join("..", "season_sim", "models", "pitch_v4.1.joblib")),
-                Ml.HIT_TYPE: load(os.path.join("..", "season_sim", "models", "hit_type_v3.joblib")),
-                Ml.RUNNER_ADV_OUT: load(os.path.join("..", "season_sim", "models", "runner_advanced_on_out_v3.joblib")),
-                Ml.RUNNER_ADV_HIT: load(os.path.join("..", "season_sim", "models", "extra_base_on_hit_v3.joblib")),
-                Ml.SB_ATTEMPT: load(os.path.join("..", "season_sim", "models", "sba_v3.joblib")),
-                Ml.SB_SUCCESS: load(os.path.join("..", "season_sim", "models", "sb_success_v3.joblib")),
-                Ml.OUT_TYPE: load(os.path.join("..", "season_sim", "models", "out_type_v3.joblib")),
+                Ml.PITCH: load(os.path.join("..", "season_sim", "models", "pitch_v5.joblib")),
+                Ml.HIT_TYPE: load(os.path.join("..", "season_sim", "models", "hit_type_v4.joblib")),
+                Ml.RUNNER_ADV_OUT: load(os.path.join("..", "season_sim", "models", "runner_advanced_on_out_v4.joblib")),
+                Ml.RUNNER_ADV_HIT: load(os.path.join("..", "season_sim", "models", "extra_base_on_hit_v4.joblib")),
+                Ml.SB_ATTEMPT: load(os.path.join("..", "season_sim", "models", "sba_v4.joblib")),
+                Ml.SB_SUCCESS: load(os.path.join("..", "season_sim", "models", "sb_success_v4.joblib")),
+                Ml.OUT_TYPE: load(os.path.join("..", "season_sim", "models", "out_type_v4.joblib")),
             }
 
     def log_event(self, event: str) -> None:
@@ -158,7 +162,14 @@ class GameState(object):
                            f'triple threats.')
         self.cur_base_runners = {}
         self.is_game_over = False
+        self.apply_season_buffs()
         self.refresh_game_status()
+
+    def apply_season_buffs(self):
+        if self.home_team.team_enum in season_based_event_map:
+            if self.season in season_based_event_map[self.home_team.team_enum]:
+                if SeasonEventTeamBuff.HOME_FIELD_ADVANTAGE in season_based_event_map[self.home_team.team_enum][self.season]:
+                    self.home_score = Decimal("1.0")
 
     def refresh_game_status(self):
         """Refresh game state variables dependant on which team is batting"""
@@ -346,6 +357,7 @@ class GameState(object):
         num_strikes = self.resolve_fiery()
         psychic_batter_check = self.resolve_psychic_batter()
         psychic_pitcher_check = self.resolve_psychic_pitcher()
+        acidic_pitcher_check = self.resolve_acidic_pitcher()
 
         # Check to see if we need to deal with a batter reroll on team
         if self.cur_batting_team.team_enum in pitch_reroll_event_map:
@@ -382,10 +394,10 @@ class GameState(object):
                 if psychic_pitcher_check:
                     self.log_event(f'Psychic triggered!  Transforming a walk into a strikeout.')
                     self.strikes = self.strikes_for_out
-                    self.resolve_strikeout()
+                    self.resolve_strikeout(acidic_pitcher_check=False)
                 else:
                     num_bases_to_advance: int = self.resolve_base_instincts()
-                    self.resolve_walk(num_bases_to_advance)
+                    self.resolve_walk(num_bases_to_advance, acidic_pitcher_check)
             return
         if pitch_result == 1:
             if self.resolve_o_no():
@@ -407,9 +419,9 @@ class GameState(object):
                         self.log_event(f'Psychic triggered!  Transforming a strikeout into a walk.')
                         self.strikes -= self.strikes_for_out
                         self.balls = self.balls_for_walk
-                        self.resolve_walk(num_bases_to_advance=1)
+                        self.resolve_walk(1, acidic_pitcher_check)
                     else:
-                        self.resolve_strikeout()
+                        self.resolve_strikeout(acidic_pitcher_check)
                 return
         if pitch_result == 5:
             if self.resolve_o_no():
@@ -431,9 +443,9 @@ class GameState(object):
                         self.log_event(f'Psychic triggered!  Transforming a strikeout into a walk.')
                         self.strikes -= self.strikes_for_out
                         self.balls = self.balls_for_walk
-                        self.resolve_walk(num_bases_to_advance=1)
+                        self.resolve_walk(1, acidic_pitcher_check)
                     else:
-                        self.resolve_strikeout()
+                        self.resolve_strikeout(acidic_pitcher_check)
                 return
         if pitch_result == 2:
             self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
@@ -477,7 +489,7 @@ class GameState(object):
             )
             self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
                                               Stats.BATTER_AT_BATS, 1.0, self.day)
-            self.hit_sim(pitch_fv)
+            self.hit_sim(pitch_fv, acidic_pitcher_check)
             self.cur_batting_team.apply_hit_to_buffs(self.cur_batting_team.cur_batter)
             self.reset_pitch_count()
             self.cur_batting_team.next_batter()
@@ -508,7 +520,7 @@ class GameState(object):
                 1.0,
                 self.day
             )
-            self.in_play_sim(pitch_fv)
+            self.in_play_sim(pitch_fv, acidic_pitcher_check)
             self.cur_batting_team.reset_hit_buffs(self.cur_batting_team.cur_batter)
             self.reset_pitch_count()
             self.cur_batting_team.next_batter()
@@ -516,18 +528,18 @@ class GameState(object):
                 self.log_event(f'{self.cur_batting_team.get_player_name(self.cur_batting_team.cur_batter)} now at bat.')
             return
 
-    def resolve_walk(self, num_bases_to_advance: int) -> None:
+    def resolve_walk(self, num_bases_to_advance: int, acidic_pitcher_check: bool) -> None:
         self.log_event(f'Batter {self.cur_batting_team.get_player_name(self.cur_batting_team.cur_batter)} walks to base {num_bases_to_advance}.')
         # advance runners that are able
         # Known bug here for 5th base walks and base instincts
         if num_bases_to_advance == 4 or num_bases_to_advance == 3:
-            self.advance_all_runners(num_bases_to_advance)
+            self.advance_all_runners(num_bases_to_advance, acidic_pitcher_check)
         elif num_bases_to_advance == 2:
-            self.advance_all_forced_runners()
+            self.advance_all_forced_runners(acidic_pitcher_check)
             self.cur_base_runners[1] = self.cur_batting_team.cur_batter
-            self.advance_all_forced_runners()
+            self.advance_all_forced_runners(acidic_pitcher_check)
         elif num_bases_to_advance == 1:
-            self.advance_all_forced_runners()
+            self.advance_all_forced_runners(acidic_pitcher_check)
         else:
             return
         self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher, Stats.PITCHER_WALKS, 1.0, self.day)
@@ -537,7 +549,7 @@ class GameState(object):
         self.cur_batting_team.next_batter()
         self.log_event(f'{self.cur_batting_team.get_player_name(self.cur_batting_team.cur_batter)} now at bat.')
 
-    def resolve_strikeout(self) -> None:
+    def resolve_strikeout(self, acidic_pitcher_check: bool = False) -> None:
         self.log_event(f'Batter {self.cur_batting_team.get_player_name(self.cur_batting_team.cur_batter)} strikes out.')
         self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher,
                                            Stats.PITCHER_STRIKEOUTS, 1.0, self.day)
@@ -547,13 +559,16 @@ class GameState(object):
         self.cur_batting_team.reset_hit_buffs(self.cur_batting_team.cur_batter)
 
         # Let's check if coffee3 applies
+        run_modifier = Decimal("0.0")
+        if acidic_pitcher_check:
+            run_modifier = Decimal("-0.1")
         if PlayerBuff.TRIPLE_THREAT in self.cur_pitching_team.player_buffs[self.cur_pitching_team.starting_pitcher]:
             if self.balls == 3:
-                self.increase_batting_team_runs(Decimal("-0.3"))
+                self.increase_batting_team_runs(Decimal("-0.3") + run_modifier)
             if len(self.cur_base_runners) == 3:
-                self.increase_batting_team_runs(Decimal("-0.3"))
+                self.increase_batting_team_runs(Decimal("-0.3") + run_modifier)
             if 3 in self.cur_base_runners:
-                self.increase_batting_team_runs(Decimal("-0.3"))
+                self.increase_batting_team_runs(Decimal("-0.3") + run_modifier)
 
         self.reset_pitch_count()
         self.cur_batting_team.next_batter()
@@ -561,7 +576,7 @@ class GameState(object):
             self.log_event(f'{self.cur_batting_team.get_player_name(self.cur_batting_team.cur_batter)} now at bat.')
 
     # HIT MECHANICS
-    def in_play_sim(self, pitch_feature_vector: List[List[float]]) -> None:
+    def in_play_sim(self, pitch_feature_vector: List[List[float]], acidic_pitcher_check: bool = False) -> None:
         contact_type = self.generic_model_roll(Ml.OUT_TYPE, pitch_feature_vector)
         # 0 = Flyout, 1 = Groundout
         if contact_type == 0:
@@ -575,7 +590,7 @@ class GameState(object):
             self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
                                               Stats.BATTER_AT_BATS, 1.0, self.day)
             if self.outs < self.outs_for_inning:
-                self.attempt_to_advance_runners_on_flyout()
+                self.attempt_to_advance_runners_on_flyout(acidic_pitcher_check)
         if contact_type == 1:
             self.log_event(
                 f'Batter {self.cur_batting_team.get_player_name(self.cur_batting_team.cur_batter)} grounds out.')
@@ -587,10 +602,10 @@ class GameState(object):
             self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
                                               Stats.BATTER_AT_BATS, 1.0, self.day)
             if self.outs < self.outs_for_inning:
-                self.resolve_fc_dp()
+                self.resolve_fc_dp(acidic_pitcher_check)
         self.reset_pitch_count()
 
-    def hit_sim(self, pitch_feature_vector) -> None:
+    def hit_sim(self, pitch_feature_vector, acidic_pitcher_check: bool = False) -> None:
         # lets figure out what kind of hit
         self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
                                           Stats.BATTER_HITS, 1.0, self.day)
@@ -601,20 +616,33 @@ class GameState(object):
         if hit_type == 0:
             self.log_event(
                 f'Batter {self.cur_batting_team.get_player_name(self.cur_batting_team.cur_batter)} hits a single.')
-            self.advance_all_runners(1)
+            self.advance_all_runners(1, acidic_pitcher_check)
             self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
                                               Stats.BATTER_SINGLES, 1.0, self.day)
-            self.attempt_to_advance_runners_on_hit()
+            self.attempt_to_advance_runners_on_hit(acidic_pitcher_check)
             self.cur_base_runners[1] = self.cur_batting_team.cur_batter
         if hit_type == 1:
             self.log_event(
                 f'Batter {self.cur_batting_team.get_player_name(self.cur_batting_team.cur_batter)} hits a double.')
-            self.advance_all_runners(2)
+            # Check to see if we need to turn on over performing for AA after a double was hit
+            if self.cur_batting_team.team_enum in team_pitch_event_map:
+                # Possible event, let's validate
+                event, start_season, end_season, req_blood = team_pitch_event_map[self.cur_batting_team.team_enum]
+                # Deal with AA
+                if event == PitchEventTeamBuff.AA and self.check_valid_season(start_season, end_season):
+                    roll = self._random_roll()
+                    batter_id = self.cur_batting_team.cur_batter
+                    if PlayerBuff.OVER_PERFORMING not in self.cur_batting_team.player_buffs[batter_id] and \
+                            roll <= AA_TRIGGER_PERCENTAGE:
+                        self.log_event(f'AA triggers and turning on over perform.')
+                        self.cur_batting_team.player_buffs[batter_id][PlayerBuff.OVER_PERFORMING] = 1
+
+            self.advance_all_runners(2, acidic_pitcher_check)
             self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
                                               Stats.BATTER_DOUBLES, 1.0, self.day)
             self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher,
                                                Stats.PITCHER_XBH_ALLOWED, 1.0, self.day)
-            self.attempt_to_advance_runners_on_hit()
+            self.attempt_to_advance_runners_on_hit(acidic_pitcher_check)
             self.cur_base_runners[2] = self.cur_batting_team.cur_batter
         if hit_type == 2:
             self.log_event(
@@ -631,17 +659,17 @@ class GameState(object):
                             roll <= AAA_TRIGGER_PERCENTAGE:
                         self.log_event(f'AAA triggers and turning on over perform.')
                         self.cur_batting_team.player_buffs[batter_id][PlayerBuff.OVER_PERFORMING] = 1
-            self.advance_all_runners(3)
+            self.advance_all_runners(3, acidic_pitcher_check)
             self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
                                               Stats.BATTER_TRIPLES, 1.0, self.day)
             self.cur_pitching_team.update_stat(self.cur_pitching_team.starting_pitcher,
                                                Stats.PITCHER_XBH_ALLOWED, 1.0, self.day)
-            self.attempt_to_advance_runners_on_hit()
+            self.attempt_to_advance_runners_on_hit(acidic_pitcher_check)
             self.cur_base_runners[3] = self.cur_batting_team.cur_batter
         if hit_type == 3:
             self.log_event(
                 f'Batter {self.cur_batting_team.get_player_name(self.cur_batting_team.cur_batter)} hits a home run.')
-            self.advance_all_runners(self.num_bases)
+            self.advance_all_runners(self.num_bases, acidic_pitcher_check)
             self.cur_batting_team.update_stat(self.cur_batting_team.cur_batter,
                                               Stats.BATTER_HRS, 1.0, self.day)
             # batter scores
@@ -657,13 +685,16 @@ class GameState(object):
                 1.0,
                 self.day
             )
-            run_val = Decimal("1.0")
+            run_modifier = Decimal("0.0")
+            if acidic_pitcher_check:
+                run_modifier = Decimal("-0.1")
+            run_val = Decimal("1.0") + run_modifier
             if self.weather == Weather.COFFEE and \
                     PlayerBuff.WIRED in self.cur_batting_team.player_buffs[self.cur_batting_team.cur_batter]:
-                run_val = Decimal("1.5")
+                run_val = Decimal("1.5") + run_modifier
             if self.weather == Weather.COFFEE and \
                     PlayerBuff.TIRED in self.cur_batting_team.player_buffs[self.cur_batting_team.cur_batter]:
-                run_val = Decimal("0.5")
+                run_val = Decimal("0.5") + run_modifier
             if self.weather == Weather.COFFEE2 and \
                     PlayerBuff.COFFEE_RALLY in self.cur_batting_team.player_buffs[self.cur_batting_team.cur_batter]:
                 if self.outs > 0:
@@ -681,7 +712,7 @@ class GameState(object):
         self.reset_pitch_count()
         self.log_runners()
 
-    def attempt_to_advance_runners_on_hit(self) -> None:
+    def attempt_to_advance_runners_on_hit(self, acidic_pitcher_check: bool = False) -> None:
         snapshot = self.cur_base_runners
         for base in reversed(sorted(snapshot.keys())):
             new_base = base + 1
@@ -697,11 +728,11 @@ class GameState(object):
                 if self.generic_model_roll(Ml.RUNNER_ADV_HIT, base_runner_fv) == 1:
                     self.log_event(
                         f'Runner {self.cur_batting_team.get_player_name(self.cur_base_runners[base])} takes an extra base on the hit.')
-                    self.update_base_runner(base, Stats.GENERIC_ADVANCEMENT, 1)
+                    self.update_base_runner(base, Stats.GENERIC_ADVANCEMENT, 1, acidic_pitcher_check)
 
         return
 
-    def attempt_to_advance_runners_on_flyout(self) -> None:
+    def attempt_to_advance_runners_on_flyout(self, acidic_pitcher_check: bool = False) -> None:
         snapshot = self.cur_base_runners
         for base in reversed(sorted(snapshot.keys())):
             new_base = base + 1
@@ -717,12 +748,12 @@ class GameState(object):
                 if self.generic_model_roll(Ml.RUNNER_ADV_OUT, base_runner_fv) == 1:
                     self.log_event(
                         f'Runner {self.cur_batting_team.get_player_name(self.cur_base_runners[base])} tags up and advances.')
-                    self.update_base_runner(base, Stats.GENERIC_ADVANCEMENT, 1)
+                    self.update_base_runner(base, Stats.GENERIC_ADVANCEMENT, 1, acidic_pitcher_check)
         return
 
-    def resolve_fc_dp(self) -> None:
+    def resolve_fc_dp(self, acidic_pitcher_check: bool = False) -> None:
         # TODO(kjc9): implement this logic, for now, treat it as if everyone advances 1 base
-        self.advance_all_runners(1)
+        self.advance_all_runners(1, acidic_pitcher_check)
         return
 
     def _random_roll(self) -> float:
@@ -828,7 +859,7 @@ class GameState(object):
                         if roll < CHARM_TRIGGER_PERCENTAGE:
                             self.log_event(
                                 f'Batter {self.cur_batting_team.get_player_name(self.cur_batting_team.cur_batter)} is charmed into a strikeout.')
-                            self.resolve_strikeout()
+                            self.resolve_strikeout(False)
                             return True
                     return False
                 # TODO: Add additional pre pitch pitching events here as needed
@@ -847,7 +878,7 @@ class GameState(object):
                         if roll < CHARM_TRIGGER_PERCENTAGE:
                             self.log_event(
                                 f'Batter {self.cur_batting_team.get_player_name(self.cur_batting_team.cur_batter)} charms a walk.')
-                            self.resolve_walk(1)
+                            self.resolve_walk(1, False)
                             return True
                     return False
 
@@ -875,6 +906,15 @@ class GameState(object):
                 if roll < FIERY_TRIGGER_PERCENTAGE:
                     return 2
         return 1
+
+    def resolve_acidic_pitcher(self) -> bool:
+        if self.cur_pitching_team.team_enum in team_pitch_event_map:
+            event, start_season, end_season, req_blood = team_pitch_event_map[self.cur_pitching_team.team_enum]
+            if event == PitchEventTeamBuff.ACID:
+                roll = self._random_roll()
+                if roll < ACIDIC_TRIGGER_PERCENTAGE:
+                    return True
+        return False
 
     def resolve_psychic_pitcher(self) -> bool:
         if self.cur_pitching_team.team_enum in team_pitch_event_map:
@@ -986,25 +1026,25 @@ class GameState(object):
         return False
 
     # BASE RUNNING MECHANICS
-    def advance_all_runners(self, num_bases_to_advance: int) -> None:
+    def advance_all_runners(self, num_bases_to_advance: int, acidic_pitcher_check: bool = False) -> None:
         for base in reversed(sorted(self.cur_base_runners.keys())):
-            self.update_base_runner(base, Stats.GENERIC_ADVANCEMENT, num_bases_to_advance)
+            self.update_base_runner(base, Stats.GENERIC_ADVANCEMENT, num_bases_to_advance, acidic_pitcher_check)
 
-    def advance_all_forced_runners(self) -> None:
+    def advance_all_forced_runners(self, acidic_pitcher_check: bool = False) -> None:
         for base in reversed(sorted(self.cur_base_runners.keys())):
             if base == 4:
                 if 3 in self.cur_base_runners.keys() and 2 in self.cur_base_runners.keys() and 1 in self.cur_base_runners.keys():
-                    self.update_base_runner(base, Stats.GENERIC_ADVANCEMENT, 1)
+                    self.update_base_runner(base, Stats.GENERIC_ADVANCEMENT, 1, acidic_pitcher_check)
             if base == 3:
                 if 2 in self.cur_base_runners.keys() and 1 in self.cur_base_runners.keys():
-                    self.update_base_runner(base, Stats.GENERIC_ADVANCEMENT, 1)
+                    self.update_base_runner(base, Stats.GENERIC_ADVANCEMENT, 1, acidic_pitcher_check)
             if base == 2:
                 if 1 in self.cur_base_runners.keys():
-                    self.update_base_runner(base, Stats.GENERIC_ADVANCEMENT, 1)
+                    self.update_base_runner(base, Stats.GENERIC_ADVANCEMENT, 1, acidic_pitcher_check)
             if base == 1:
-                self.update_base_runner(base, Stats.GENERIC_ADVANCEMENT, 1)
+                self.update_base_runner(base, Stats.GENERIC_ADVANCEMENT, 1, acidic_pitcher_check)
 
-    def update_base_runner(self, base: int, action: Stats, num_bases_to_advance: int = 1) -> None:
+    def update_base_runner(self, base: int, action: Stats, num_bases_to_advance: int = 1, is_acidic: bool = False):
         if action == Stats.CAUGHT_STEALINGS:
             self.log_event(
                 f'Runner {self.cur_batting_team.get_player_name(self.cur_base_runners[base])} caught stealing.')
@@ -1046,6 +1086,11 @@ class GameState(object):
                 del self.cur_base_runners[base]
             return
         if action == Stats.GENERIC_ADVANCEMENT:
+            base_run_value_mod_flt = 0.0
+            base_run_value_mod = Decimal("0.0")
+            if is_acidic:
+                base_run_value_mod_flt = -0.1
+                base_run_value_mod = Decimal("-0.1")
             if base >= self.num_bases - num_bases_to_advance:
                 # run scores
                 self.log_event(
@@ -1055,16 +1100,16 @@ class GameState(object):
                 self.cur_pitching_team.update_stat(
                     self.cur_pitching_team.starting_pitcher,
                     Stats.PITCHER_EARNED_RUNS,
-                    1.0,
+                    1.0 + base_run_value_mod_flt,
                     self.day
                 )
-                run_val = Decimal("1.0")
+                run_val = Decimal("1.0") + base_run_value_mod
                 if self.weather == Weather.COFFEE and \
                         PlayerBuff.WIRED in self.cur_batting_team.player_buffs[self.cur_base_runners[base]]:
-                    run_val = Decimal("1.5")
+                    run_val = Decimal("1.5") + base_run_value_mod
                 if self.weather == Weather.COFFEE and \
                         PlayerBuff.TIRED in self.cur_batting_team.player_buffs[self.cur_base_runners[base]]:
-                    run_val = Decimal("0.5")
+                    run_val = Decimal("0.5") + base_run_value_mod
                 if self.weather == Weather.COFFEE2 and \
                         PlayerBuff.COFFEE_RALLY in self.cur_batting_team.player_buffs[self.cur_base_runners[base]]:
                     if self.outs > 0:
