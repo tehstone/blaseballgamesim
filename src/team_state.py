@@ -74,10 +74,10 @@ class TeamState(object):
         self.player_names: Dict[str, str] = player_names
         self.cur_batter_pos: int = cur_batter_pos
         self.cur_batter: str = lineup[cur_batter_pos]
-        self.batting_addition: float = 0.0
-        self.pitching_addition: float = 0.0
-        self.defense_addition: float = 0.0
-        self.base_running_addition: float = 0.0
+        self.batting_addition: float = 1.0
+        self.pitching_addition: float = 1.0
+        self.defense_addition: float = 1.0
+        self.base_running_addition: float = 1.0
         self.player_additives = self.pre_load_additives()
         self.calc_additives()
         self.apply_season_buffs()
@@ -90,18 +90,18 @@ class TeamState(object):
                     self.season >= start_season and \
                     req_weather == self.weather and \
                     self.runners_aboard:
-                self.batting_addition = 0.25
-                self.pitching_addition = 0.25
-                self.defense_addition = 0.25
-                self.base_running_addition = 0.25
+                self.batting_addition = 1.25
+                self.pitching_addition = 1.25
+                self.defense_addition = 1.25
+                self.base_running_addition = 1.25
             if buff == GameEventTeamBuff.PRESSURE and \
                     self.season >= start_season and \
                     req_weather == self.weather and \
                     not self.runners_aboard:
-                self.batting_addition = 0.0
-                self.pitching_addition = 0.0
-                self.defense_addition = 0.0
-                self.base_running_addition = 0.0
+                self.batting_addition = 1.0
+                self.pitching_addition = 1.0
+                self.defense_addition = 1.0
+                self.base_running_addition = 1.0
 
         for player_id in self.player_buffs.keys():
             cur_buffs = self.player_buffs[player_id]
@@ -109,63 +109,63 @@ class TeamState(object):
                 if cur_mod == PlayerBuff.UNDER_OVER and cur_buffs[cur_mod] == 2 and cur_runs > 5:
                     # turn off the buff
                     self.player_buffs[player_id][cur_mod] = 1
-                    self.player_additives[player_id][AdditiveTypes.BATTING] -= 0.2
-                    self.player_additives[player_id][AdditiveTypes.PITCHING] -= 0.2
-                    self.player_additives[player_id][AdditiveTypes.DEFENSE] -= 0.2
-                    self.player_additives[player_id][AdditiveTypes.BASE_RUNNING] -= 0.2
+                    self.player_additives[player_id][AdditiveTypes.BATTING] *= 1.0/1.2
+                    self.player_additives[player_id][AdditiveTypes.PITCHING] *= 1.0/1.2
+                    self.player_additives[player_id][AdditiveTypes.DEFENSE] *= 1.0/1.2
+                    self.player_additives[player_id][AdditiveTypes.BASE_RUNNING] *= 1.0/1.2
                     continue
                 if cur_mod == PlayerBuff.UNDER_OVER and cur_buffs[cur_mod] == 1 and cur_runs < 5:
                     # turn on the buff
                     self.player_buffs[player_id][cur_mod] = 2
-                    self.player_additives[player_id][AdditiveTypes.BATTING] += 0.2
-                    self.player_additives[player_id][AdditiveTypes.PITCHING] += 0.2
-                    self.player_additives[player_id][AdditiveTypes.DEFENSE] += 0.2
-                    self.player_additives[player_id][AdditiveTypes.BASE_RUNNING] += 0.2
+                    self.player_additives[player_id][AdditiveTypes.BATTING] *= 1.2
+                    self.player_additives[player_id][AdditiveTypes.PITCHING] *= 1.2
+                    self.player_additives[player_id][AdditiveTypes.DEFENSE] *= 1.2
+                    self.player_additives[player_id][AdditiveTypes.BASE_RUNNING] *= 1.2
                     continue
                 if cur_mod == PlayerBuff.OVER_UNDER and cur_buffs[cur_mod] == 1 and cur_runs > 5:
                     # turn on the debuff
                     self.player_buffs[player_id][cur_mod] = 2
-                    self.player_additives[player_id][AdditiveTypes.BATTING] -= 0.2
-                    self.player_additives[player_id][AdditiveTypes.PITCHING] -= 0.2
-                    self.player_additives[player_id][AdditiveTypes.DEFENSE] -= 0.2
-                    self.player_additives[player_id][AdditiveTypes.BASE_RUNNING] -= 0.2
+                    self.player_additives[player_id][AdditiveTypes.BATTING] *= 1.0/1.2
+                    self.player_additives[player_id][AdditiveTypes.PITCHING] *= 1.0/1.2
+                    self.player_additives[player_id][AdditiveTypes.DEFENSE] *= 1.0/1.2
+                    self.player_additives[player_id][AdditiveTypes.BASE_RUNNING] *= 1.0/1.2
                     continue
                 if cur_mod == PlayerBuff.OVER_UNDER and cur_buffs[cur_mod] == 2 and cur_runs <= 5:
                     # turn off the debuff
                     self.player_buffs[player_id][cur_mod] = 1
-                    self.player_additives[player_id][AdditiveTypes.BATTING] += 0.2
-                    self.player_additives[player_id][AdditiveTypes.PITCHING] += 0.2
-                    self.player_additives[player_id][AdditiveTypes.DEFENSE] += 0.2
-                    self.player_additives[player_id][AdditiveTypes.BASE_RUNNING] += 0.2
+                    self.player_additives[player_id][AdditiveTypes.BATTING] *= 1.2
+                    self.player_additives[player_id][AdditiveTypes.PITCHING] *= 1.2
+                    self.player_additives[player_id][AdditiveTypes.DEFENSE] *= 1.2
+                    self.player_additives[player_id][AdditiveTypes.BASE_RUNNING] *= 1.2
                     continue
                 if cur_mod == PlayerBuff.OVER_PERFORMING and \
                         cur_buffs[cur_mod] == 1:
                     # turn on OVER_PERFORMING FOR THE REST OF THE GAME
                     self.player_buffs[player_id][cur_mod] = 2
-                    self.player_additives[player_id][AdditiveTypes.BATTING] += 0.2
-                    self.player_additives[player_id][AdditiveTypes.PITCHING] += 0.2
-                    self.player_additives[player_id][AdditiveTypes.DEFENSE] += 0.2
-                    self.player_additives[player_id][AdditiveTypes.BASE_RUNNING] += 0.2
+                    self.player_additives[player_id][AdditiveTypes.BATTING] *= 1.2
+                    self.player_additives[player_id][AdditiveTypes.PITCHING] *= 1.2
+                    self.player_additives[player_id][AdditiveTypes.DEFENSE] *= 1.2
+                    self.player_additives[player_id][AdditiveTypes.BASE_RUNNING] *= 1.2
                     continue
                 if cur_mod == PlayerBuff.SUPER_YUMMY and \
                         cur_buffs[cur_mod] == 1 and \
                         (stadium.has_peanut_mister or self.weather == Weather.PEANUTS):
                     # turn on the buff
                     self.player_buffs[player_id][cur_mod] = 2
-                    self.player_additives[player_id][AdditiveTypes.BATTING] += 0.2
-                    self.player_additives[player_id][AdditiveTypes.PITCHING] += 0.2
-                    self.player_additives[player_id][AdditiveTypes.DEFENSE] += 0.2
-                    self.player_additives[player_id][AdditiveTypes.BASE_RUNNING] += 0.2
+                    self.player_additives[player_id][AdditiveTypes.BATTING] *= 1.2
+                    self.player_additives[player_id][AdditiveTypes.PITCHING] *= 1.2
+                    self.player_additives[player_id][AdditiveTypes.DEFENSE] *= 1.2
+                    self.player_additives[player_id][AdditiveTypes.BASE_RUNNING] *= 1.2
                     continue
                 if cur_mod == PlayerBuff.SUPER_YUMMY and \
                         cur_buffs[cur_mod] == 2 and \
                         (not stadium.has_peanut_mister or self.weather != Weather.PEANUTS):
                     # turn off the buff
                     self.player_buffs[player_id][cur_mod] = 1
-                    self.player_additives[player_id][AdditiveTypes.BATTING] -= 0.2
-                    self.player_additives[player_id][AdditiveTypes.PITCHING] -= 0.2
-                    self.player_additives[player_id][AdditiveTypes.DEFENSE] -= 0.2
-                    self.player_additives[player_id][AdditiveTypes.BASE_RUNNING] -= 0.2
+                    self.player_additives[player_id][AdditiveTypes.BATTING] *= 1.0/1.2
+                    self.player_additives[player_id][AdditiveTypes.PITCHING] *= 1.0/1.2
+                    self.player_additives[player_id][AdditiveTypes.DEFENSE] *= 1.0/1.2
+                    self.player_additives[player_id][AdditiveTypes.BASE_RUNNING] *= 1.0/1.2
                     continue
                 if cur_mod == PlayerBuff.PRESSURE and \
                         self.weather == Weather.FLOODING and \
@@ -173,10 +173,10 @@ class TeamState(object):
                         self.player_buffs[player_id][cur_mod] == 1:
                     # turn on the buff
                     self.player_buffs[player_id][cur_mod] = 2
-                    self.player_additives[player_id][AdditiveTypes.BATTING] += 0.25
-                    self.player_additives[player_id][AdditiveTypes.PITCHING] += 0.25
-                    self.player_additives[player_id][AdditiveTypes.DEFENSE] += 0.25
-                    self.player_additives[player_id][AdditiveTypes.BASE_RUNNING] += 0.25
+                    self.player_additives[player_id][AdditiveTypes.BATTING] *= 1.25
+                    self.player_additives[player_id][AdditiveTypes.PITCHING] *= 1.25
+                    self.player_additives[player_id][AdditiveTypes.DEFENSE] *= 1.25
+                    self.player_additives[player_id][AdditiveTypes.BASE_RUNNING] *= 1.25
                     continue
                 if cur_mod == PlayerBuff.PRESSURE and \
                         self.weather == Weather.FLOODING and \
@@ -184,10 +184,10 @@ class TeamState(object):
                         self.player_buffs[player_id][cur_mod] == 2:
                     # turn off the buff
                     self.player_buffs[player_id][cur_mod] = 1
-                    self.player_additives[player_id][AdditiveTypes.BATTING] -= 0.25
-                    self.player_additives[player_id][AdditiveTypes.PITCHING] -= 0.25
-                    self.player_additives[player_id][AdditiveTypes.DEFENSE] -= 0.25
-                    self.player_additives[player_id][AdditiveTypes.BASE_RUNNING] -= 0.25
+                    self.player_additives[player_id][AdditiveTypes.BATTING] *= 1.0/1.25
+                    self.player_additives[player_id][AdditiveTypes.PITCHING] *= 1.0/1.25
+                    self.player_additives[player_id][AdditiveTypes.DEFENSE] *= 1.0/1.25
+                    self.player_additives[player_id][AdditiveTypes.BASE_RUNNING] *= 1.0/1.25
                     continue
 
 
@@ -198,28 +198,28 @@ class TeamState(object):
             else:
                 if self.player_buffs[player_id][PlayerBuff.SPICY] == 3:
                     self.player_buffs[player_id][PlayerBuff.SPICY] += 1
-                    self.player_additives[player_id][AdditiveTypes.BATTING] += 0.5
+                    self.player_additives[player_id][AdditiveTypes.BATTING] *= 1.4
 
     def reset_hit_buffs(self, player_id: str):
         if PlayerBuff.SPICY in self.player_buffs[player_id]:
             if self.player_buffs[player_id][PlayerBuff.SPICY] == 4:
-                self.player_additives[player_id][AdditiveTypes.BATTING] -= 0.5
+                self.player_additives[player_id][AdditiveTypes.BATTING] *= 1.0/1.4
             self.player_buffs[player_id][PlayerBuff.SPICY] = 1
 
     def pre_load_additives(self) -> Dict[str, Dict[AdditiveTypes, float]]:
         player_additives = {}
         for player_id in self.player_buffs.keys():
             cur_additives = {
-                AdditiveTypes.BATTING: 0.0,
-                AdditiveTypes.PITCHING: 0.0,
-                AdditiveTypes.DEFENSE: 0.0,
-                AdditiveTypes.BASE_RUNNING: 0.0,
+                AdditiveTypes.BATTING: 1.0,
+                AdditiveTypes.PITCHING: 1.0,
+                AdditiveTypes.DEFENSE: 1.0,
+                AdditiveTypes.BASE_RUNNING: 1.0,
             }
             for cur_mod in self.player_buffs[player_id].keys():
                 if cur_mod == PlayerBuff.CHUNKY and self.weather == Weather.PEANUTS:
-                    cur_additives[AdditiveTypes.BATTING] += 1.0
+                    cur_additives[AdditiveTypes.BATTING] *= 2.0
                 if cur_mod == PlayerBuff.SMOOTH and self.weather == Weather.PEANUTS:
-                    cur_additives[AdditiveTypes.BASE_RUNNING] += 1.0
+                    cur_additives[AdditiveTypes.BASE_RUNNING] *= 2.0
                 if cur_mod == PlayerBuff.UNDER_OVER or \
                         cur_mod == PlayerBuff.OVER_PERFORMING or \
                         (cur_mod == PlayerBuff.HOMEBODY and self.is_home) or \
@@ -227,22 +227,22 @@ class TeamState(object):
                          self.weather in [Weather.COFFEE, Weather.COFFEE2, Weather.COFFEE3]):
                     # turn on the buff
                     self.player_buffs[player_id][cur_mod] = 2
-                    cur_additives[AdditiveTypes.BATTING] += 0.2
-                    cur_additives[AdditiveTypes.PITCHING] += 0.2
-                    cur_additives[AdditiveTypes.DEFENSE] += 0.2
-                    cur_additives[AdditiveTypes.BASE_RUNNING] += 0.2
+                    cur_additives[AdditiveTypes.BATTING] *= 1.2
+                    cur_additives[AdditiveTypes.PITCHING] *= 1.2
+                    cur_additives[AdditiveTypes.DEFENSE] *= 1.2
+                    cur_additives[AdditiveTypes.BASE_RUNNING] *= 1.2
                 if cur_mod == PlayerBuff.UNDER_PERFORMING:
                     self.player_buffs[player_id][cur_mod] = 2
-                    cur_additives[AdditiveTypes.BATTING] -= 0.2
-                    cur_additives[AdditiveTypes.PITCHING] -= 0.2
-                    cur_additives[AdditiveTypes.DEFENSE] -= 0.2
-                    cur_additives[AdditiveTypes.BASE_RUNNING] -= 0.2
+                    cur_additives[AdditiveTypes.BATTING] *= 1.0/1.2
+                    cur_additives[AdditiveTypes.PITCHING] *= 1.0/1.2
+                    cur_additives[AdditiveTypes.DEFENSE] *= 1.0/1.2
+                    cur_additives[AdditiveTypes.BASE_RUNNING] *= 1.0/1.2
                 if cur_mod == PlayerBuff.HOMEBODY and not self.is_home:
                     self.player_buffs[player_id][cur_mod] = 1
-                    cur_additives[AdditiveTypes.BATTING] -= 0.2
-                    cur_additives[AdditiveTypes.PITCHING] -= 0.2
-                    cur_additives[AdditiveTypes.DEFENSE] -= 0.2
-                    cur_additives[AdditiveTypes.BASE_RUNNING] -= 0.2
+                    cur_additives[AdditiveTypes.BATTING] *= 1.0/1.2
+                    cur_additives[AdditiveTypes.PITCHING] *= 1.0/1.2
+                    cur_additives[AdditiveTypes.DEFENSE] *= 1.0/1.2
+                    cur_additives[AdditiveTypes.BASE_RUNNING] *= 1.0/1.2
             player_additives[player_id] = cur_additives
         return player_additives
 
@@ -262,11 +262,11 @@ class TeamState(object):
         for pos in self.lineup.keys():
             cur_id: str = self.lineup[pos]
             player_def_additive = self.player_additives[cur_id][AdditiveTypes.DEFENSE]
-            anticapitalism.append(self.stlats[cur_id][FK.ANTICAPITALISM] + self.defense_addition + player_def_additive)
-            chasiness.append(self.stlats[cur_id][FK.CHASINESS] + self.defense_addition + player_def_additive)
-            omniscience.append(self.stlats[cur_id][FK.OMNISCIENCE] + self.defense_addition + player_def_additive)
-            tenaciousness.append(self.stlats[cur_id][FK.TENACIOUSNESS] + self.defense_addition + player_def_additive)
-            watchfulness.append(self.stlats[cur_id][FK.WATCHFULNESS] + self.defense_addition + player_def_additive)
+            anticapitalism.append(self.stlats[cur_id][FK.ANTICAPITALISM] * self.defense_addition * player_def_additive)
+            chasiness.append(self.stlats[cur_id][FK.CHASINESS] * self.defense_addition * player_def_additive)
+            omniscience.append(self.stlats[cur_id][FK.OMNISCIENCE] * self.defense_addition * player_def_additive)
+            tenaciousness.append(self.stlats[cur_id][FK.TENACIOUSNESS] * self.defense_addition * player_def_additive)
+            watchfulness.append(self.stlats[cur_id][FK.WATCHFULNESS] * self.defense_addition * player_def_additive)
             defense_pressurization.append(self.stlats[cur_id][FK.PRESSURIZATION])
             defense_cinnamon.append(self.stlats[cur_id][FK.CINNAMON])
             defense_vibes.append(calc_vibes(self.stlats[cur_id][FK.PRESSURIZATION],
@@ -592,12 +592,12 @@ class TeamState(object):
         # TODO(kjc9): figure out how to haunt a pitcher appropriately
         player_pitching_additive = self.player_additives[player_id][AdditiveTypes.PITCHING]
         ret_val: List[float] = [
-            self.stlats[player_id][FK.COLDNESS] + self.pitching_addition + player_pitching_additive,
-            self.stlats[player_id][FK.OVERPOWERMENT] + self.pitching_addition + player_pitching_additive,
-            self.stlats[player_id][FK.RUTHLESSNESS] + self.pitching_addition + player_pitching_additive,
-            self.stlats[player_id][FK.SHAKESPEARIANISM] + self.pitching_addition + player_pitching_additive,
-            self.stlats[player_id][FK.SUPPRESSION] + self.pitching_addition + player_pitching_additive,
-            self.stlats[player_id][FK.UNTHWACKABILITY] + self.pitching_addition + player_pitching_additive,
+            self.stlats[player_id][FK.COLDNESS] * self.pitching_addition * player_pitching_additive,
+            self.stlats[player_id][FK.OVERPOWERMENT] * self.pitching_addition * player_pitching_additive,
+            self.stlats[player_id][FK.RUTHLESSNESS] * self.pitching_addition * player_pitching_additive,
+            self.stlats[player_id][FK.SHAKESPEARIANISM] * self.pitching_addition * player_pitching_additive,
+            self.stlats[player_id][FK.SUPPRESSION] * self.pitching_addition * player_pitching_additive,
+            self.stlats[player_id][FK.UNTHWACKABILITY] * self.pitching_addition * player_pitching_additive,
             calc_vibes(self.stlats[player_id][FK.PRESSURIZATION],
                        self.stlats[player_id][FK.CINNAMON],
                        self.stlats[player_id][FK.BUOYANCY],
@@ -614,23 +614,23 @@ class TeamState(object):
             roll = self._random_roll()
             if roll < HAUNTED_TRIGGER_PERCENTAGE:
                 player_id = HAUNTED_ID
-        new_path = self.stlats[player_id][FK.PATHETICISM] - self.batting_addition
+        new_path = self.stlats[player_id][FK.PATHETICISM] * self.batting_addition
         if new_path < 0.001:
             new_path = 0.001
         ret_val: List[float] = [
-            self.stlats[player_id][FK.BUOYANCY] + self.batting_addition + player_batting_additive,
-            self.stlats[player_id][FK.DIVINITY] + self.batting_addition + player_batting_additive,
-            self.stlats[player_id][FK.MARTYRDOM] + self.batting_addition + player_batting_additive,
-            self.stlats[player_id][FK.MOXIE] + self.batting_addition + player_batting_additive,
-            self.stlats[player_id][FK.MUSCLITUDE] + self.batting_addition + player_batting_additive,
+            self.stlats[player_id][FK.BUOYANCY] * self.batting_addition * player_batting_additive,
+            self.stlats[player_id][FK.DIVINITY] * self.batting_addition * player_batting_additive,
+            self.stlats[player_id][FK.MARTYRDOM] * self.batting_addition * player_batting_additive,
+            self.stlats[player_id][FK.MOXIE] * self.batting_addition * player_batting_additive,
+            self.stlats[player_id][FK.MUSCLITUDE] * self.batting_addition * player_batting_additive,
             new_path,
-            self.stlats[player_id][FK.THWACKABILITY] + self.batting_addition + player_base_running_additive,
+            self.stlats[player_id][FK.THWACKABILITY] * self.batting_addition * player_base_running_additive,
             self.stlats[player_id][FK.TRAGICNESS],
-            self.stlats[player_id][FK.BASE_THIRST] + self.base_running_addition + player_base_running_additive,
-            self.stlats[player_id][FK.CONTINUATION] + self.base_running_addition + player_base_running_additive,
-            self.stlats[player_id][FK.GROUND_FRICTION] + self.base_running_addition + player_base_running_additive,
-            self.stlats[player_id][FK.INDULGENCE] + self.base_running_addition + player_base_running_additive,
-            self.stlats[player_id][FK.LASERLIKENESS] + self.base_running_addition + player_base_running_additive,
+            self.stlats[player_id][FK.BASE_THIRST] * self.base_running_addition * player_base_running_additive,
+            self.stlats[player_id][FK.CONTINUATION] * self.base_running_addition * player_base_running_additive,
+            self.stlats[player_id][FK.GROUND_FRICTION] * self.base_running_addition * player_base_running_additive,
+            self.stlats[player_id][FK.INDULGENCE] * self.base_running_addition * player_base_running_additive,
+            self.stlats[player_id][FK.LASERLIKENESS] * self.base_running_addition * player_base_running_additive,
             calc_vibes(self.stlats[player_id][FK.PRESSURIZATION],
                        self.stlats[player_id][FK.CINNAMON],
                        self.stlats[player_id][FK.BUOYANCY],
@@ -646,11 +646,11 @@ class TeamState(object):
             if roll < HAUNTED_TRIGGER_PERCENTAGE:
                 player_id = HAUNTED_ID
         ret_val: List[float] = [
-            self.stlats[player_id][FK.BASE_THIRST] + self.base_running_addition + player_base_running_additive,
-            self.stlats[player_id][FK.CONTINUATION] + self.base_running_addition + player_base_running_additive,
-            self.stlats[player_id][FK.GROUND_FRICTION] + self.base_running_addition + player_base_running_additive,
-            self.stlats[player_id][FK.INDULGENCE] + self.base_running_addition + player_base_running_additive,
-            self.stlats[player_id][FK.LASERLIKENESS] + self.base_running_addition + player_base_running_additive,
+            self.stlats[player_id][FK.BASE_THIRST] * self.base_running_addition * player_base_running_additive,
+            self.stlats[player_id][FK.CONTINUATION] * self.base_running_addition * player_base_running_additive,
+            self.stlats[player_id][FK.GROUND_FRICTION] * self.base_running_addition * player_base_running_additive,
+            self.stlats[player_id][FK.INDULGENCE] * self.base_running_addition * player_base_running_additive,
+            self.stlats[player_id][FK.LASERLIKENESS] * self.base_running_addition * player_base_running_additive,
             calc_vibes(self.stlats[player_id][FK.PRESSURIZATION],
                        self.stlats[player_id][FK.CINNAMON],
                        self.stlats[player_id][FK.BUOYANCY],
@@ -689,41 +689,50 @@ class TeamState(object):
         if self.team_enum in time_based_event_map:
             buff, start_season, end_season, start_day, end_day = time_based_event_map[self.team_enum]
             if start_season <= self.season <= end_season and start_day <= self.day <= end_day:
-                self.batting_addition = 0.2
-                self.pitching_addition = 0.2
-                self.defense_addition = 0.2
-                self.base_running_addition = 0.2
+                self.batting_addition = 1.2
+                self.pitching_addition = 1.2
+                self.defense_addition = 1.2
+                self.base_running_addition = 1.2
         if self.team_enum in team_game_event_map:
             buff, start_season, end_season, req_weather = team_game_event_map[self.team_enum]
             if buff == GameEventTeamBuff.CROWS and self.season >= start_season and req_weather == self.weather:
-                self.batting_addition = 0.5
-                self.pitching_addition = 0.5
+                self.batting_addition = 1.5
+                self.pitching_addition = 1.5
             if buff == GameEventTeamBuff.PRESSURE and \
                     self.season >= start_season and \
                     req_weather == self.weather and \
                     self.runners_aboard:
-                self.batting_addition = 0.25
-                self.pitching_addition = 0.25
-                self.defense_addition = 0.25
-                self.base_running_addition = 0.25
+                self.batting_addition = 1.25
+                self.pitching_addition = 1.25
+                self.defense_addition = 1.25
+                self.base_running_addition = 1.25
             if buff == GameEventTeamBuff.TRAVELLING and self.season >= start_season and not self.is_home:
-                self.batting_addition = 0.05
-                self.pitching_addition = 0.05
-                self.defense_addition = 0.05
-                self.base_running_addition = 0.05
+                self.batting_addition = 1.05
+                self.pitching_addition = 1.05
+                self.defense_addition = 1.05
+                self.base_running_addition = 1.05
+            if buff == GameEventTeamBuff.GROWTH and self.season >= start_season:
+                calc_day = float(self.day)
+                if self.day > 99:
+                    calc_day = 99.0
+                mod = (0.05/99.0) * calc_day
+                self.batting_addition = mod
+                self.pitching_addition = mod
+                self.defense_addition = mod
+                self.base_running_addition = mod
             if buff == GameEventTeamBuff.SINKING_SHIP and self.season >= start_season:
                 total_players = len(self.rotation) + len(self.lineup)
-                mod = (14 - total_players) * 0.01
+                mod = 1.0 + ((14 - total_players) * 0.01)
                 self.batting_addition = mod
                 self.pitching_addition = mod
                 self.defense_addition = mod
                 self.base_running_addition = mod
 
     def reset_team_additives(self):
-        self.batting_addition = 0.0
-        self.pitching_addition = 0.0
-        self.base_running_addition = 0.0
-        self.defense_addition = 0.0
+        self.batting_addition = 1.0
+        self.pitching_addition = 1.0
+        self.base_running_addition = 1.0
+        self.defense_addition = 1.0
 
     def add_default_haunted_stats(self):
         self.stlats[HAUNTED_ID] = {}

@@ -174,7 +174,7 @@ class PitchEventTeamBuff(Enum):
     CHARM = 2
     O_NO = 3
     ZAP = 4
-    GROWTH = 5
+    #GROWTH = 5
     O = 6
     H2O = 7
     FIERY = 8
@@ -189,6 +189,7 @@ class GameEventTeamBuff(Enum):
     PRESSURE = 2
     TRAVELLING = 3
     SINKING_SHIP = 4
+    GROWTH = 5
 
 
 class Team(Enum):
@@ -464,7 +465,7 @@ pitch_reroll_event_map: Dict[Team, Tuple[PitchEventTeamBuff, int, Optional[int],
 team_pitch_event_map: Dict[Team, Tuple[PitchEventTeamBuff, int, Optional[int], Optional[BloodType]]] = {
     # team: Tuple[Team buff, season start, season end]
     Team.MAGIC: (PitchEventTeamBuff.O_NO, 11, None, BloodType.O_NO),
-    Team.FLOWERS: (PitchEventTeamBuff.GROWTH, 10, None, BloodType.GRASS),
+    #Team.FLOWERS: (PitchEventTeamBuff.GROWTH, 10, None, BloodType.GRASS),
     Team.LOVERS: (PitchEventTeamBuff.CHARM, 10, None, BloodType.LOVE),
     Team.DALE: (PitchEventTeamBuff.ZAP, 8, None, BloodType.ELECTRIC),
     Team.SUNBEAMS: (PitchEventTeamBuff.BASE_INSTINCTS, 9, None, BloodType.BASE),
@@ -481,6 +482,7 @@ team_game_event_map: Dict[Team, Tuple[GameEventTeamBuff, int, Optional[int], Opt
     Team.SHOE_THIEVES: (GameEventTeamBuff.TRAVELLING, 11, None, None),
     Team.FRIDAYS: (GameEventTeamBuff.SINKING_SHIP, 13, None, None),
     Team.STEAKS: (GameEventTeamBuff.PRESSURE, 15, 15, Weather.FLOODING),
+    Team.FLOWERS: (GameEventTeamBuff.GROWTH, 10, None, None),
 }
 
 fk_key: Dict[ForbiddenKnowledge, str] = {
