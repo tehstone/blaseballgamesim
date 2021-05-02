@@ -160,7 +160,7 @@ class TeamState(object):
                 if cur_mod == PlayerBuff.SUPER_YUMMY and \
                         cur_buffs[cur_mod] == 2 and \
                         (not stadium.has_peanut_mister or self.weather != Weather.PEANUTS):
-                    # turn on the buff
+                    # turn off the buff
                     self.player_buffs[player_id][cur_mod] = 1
                     self.player_additives[player_id][AdditiveTypes.BATTING] -= 0.2
                     self.player_additives[player_id][AdditiveTypes.PITCHING] -= 0.2
@@ -741,7 +741,7 @@ class TeamState(object):
         self.stlats[HAUNTED_ID][FK.INDULGENCE] = 0.525962074376915
         self.stlats[HAUNTED_ID][FK.LASERLIKENESS] = 0.527553677977796
         self.stlats[HAUNTED_ID][FK.PRESSURIZATION] = 0.508219154865181
-        self.stlats[HAUNTED_ID][FK.CINNAMON] = 0.5
+        self.stlats[HAUNTED_ID][FK.CINNAMON] = 0.5563565768
         self.stlats[HAUNTED_ID][FK.COLDNESS] = 0.532376289658451
         self.stlats[HAUNTED_ID][FK.OVERPOWERMENT] = 0.493760180878268
         self.stlats[HAUNTED_ID][FK.RUTHLESSNESS] = 0.470901690616592
