@@ -22,6 +22,7 @@ default_stadium = Stadium(
     [],
 )
 
+
 class TestTeamState(unittest.TestCase):
     def setUp(self):
         self.team_state = TeamState(
@@ -352,7 +353,6 @@ class TestTeamBuffs(TestTeamState):
         self.assertEqual(1.0, self.team_state.base_running_addition)
 
 
-
 class TestHitBuffModifiers(TestTeamState):
     def test_reset_hit_buff(self):
         self.team_state.player_buffs["p1"][PlayerBuff.SPICY] = 4
@@ -611,7 +611,7 @@ class TestValidateModifiers(TestTeamState):
         self.assertEqual(1.0, self.team_state.player_additives["p1"][AdditiveTypes.DEFENSE])
         self.assertEqual(1, self.team_state.player_buffs["p1"][PlayerBuff.PRESSURE])
 
-    def test_player_superyummy(self):
+    def test_player_super_yummy(self):
         self.team_state.player_buffs["p1"][PlayerBuff.SUPER_YUMMY] = 1
         self.team_state.weather = Weather.SUN2
         self.team_state.validate_game_state_additives(Decimal(4.0), default_stadium)
@@ -696,6 +696,3 @@ class Test(TestTeamState):
         self.team_state.season = 11
         self.team_state.apply_season_buffs()
         self.assertEqual(3, self.team_state.balls_for_walk)
-
-
-

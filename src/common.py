@@ -174,7 +174,7 @@ class PitchEventTeamBuff(Enum):
     CHARM = 2
     O_NO = 3
     ZAP = 4
-    #GROWTH = 5
+    DEPRECATED_GROWTH = 5
     O = 6
     H2O = 7
     FIERY = 8
