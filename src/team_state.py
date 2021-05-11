@@ -715,7 +715,7 @@ class TeamState(object):
                 calc_day = float(self.day)
                 if self.day > 99:
                     calc_day = 99.0
-                mod = (0.05/99.0) * calc_day
+                mod = 1.0 + ((0.05/99.0) * calc_day)
                 self.batting_addition = mod
                 self.pitching_addition = mod
                 self.defense_addition = mod
