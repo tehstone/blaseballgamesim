@@ -23,11 +23,11 @@ from stadium import Stadium
 
 CHARM_TRIGGER_PERCENTAGE = 0.02
 ZAP_TRIGGER_PERCENTAGE = 0.02
-FIERY_TRIGGER_PERCENTAGE = 0.02
+FIERY_TRIGGER_PERCENTAGE = 0.04
 PSYCHIC_TRIGGER_PERCENTAGE = 0.1
 AAA_TRIGGER_PERCENTAGE = 0.5
 AA_TRIGGER_PERCENTAGE = 0.25
-ACIDIC_TRIGGER_PERCENTAGE = 0.02
+ACIDIC_TRIGGER_PERCENTAGE = 0.04
 FLOODING_TRIGGER_PERCENTAGE = 0.01
 COFFEE_PRIME_BEAN_PERCENTAGE = 0.05
 COFFEE_2_PERCENTAGE = 0.04
@@ -122,13 +122,13 @@ class GameState(object):
             }
         else:
             self.clf = {
-                Ml.PITCH: load(os.path.join("..", "season_sim", "models", "pitch_v5.joblib")),
-                Ml.HIT_TYPE: load(os.path.join("..", "season_sim", "models", "hit_type_v4.joblib")),
-                Ml.RUNNER_ADV_OUT: load(os.path.join("..", "season_sim", "models", "runner_advanced_on_out_v4.joblib")),
-                Ml.RUNNER_ADV_HIT: load(os.path.join("..", "season_sim", "models", "extra_base_on_hit_v4.joblib")),
-                Ml.SB_ATTEMPT: load(os.path.join("..", "season_sim", "models", "sba_v4.joblib")),
-                Ml.SB_SUCCESS: load(os.path.join("..", "season_sim", "models", "sb_success_v4.joblib")),
-                Ml.OUT_TYPE: load(os.path.join("..", "season_sim", "models", "out_type_v4.joblib")),
+                Ml.PITCH: load(os.path.join("..", "season_sim", "models", "pitch_v6.joblib")),
+                Ml.HIT_TYPE: load(os.path.join("..", "season_sim", "models", "hit_type_v6.joblib")),
+                Ml.RUNNER_ADV_OUT: load(os.path.join("..", "season_sim", "models", "runner_advanced_on_out_v6.joblib")),
+                Ml.RUNNER_ADV_HIT: load(os.path.join("..", "season_sim", "models", "extra_base_on_hit_v6.joblib")),
+                Ml.SB_ATTEMPT: load(os.path.join("..", "season_sim", "models", "sba_v6.joblib")),
+                Ml.SB_SUCCESS: load(os.path.join("..", "season_sim", "models", "sb_success_v6.joblib")),
+                Ml.OUT_TYPE: load(os.path.join("..", "season_sim", "models", "out_type_v6.joblib")),
             }
 
     def log_event(self, event: str) -> None:
