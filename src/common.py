@@ -234,8 +234,8 @@ class Weather(Enum):
     COFFEE3 = 17
     FLOODING = 18
     SALMON = 19
-    aaa = 20
-    bbb = 21
+    POLARITY_PLUS = 20
+    POLARITY_MINUS = 21
     ccc = 22
 
 blaseball_weather_pretty_print_map: Dict[Weather, str] = {
@@ -253,6 +253,8 @@ blaseball_weather_pretty_print_map: Dict[Weather, str] = {
     Weather.FLOODING: "Flooding",
     Weather.SALMON: "Salmon",
     Weather.GLITTER: "Glitter",
+    Weather.POLARITY_PLUS: "Polarity +",
+    Weather.POLARITY_MINUS: "Polarity -"
 }
 
 
