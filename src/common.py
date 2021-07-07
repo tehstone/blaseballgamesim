@@ -50,6 +50,8 @@ class BlaseballStatistics(Enum):
     PITCHER_GROUNDOUTS = 44
     PITCHER_BATTERS_FACED = 45
     PITCHER_GAMES_APPEARED = 46
+    PITCHER_DOUBLE_ALLOWED = 47
+    PITCHER_TRIPLE_ALLOWED = 48
 
     # Defense stats
     DEFENSE_STOLEN_BASE_ATTEMPTS = 50
@@ -217,6 +219,8 @@ class Team(Enum):
     GEORGIAS = 22
     WORMS = 23
     MECHANICS = 24
+    BATTER_EVAL = 1000
+    PITCHER_EVAL = 2000
 
 
 class Weather(Enum):
@@ -331,6 +335,8 @@ blaseball_statistics_pretty_print_map: Dict[BlaseballStatistics, str] = {
     BlaseballStatistics.PITCHER_HITS_ALLOWED: "Pitcher Hits Allowed",
     BlaseballStatistics.PITCHER_HRS_ALLOWED: "Pitcher Hrs Allowed",
     BlaseballStatistics.PITCHER_XBH_ALLOWED: "Pitcher Xbh Allowed",
+    BlaseballStatistics.PITCHER_DOUBLE_ALLOWED: "Pitcher Double Allowed",
+    BlaseballStatistics.PITCHER_TRIPLE_ALLOWED: "Pitcher Triple Allowed",
     BlaseballStatistics.PITCHER_PITCHES_THROWN: "Pitcher Pitches Thrown",
     BlaseballStatistics.PITCHER_INNINGS_PITCHED: "Pitcher Innings Pitched",
     BlaseballStatistics.PITCHER_STRIKEOUTS: "Pitcher Strikeouts",
@@ -386,6 +392,8 @@ team_id_map: Dict[str, Team] = {
     "d9f89a8a-c563-493e-9d64-78e4f9a55d4a": Team.GEORGIAS,
     "46358869-dce9-4a01-bfba-ac24fc56f57e": Team.MECHANICS,
     "bb4a9de5-c924-4923-a0cb-9d1445f1ee5d": Team.WORMS,
+    "batter-eval": Team.BATTER_EVAL,
+    "pitcher-eval": Team.PITCHER_EVAL,
 }
 
 team_name_map: Dict[Team, str] = {
@@ -412,7 +420,9 @@ team_name_map: Dict[Team, str] = {
     Team.LIFT: "Lift",
     Team.GEORGIAS: "Georgias",
     Team.WORMS: "Worms",
-    Team.MECHANICS: "Mechanics"
+    Team.MECHANICS: "Mechanics",
+    Team.BATTER_EVAL: "All Batters",
+    Team.PITCHER_EVAL: "Some Pitcher"
 }
 
 blood_id_map: Dict[int, BloodType] = {
