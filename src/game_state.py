@@ -136,7 +136,7 @@ class GameState(object):
 
     def log_score(self) -> None:
         self.log_event(
-            f'{self.away_team.team_enum.name}: {self.away_score}  {self.home_team.team_enum.name}: {self.home_score}.')
+            f'{self.away_team.name}: {self.away_score}  {self.home_team.name}: {self.home_score}.')
 
     def log_runners(self) -> None:
         for base in self.cur_base_runners.keys():
@@ -182,13 +182,13 @@ class GameState(object):
                            f'{self.cur_pitching_team.player_names[self.cur_pitching_team.starting_pitcher]} are now '
                            f'triple threats.')
         if self.half == InningHalf.TOP:
-            self.log_event(f'\nTop of the {self.inning}, {self.away_team.team_enum.name} batting.')
+            self.log_event(f'\nTop of the {self.inning}, {self.away_team.name} batting.')
             self.log_event(f'{self.away_team.get_cur_batter_name()} at bat. {self.home_team.get_cur_pitcher_name()} '
                            f'pitching.')
             self.cur_batting_team = self.away_team
             self.cur_pitching_team = self.home_team
         else:
-            self.log_event(f'\nBottom of the {self.inning}, {self.home_team.team_enum.name} batting.')
+            self.log_event(f'\nBottom of the {self.inning}, {self.home_team.name} batting.')
             self.log_event(f'{self.home_team.get_cur_batter_name()} at bat. {self.away_team.get_cur_pitcher_name()} '
                            f'pitching.')
             self.cur_batting_team = self.home_team
@@ -287,7 +287,7 @@ class GameState(object):
         ret_val.cur_base_runners = cur_base_runners
         return ret_val
 
-    def simulate_game(self) -> Tuple[Union[Decimal, Decimal], Union[Decimal, Decimal]]:
+    def simulate_game(self) -> Tuple[Union[Decimal, Decimal], Union[Decimal, Decimal], List[str]]:
         """Loop until the game over state is true"""
         while not self.is_game_over:
             if not self.stolen_base_sim():
@@ -325,7 +325,7 @@ class GameState(object):
         else:
             self.home_team.update_stat(TEAM_ID, Stats.TEAM_LOSSES, 1.0, self.day)
             self.away_team.update_stat(TEAM_ID, Stats.TEAM_WINS, 1.0, self.day)
-        return self.home_score, self.away_score
+        return self.home_score, self.away_score, self.game_log
 
     def validate_current_batter_state(self):
         cur_buffs = self.cur_batting_team.player_buffs[self.cur_batting_team.cur_batter]

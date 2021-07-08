@@ -219,6 +219,8 @@ class Team(Enum):
     GEORGIAS = 22
     WORMS = 23
     MECHANICS = 24
+    CUSTOM_TEAM_1 = 998
+    CUSTOM_TEAM_2 = 999
     BATTER_EVAL = 1000
     PITCHER_EVAL = 2000
 
@@ -394,6 +396,8 @@ team_id_map: Dict[str, Team] = {
     "d9f89a8a-c563-493e-9d64-78e4f9a55d4a": Team.GEORGIAS,
     "46358869-dce9-4a01-bfba-ac24fc56f57e": Team.MECHANICS,
     "bb4a9de5-c924-4923-a0cb-9d1445f1ee5d": Team.WORMS,
+    "0": Team.CUSTOM_TEAM_1,
+    "1": Team.CUSTOM_TEAM_2,
     "batter-eval": Team.BATTER_EVAL,
     "pitcher-eval": Team.PITCHER_EVAL,
 }

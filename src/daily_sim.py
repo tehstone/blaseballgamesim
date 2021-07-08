@@ -283,8 +283,8 @@ def run_daily_sim(iterations=250, day=None, home_team_in=None, away_team_in=None
         game_id = game["id"]
         day = int(game["day"])
 
-        home_pitcher = get_pitcher_for_day_and_team(day, home_team)
-        away_pitcher = get_pitcher_for_day_and_team(day, away_team)
+        home_pitcher = game["homePitcher"]
+        away_pitcher = game["awayPitcher"]
 
         home_odds = game["homeOdds"]
         away_odds = game["awayOdds"]
@@ -342,8 +342,8 @@ def run_daily_sim(iterations=250, day=None, home_team_in=None, away_team_in=None
               f"{away_team_name}: {away_wins} ({away_wins / iterations}) - {away_odds_str}%")
         count += 1
 
-        home_pitcher_name = home_team_state.player_names[home_pitcher]
-        away_pitcher_name = away_team_state.player_names[away_pitcher]
+        home_pitcher_name = home_team_state.player_names[home_team_state.starting_pitcher]
+        away_pitcher_name = away_team_state.player_names[away_team_state.starting_pitcher]
         output += f"{home_team_name} ({home_pitcher_name}): {home_wins} ({home_wins / iterations}) - {home_odds_str}% " \
                   f"{away_team_name} ({away_pitcher_name}): {away_wins} ({away_wins / iterations}) - {away_odds_str}%\n"
 

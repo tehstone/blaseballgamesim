@@ -23,6 +23,7 @@ class TeamState(object):
     def __init__(
         self,
         team_id: str,
+        name: str,
         season: int,
         day: int,
         stadium: Stadium,
@@ -47,6 +48,7 @@ class TeamState(object):
     ) -> None:
         """ A container class that holds the team state for a given game """
         self.team_id: str = team_id
+        self.name: str = name
         self.team_enum: Team = team_id_map[team_id]
         self.season: int = season
         self.day: int = day
@@ -326,6 +328,7 @@ class TeamState(object):
         """ Gets a dict representation of the state for serialization """
         serialization_dict = {
             "team_id": self.team_id,
+            "name": self.name,
             "season": self.season,
             "day": self.day,
             "stadium": Stadium.to_dict(self.stadium),
@@ -373,6 +376,7 @@ class TeamState(object):
     def from_config(cls, team_state: Dict[str, Any]):
         """Reconstructs a team state from a json file."""
         team_id: str = team_state["team_id"]
+        name: str = team_state["name"]
         season: int = team_state["season"]
         day: int = team_state["day"]
         stadium: Stadium = Stadium.from_config(team_state['stadium'])
@@ -396,6 +400,7 @@ class TeamState(object):
         cur_batter_pos: int = team_state["cur_batter_pos"]
         return cls(
             team_id,
+            name,
             season,
             day,
             stadium,

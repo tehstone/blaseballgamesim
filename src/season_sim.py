@@ -61,7 +61,6 @@ def setup_season(season:int, stats_segment_size:int, iterations:int, s_day:int, 
             continue
         if day != last_day:
             last_day = day
-            print(f"Starting day: {day}")
         # try:
         game_id = game["id"]
         home_pitcher = game["homePitcher"]

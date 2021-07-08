@@ -3,6 +3,7 @@ import logging
 from logging import Formatter, FileHandler
 from flask import Flask, request, render_template
 
+from fantasim import setup_and_run_custom
 from power_rankings import run_power_ranking_sim
 from season_sim import run_season_sim
 from season_sim_sums import sum_season_files
@@ -69,6 +70,14 @@ def dailysim():
         save_stlats = True
 
     return run_daily_sim(iterations, day, home_team, away_team, save_stlats)
+
+
+@app.route('/v{}/customsim'.format(_VERSION), methods=["GET"])
+def customsim():
+    team_dict = request.get_json()['team_dict']
+
+    home_score, away_score, event_log = setup_and_run_custom(team_dict)
+    return {"home_score": home_score, "away_score": away_score, "game_log": event_log}
 
 
 @app.errorhandler(500)
